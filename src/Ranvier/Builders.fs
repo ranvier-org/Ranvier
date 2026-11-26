@@ -4,6 +4,8 @@ open System
 open System.Collections.Generic
 open System.ComponentModel
 open System.Runtime.CompilerServices
+open System.Threading
+open System.Threading.Tasks
 open Ranvier
 
 /// <summary>Phantom phase marker indicating a computation-expression step whose body has not executed yet.</summary>
@@ -109,6 +111,39 @@ type DraftPreviousToken = struct end
 type DraftPreviousOrToken<'U> =
     val Seed: 'U
     new(seed: 'U) = { Seed = seed }
+
+/// <summary>Phantom marker indicating no explicit <c>FlightPolicy</c> header operation on <c>asyncMemo</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type DefaultPolicy = struct end
+
+/// <summary>Phantom marker carrying an explicit <c>FlightPolicy</c> header operation on <c>asyncMemo</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type ExplicitPolicy =
+    val Policy: FlightPolicy
+    new(policy: FlightPolicy) = { Policy = policy }
+
+/// <summary>Context token bound inside <c>asyncMemo</c> to obtain <c>Previous&lt;'U&gt;</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type AsyncPreviousToken = struct end
+
+/// <summary>Context token bound inside <c>asyncMemo</c> to obtain the flight <c>CancellationToken</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type AsyncCancellationToken = struct end
+
+/// <summary>Phantom mode marker indicating latest-item mode on <c>stream</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type LatestMode = struct end
+
+/// <summary>Phantom mode marker carrying seed and folder from <c>fold</c> on <c>stream</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type FoldMode<'S, 'T> =
+    val Seed: 'S
+    val Folder: 'S -> 'T -> 'S
+    new(seed: 'S, folder: 'S -> 'T -> 'S) = { Seed = seed; Folder = folder }
+
+/// <summary>Context token bound inside <c>stream</c> to obtain the stream <c>CancellationToken</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type StreamCancellationToken = struct end
 
 #if FABLE_COMPILER
 module private CeEvalSlot =
@@ -632,6 +667,7 @@ type RowInput<'T> =
 type internal PureCeScopeHost(message: string) =
     static member val MemoInstance: IScopeHost = PureCeScopeHost ScopeMessages.memo :> IScopeHost
     static member val RowInstance: IScopeHost = PureCeScopeHost ScopeMessages.factoryRow :> IScopeHost
+    static member val AsyncInstance: IScopeHost = PureCeScopeHost ScopeMessages.asyncMemo :> IScopeHost
 
     interface IScopeHost with
         member _.CanOwn = false
@@ -694,27 +730,40 @@ type OptionDeduplicator<'A>() =
 /// <summary>Shared runtime helpers invoked by computation-expression builders.</summary>
 [<AbstractClass; Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
 type CeRuntime =
-    static member private PickPureHost(isRow: bool, g: Graph) : IScopeHost =
-        let fallbackHost =
-            if isRow then
-                PureCeScopeHost.RowInstance
-            else
-                PureCeScopeHost.MemoInstance
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.then(undefined, function (e) { throw $1(e); })")>]
+    static member private RejectMap<'U>(t: Task<'U>, mapErr: exn -> exn) : Task<'U> =
+        Fable.Core.Util.jsNative
+#endif
 
-        let obs = g.CurrentObserver
+    static member private PickPureHost(pureKind: int, g: Graph) : IScopeHost =
+        let fallbackHost =
+            if pureKind = 1 then PureCeScopeHost.RowInstance
+            elif pureKind = 2 then PureCeScopeHost.AsyncInstance
+            else PureCeScopeHost.MemoInstance
+
+        let candidate =
+            let obs = g.CurrentObserver
+
+            if not (Platform.isNull (box obs)) then
+                box obs
+            elif obj.ReferenceEquals (g, InternalCeState.CurrentEffectGraph) then
+                InternalCeState.CurrentEffectObserver
+            else
+                null
 
 #if FABLE_COMPILER
         if
-            not (Platform.isNull (box obs))
-            && Platform.hasMember obs "CanOwn"
+            not (Platform.isNull candidate)
+            && Platform.hasMember candidate "CanOwn"
         then
-            let sh = box obs :?> IScopeHost
+            let sh = candidate :?> IScopeHost
             if not sh.CanOwn then sh else fallbackHost
         else
             fallbackHost
 #else
-        if not (Platform.isNull (box obs)) then
-            match obs with
+        if not (Platform.isNull candidate) then
+            match candidate with
             | :? IScopeHost as sh when not sh.CanOwn -> sh
             | _ -> fallbackHost
         else
@@ -767,11 +816,11 @@ type CeRuntime =
 
             reraise ()
 
-    static member private RunUntrackedPureBody<'A, 'T>(isRow: bool, g: Graph, f: 'A -> 'T, arg: 'A) : 'T =
+    static member private RunUntrackedPureBody<'A, 'T>(pureKind: int, g: Graph, f: 'A -> 'T, arg: 'A) : 'T =
         g.Entered (
             "An untracked read",
             fun () ->
-                let host = CeRuntime.PickPureHost (isRow, g)
+                let host = CeRuntime.PickPureHost (pureKind, g)
 
 #if FABLE_COMPILER
                 g.RunUntrackedPureArg (host, f, arg)
@@ -793,11 +842,14 @@ type CeRuntime =
 #endif
         )
 
-    static member RunUntrackedPureArg<'A, 'T>(isRow: bool, g: Graph, f: 'A -> 'T, arg: 'A) : 'T =
+    static member private RunUntrackedPureCore<'A, 'T>(pureKind: int, pendingMessage: string, g: Graph, f: 'A -> 'T, arg: 'A) : 'T =
         try
-            CeRuntime.RunUntrackedPureBody (isRow, g, f, arg)
+            CeRuntime.RunUntrackedPureBody (pureKind, g, f, arg)
         with NotReadyException _ as ex ->
-            raise (UntrackedPhase.wrapPending UntrackedPhase.mapPending ex)
+            raise (UntrackedPhase.wrapPending pendingMessage ex)
+
+    static member RunUntrackedPureArg<'A, 'T>(isRow: bool, g: Graph, f: 'A -> 'T, arg: 'A) : 'T =
+        CeRuntime.RunUntrackedPureCore ((if isRow then 1 else 0), UntrackedPhase.mapPending, g, f, arg)
 
     static member RunUntrackedBoundaryArg<'A, 'T>(g: Graph, f: 'A -> 'T, arg: 'A) : 'T =
         try
@@ -821,6 +873,67 @@ type CeRuntime =
             CeRuntime.RunUntrackedBoundaryArg (g, f, arg)
         else
             CeRuntime.RunUntrackedPureArg (false, g, f, arg)
+
+    static member RunAsyncUntrackedArg<'A, 'U>(owning: bool, g: Graph, f: 'A -> 'U, arg: 'A) : 'U =
+        if owning then
+            try
+                g.RunUntrackedWith (f, arg)
+            with NotReadyException _ as ex ->
+                raise (UntrackedPhase.wrapPending UntrackedPhase.asyncOnPending ex)
+        else
+            CeRuntime.RunUntrackedPureCore (2, UntrackedPhase.asyncOnPending, g, f, arg)
+
+    static member RunStreamUntrackedArg<'A, 'T>(g: Graph, f: 'A -> 'T, arg: 'A) : 'T =
+        CeRuntime.RunUntrackedPureCore (0, UntrackedPhase.streamOnPending, g, f, arg)
+
+    static member RunAsyncUntracked<'A, 'T>(f: 'A -> 'T, arg: 'A) : 'T =
+        let g = CeRuntime.TryGetAmbientGraph ()
+
+        try
+            if not (Platform.isNull (box g)) then
+                g.RunUntrackedWith (f, arg)
+            else
+                f arg
+        with NotReadyException _ as ex ->
+            raise (UntrackedPhase.wrapPending UntrackedPhase.asyncOnPending ex)
+
+    static member WrapAsyncPending<'U>(t: Task<'U>) : Task<'U> =
+#if FABLE_COMPILER
+        if Platform.isNull t then
+            t
+        else
+            CeRuntime.RejectMap (
+                t,
+                fun (ex: exn) ->
+                    match ex with
+                    | :? NotReadyException -> UntrackedPhase.wrapPending UntrackedPhase.asyncOnPending ex
+                    | _ -> ex
+            )
+#else
+        if
+            Platform.isNull t
+            || t.IsCompletedSuccessfully
+            || t.IsCanceled
+        then
+            t
+        elif t.IsFaulted then
+            let baseEx = t.Exception.GetBaseException ()
+
+            match baseEx with
+            | :? NotReadyException -> Task.FromException<'U>(UntrackedPhase.wrapPending UntrackedPhase.asyncOnPending baseEx)
+            | _ -> t
+        else
+            task {
+                try
+                    return! t
+                with NotReadyException _ as ex ->
+                    return raise (UntrackedPhase.wrapPending UntrackedPhase.asyncOnPending ex)
+            }
+#endif
+
+    static member RequireStreamFolder<'S, 'T>(folder: 'S -> 'T -> 'S) : unit =
+        if UntrackedPhase.isNullFn2 folder then
+            nullArg (nameof folder)
 
     static member ReadTrackedOn<'T>(g: Graph, readFn: unit -> 'T) : 'T =
         let savedObs = InternalCeState.CurrentEffectObserver
@@ -851,7 +964,9 @@ type CeRuntime =
         else
             readFn ()
 
-    static member RunUntrackedContinuation<'K, 'T>(isRow: bool, owning: bool, g: Graph, key: 'K, cont: 'K -> 'T) : 'T =
+    static member private RunUntrackedContinuationCore<'K, 'T>
+        (pureKind: int, owning: bool, pendingMessage: string, g: Graph, key: 'K, cont: 'K -> 'T)
+        : 'T =
         let struct (obsGraph, obs) =
             let active = g.CurrentObserver
 
@@ -867,14 +982,23 @@ type CeRuntime =
                 if owning then
                     g.RunUntrackedWith (cont, key)
                 else
-                    CeRuntime.RunUntrackedPureBody (isRow, g, cont, key)
+                    CeRuntime.RunUntrackedPureBody (pureKind, g, cont, key)
             with NotReadyException _ as ex ->
                 if obj.ReferenceEquals (ex, InternalCeState.CurrentPhase1Pending) then
                     reraise ()
                 else
-                    raise (UntrackedPhase.wrapPending UntrackedPhase.mapPending ex)
+                    raise (UntrackedPhase.wrapPending pendingMessage ex)
         finally
             InternalCeState.RestoreEffectObserver prevObs
+
+    static member RunUntrackedContinuation<'K, 'T>(isRow: bool, owning: bool, g: Graph, key: 'K, cont: 'K -> 'T) : 'T =
+        CeRuntime.RunUntrackedContinuationCore ((if isRow then 1 else 0), owning, UntrackedPhase.mapPending, g, key, cont)
+
+    static member RunAsyncUntrackedContinuation<'K, 'T>(owning: bool, g: Graph, key: 'K, cont: 'K -> 'T) : 'T =
+        CeRuntime.RunUntrackedContinuationCore (2, owning, UntrackedPhase.asyncOnPending, g, key, cont)
+
+    static member RunStreamUntrackedContinuation<'K, 'T>(g: Graph, key: 'K, cont: 'K -> 'T) : 'T =
+        CeRuntime.RunUntrackedContinuationCore (0, false, UntrackedPhase.streamOnPending, g, key, cont)
 
     static member RunRowContinuation<'K, 'V>(explicitGraph: Graph, key: 'K, cont: 'K -> 'V) : 'V =
         let ambient = CeRuntime.TryGetAmbientGraph ()
@@ -909,6 +1033,68 @@ type CeRuntime =
             |> ignore
 
             InternalCeState.RestoreEffectObserver savedObs
+
+    static member EvalStreamBody<'V>(graph: Graph, eval: unit -> 'V) : 'V =
+        let savedDepth = InternalCeState.EnterEval ()
+        let savedReactive = InternalCeState.SwapReactiveBind false
+        let savedOwning = InternalCeState.SwapOwning false
+        let savedObs = InternalCeState.SwapEffectObserver (graph, box graph.CurrentObserver)
+        let savedPending = InternalCeState.SwapPhase1Pending null
+        let savedPrev = InternalCeState.SuspendPrevious ()
+        let savedProbing = InternalCeState.SwapProbing false
+
+        try
+            eval ()
+        finally
+            InternalCeState.SwapProbing savedProbing |> ignore
+            InternalCeState.RestorePrevious savedPrev
+
+            InternalCeState.SwapPhase1Pending savedPending
+            |> ignore
+
+            InternalCeState.RestoreEffectObserver savedObs
+            InternalCeState.SwapOwning savedOwning |> ignore
+
+            InternalCeState.SwapReactiveBind savedReactive
+            |> ignore
+
+            InternalCeState.ExitEval savedDepth
+
+    static member CreateDynamicStreamLatest<'T>(graph: Graph, evalStart: CancellationToken -> StreamSource<'T>) : StreamMemo<'T> =
+        let start (ct: CancellationToken) =
+            CeRuntime.EvalStreamBody (graph, fun () -> evalStart ct)
+
+        graph.Entered (
+            "Creating a node",
+            fun () -> StreamMemo<'T>.Create<'T>(graph, Platform.zero<'T>(), (fun (_: 'T) (item: 'T) -> item), start, true)
+        )
+
+    static member CreateDynamicStreamFold<'S, 'T>
+        (graph: Graph, seed: 'S, folder: 'S -> 'T -> 'S, evalStart: CancellationToken -> StreamSource<'T>)
+        : StreamMemo<'S> =
+        let start (ct: CancellationToken) =
+            CeRuntime.EvalStreamBody (graph, fun () -> evalStart ct)
+
+        graph.Entered ("Creating a node", fun () -> StreamMemo<'S>.Create<'T>(graph, seed, folder, start, false))
+
+    static member CreateAsyncFromReactive<'K, 'U>
+        (source: IReactive<'K>, build: 'K -> Previous<'U> -> CancellationToken -> Task<'U>, owning: bool, policy: FlightPolicy voption)
+        : AsyncMemo<'U> =
+        let g = source.Graph
+        let mode = if owning then ScopeMode.Owning else ScopeMode.PureAsync
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let pol =
+                    match policy with
+                    | ValueSome p -> p
+                    | ValueNone -> g.Options.FlightPolicy
+
+                match source with
+                | :? ComparedReactive<'K> as cr -> AsyncMemo<'U>.CreateOn(g, cr.Source.ReadTracked, build, mode, pol, keyComparer = cr.Comparer)
+                | _ -> AsyncMemo<'U>.CreateOn(g, source.ReadTracked, build, mode, pol)
+        )
 
     static member TryAsMemo<'T>(source: IReactive<'T>) : Memo<'T> voption =
         match source with
@@ -1751,11 +1937,823 @@ type RowStep<'Phase, 'V> =
         | RowReadyVal v -> v
         | RowThunk f -> f ()
 
+/// <summary>Result of evaluating one step in <c>AsyncMemoBuilder</c> before forcing a <c>Task</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type AsyncEval<'U> =
+    | AsyncEvalSync of syncVal: 'U
+    | AsyncEvalTask of asyncTask: Task<'U>
+
+/// <summary>Two-phase step carrier for <c>AsyncMemoBuilder</c> enforcing compile-time await ordering.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type AsyncStep<'Leaf, 'Phase, 'U> =
+    | AsyncInline of inlineVal: 'U
+    | AsyncDynamic of dynGraph: Graph * dynEval: (Previous<'U> -> CancellationToken -> AsyncEval<'U>)
+    | AsyncStatic of
+        staticGraph: Graph *
+        staticFactory: (bool -> FlightPolicy voption -> AsyncMemo<'U>) *
+        staticEval: (Previous<'U> -> CancellationToken -> AsyncEval<'U>)
+
+    member inline this.TryGraph =
+        match this with
+        | AsyncInline _ -> Unchecked.defaultof<Graph>
+        | AsyncDynamic (g, _) -> g
+        | AsyncStatic (g, _, _) -> g
+
+    member this.EvalAsync(prev: Previous<'U>, ct: CancellationToken) : AsyncEval<'U> =
+        match this with
+        | AsyncInline v -> AsyncEvalSync v
+        | AsyncDynamic (_, f) -> f prev ct
+        | AsyncStatic (_, _, f) -> f prev ct
+
+/// <summary>Header descriptor configured via <c>owning</c> and <c>policy</c> inside <c>asyncMemo</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type AsyncHeader<'Mode, 'Pol> =
+    val Pol: 'Pol
+    new(pol: 'Pol) = { Pol = pol }
+
+/// <summary>Configured <c>asyncMemo</c> step preserving header mode, flight policy, leaf state, and phase.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type ConfiguredAsync<'Mode, 'Pol, 'Leaf, 'Phase, 'U> =
+    val Header: AsyncHeader<'Mode, 'Pol>
+    val Body: unit -> AsyncStep<'Leaf, 'Phase, 'U>
+    new(header: AsyncHeader<'Mode, 'Pol>, body: unit -> AsyncStep<'Leaf, 'Phase, 'U>) = { Header = header; Body = body }
+
+/// <summary>Static builder support for <c>AsyncMemoBuilder</c> two-phase execution.</summary>
+[<AbstractClass; Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
+type AsyncRunner =
+    static member private DummyPrevious<'U>() : Previous<'U> =
+        Previous<'U>(Unchecked.defaultof<IPreviousSource<'U>>, 0)
+
+#if FABLE_COMPILER
+    // InlineTask in Fable test delivery implements `.then(onResolved, onRejected)` without `.finally(...)`,
+    // so run compensation after `Platform.outcomeOf` instead of lowering through `TaskBuilder.TryFinally`.
+    static member private RunAfterTask<'U>(t: Task<'U>, compensation: unit -> unit) : Task<'U> =
+        task {
+            let! outcome = Platform.outcomeOf t
+            compensation ()
+
+            match outcome with
+            | Platform.FlightOutcome.Completed v -> return v
+            | Platform.FlightOutcome.Faulted ex
+            | Platform.FlightOutcome.Canceled ex -> return raise ex
+        }
+#endif
+
+    static member EvalTask<'U>(run: unit -> AsyncEval<'U>) : Task<'U> =
+        match run () with
+        | AsyncEvalSync v -> Task.FromResult v
+        | AsyncEvalTask t -> t
+
+    static member CreateDynamicAsync<'U>
+        (graph: Graph, eval: Previous<'U> -> CancellationToken -> AsyncEval<'U>, owning: bool, policy: FlightPolicy voption)
+        : AsyncMemo<'U> =
+        let mode = if owning then ScopeMode.Owning else ScopeMode.PureAsync
+
+        let compute (prev: Previous<'U>) (ct: CancellationToken) : Task<'U> =
+            let savedDepth = InternalCeState.EnterEval ()
+            let savedReactive = InternalCeState.SwapReactiveBind false
+            let savedOwning = InternalCeState.SwapOwning owning
+            let savedObs = InternalCeState.SwapEffectObserver (graph, box graph.CurrentObserver)
+            let savedPending = InternalCeState.SwapPhase1Pending null
+            let savedPrev = InternalCeState.SuspendPrevious ()
+            let savedProbing = InternalCeState.SwapProbing false
+
+            try
+                match eval prev ct with
+                | AsyncEvalSync v -> Task.FromResult v
+                | AsyncEvalTask t -> CeRuntime.WrapAsyncPending t
+            finally
+                InternalCeState.SwapProbing savedProbing |> ignore
+                InternalCeState.RestorePrevious savedPrev
+
+                InternalCeState.SwapPhase1Pending savedPending
+                |> ignore
+
+                InternalCeState.RestoreEffectObserver savedObs
+                InternalCeState.SwapOwning savedOwning |> ignore
+
+                InternalCeState.SwapReactiveBind savedReactive
+                |> ignore
+
+                InternalCeState.ExitEval savedDepth
+
+        graph.Entered (
+            "Creating a node",
+            fun () ->
+                match policy with
+                | ValueSome p -> AsyncMemo<'U>.Create(graph, compute, mode, p)
+                | ValueNone -> AsyncMemo<'U>.Create(graph, compute, mode)
+        )
+
+    static member EvalBound<'Leaf, 'U>(d: unit -> AsyncStep<'Leaf, BoundPhase, 'U>, owning: bool, policy: FlightPolicy voption) : AsyncMemo<'U> =
+        CeRuntime.SuspendNested (fun () ->
+            match CeRuntime.ProbeBound d with
+            | AsyncStatic (_, factory, _) -> factory owning policy
+            | AsyncDynamic (g, _) ->
+                let graph = if Platform.isNull (box g) then Graph.Current else g
+                AsyncRunner.CreateDynamicAsync (graph, (fun prev ct -> (d ()).EvalAsync(prev, ct)), owning, policy)
+            | AsyncInline _ ->
+                let graph = Graph.Current
+                AsyncRunner.CreateDynamicAsync (graph, (fun prev ct -> (d ()).EvalAsync(prev, ct)), owning, policy))
+
+    static member EvalCold<'Leaf, 'U>(d: unit -> AsyncStep<'Leaf, ColdPhase, 'U>, owning: bool, policy: FlightPolicy voption) : AsyncMemo<'U> =
+        AsyncRunner.CreateDynamicAsync (Graph.Current, (fun prev ct -> (d ()).EvalAsync(prev, ct)), owning, policy)
+
+    static member ReturnTask<'Leaf, 'Phase, 'U>(t: Task<'U>) : AsyncStep<'Leaf, 'Phase, 'U> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun _ _ -> AsyncEvalTask t)
+
+    static member ReturnUnitTask(t: Task) : AsyncStep<'Leaf, 'Phase, unit> =
+#if !FABLE_COMPILER
+        if t.IsCompletedSuccessfully then
+            AsyncInline ()
+        else
+            AsyncDynamic (
+                Unchecked.defaultof<Graph>,
+                fun _ _ ->
+                    AsyncEvalTask (
+                        task {
+                            do! t
+                            return ()
+                        }
+                    )
+            )
+#else
+        AsyncDynamic (
+            Unchecked.defaultof<Graph>,
+            fun _ _ ->
+                AsyncEvalTask (
+                    task {
+                        do! t
+                        return ()
+                    }
+                )
+        )
+#endif
+
+#if !FABLE_COMPILER
+    static member ReturnValueTask<'Leaf, 'Phase, 'U>(vt: ValueTask<'U>) : AsyncStep<'Leaf, 'Phase, 'U> =
+        if vt.IsCompletedSuccessfully then
+            AsyncInline vt.Result
+        else
+            let t = vt.AsTask ()
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun _ _ -> AsyncEvalTask t)
+
+    static member ReturnUnitValueTask(vt: ValueTask) : AsyncStep<'Leaf, 'Phase, unit> =
+        if vt.IsCompletedSuccessfully then
+            vt.GetAwaiter().GetResult()
+            AsyncInline ()
+        else
+            let t = vt.AsTask ()
+
+            AsyncDynamic (
+                Unchecked.defaultof<Graph>,
+                fun _ _ ->
+                    AsyncEvalTask (
+                        task {
+                            do! t
+                            return ()
+                        }
+                    )
+            )
+#endif
+
+    static member EvalCombine<'L1, 'P1, 'L2, 'P2, 'U>
+        (first: AsyncStep<'L1, 'P1, unit>, second: unit -> AsyncStep<'L2, 'P2, 'U>, prev: Previous<'U>, ct: CancellationToken)
+        : AsyncEval<'U> =
+        match first.EvalAsync (AsyncRunner.DummyPrevious<unit>(), ct) with
+        | AsyncEvalSync () -> (second ()).EvalAsync(prev, ct)
+        | AsyncEvalTask t1 ->
+#if !FABLE_COMPILER
+            if t1.IsCompletedSuccessfully then
+                (second ()).EvalAsync(prev, ct)
+            else
+                AsyncEvalTask (
+                    task {
+                        let! () = t1
+                        return! AsyncRunner.EvalTask (fun () -> (second ()).EvalAsync(prev, ct))
+                    }
+                )
+#else
+            AsyncEvalTask (
+                task {
+                    let! () = t1
+                    return! AsyncRunner.EvalTask (fun () -> (second ()).EvalAsync(prev, ct))
+                }
+            )
+#endif
+
+    static member private WhileAsyncLoop<'L, 'P>
+        (guard: unit -> bool, body: unit -> AsyncStep<'L, 'P, unit>, pendingFirst: Task<unit>, ct: CancellationToken)
+        : Task<unit> =
+        task {
+            let! () = pendingFirst
+            let dummyPrev = AsyncRunner.DummyPrevious<unit>()
+
+            while guard () do
+                let! () = AsyncRunner.EvalTask (fun () -> (body ()).EvalAsync(dummyPrev, ct))
+                ()
+
+            return ()
+        }
+
+    static member EvalWhile<'L, 'P>(guard: unit -> bool, body: unit -> AsyncStep<'L, 'P, unit>, ct: CancellationToken) : AsyncEval<unit> =
+        let mutable pending: Task<unit> = Unchecked.defaultof<Task<unit>>
+        let dummyPrev = AsyncRunner.DummyPrevious<unit>()
+
+        while Platform.isNull pending && guard () do
+            match (body ()).EvalAsync(dummyPrev, ct) with
+            | AsyncEvalSync () -> ()
+            | AsyncEvalTask t ->
+#if !FABLE_COMPILER
+                if not t.IsCompletedSuccessfully then
+                    pending <- t
+#else
+                pending <- t
+#endif
+
+        if Platform.isNull pending then
+            AsyncEvalSync ()
+        else
+            AsyncEvalTask (AsyncRunner.WhileAsyncLoop (guard, body, pending, ct))
+
+    static member EvalTryWith<'L1, 'P1, 'L2, 'P2, 'U>
+        (body: unit -> AsyncStep<'L1, 'P1, 'U>, handler: exn -> AsyncStep<'L2, 'P2, 'U>, prev: Previous<'U>, ct: CancellationToken)
+        : AsyncEval<'U> =
+        try
+            match (body ()).EvalAsync(prev, ct) with
+            | AsyncEvalSync _ as syncVal -> syncVal
+            | AsyncEvalTask t ->
+#if !FABLE_COMPILER
+                if t.IsCompletedSuccessfully then
+                    AsyncEvalSync t.Result
+                else
+                    AsyncEvalTask (
+                        task {
+                            try
+                                return! t
+                            with ex ->
+                                return! AsyncRunner.EvalTask (fun () -> CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalAsync(prev, ct)))
+                        }
+                    )
+#else
+                AsyncEvalTask (
+                    task {
+                        try
+                            return! t
+                        with ex ->
+                            return! AsyncRunner.EvalTask (fun () -> CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalAsync(prev, ct)))
+                    }
+                )
+#endif
+        with ex ->
+            CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalAsync(prev, ct))
+
+    static member EvalTryFinally<'L, 'P, 'U>
+        (body: unit -> AsyncStep<'L, 'P, 'U>, compensation: unit -> unit, prev: Previous<'U>, ct: CancellationToken)
+        : AsyncEval<'U> =
+        let mutable handoff = false
+
+        try
+            let eval = (body ()).EvalAsync(prev, ct)
+
+            match eval with
+            | AsyncEvalSync _ -> eval
+            | AsyncEvalTask t ->
+#if !FABLE_COMPILER
+                if t.IsCompletedSuccessfully then
+                    AsyncEvalSync t.Result
+                else
+                    handoff <- true
+
+                    AsyncEvalTask (
+                        task {
+                            try
+                                return! t
+                            finally
+                                compensation ()
+                        }
+                    )
+#else
+                handoff <- true
+                AsyncEvalTask (AsyncRunner.RunAfterTask (t, compensation))
+#endif
+        finally
+            if not handoff then
+                compensation ()
+
+    static member EvalUsing<'D, 'L, 'P, 'U when 'D :> IDisposable>
+        (resource: 'D, body: 'D -> AsyncStep<'L, 'P, 'U>, prev: Previous<'U>, ct: CancellationToken)
+        : AsyncEval<'U> =
+        let mutable handoff = false
+
+        try
+            let eval = (body resource).EvalAsync(prev, ct)
+
+            match eval with
+            | AsyncEvalSync _ -> eval
+            | AsyncEvalTask t ->
+#if !FABLE_COMPILER
+                if t.IsCompletedSuccessfully then
+                    AsyncEvalSync t.Result
+                else
+                    handoff <- true
+
+                    AsyncEvalTask (
+                        task {
+                            try
+                                return! t
+                            finally
+                                CeRuntime.DisposeResource resource
+                        }
+                    )
+#else
+                handoff <- true
+                AsyncEvalTask (AsyncRunner.RunAfterTask (t, fun () -> CeRuntime.DisposeResource resource))
+#endif
+        finally
+            if not handoff then
+                CeRuntime.DisposeResource resource
+
+    static member UsingStep<'D, 'InLeaf, 'InPhase, 'OutLeaf, 'OutPhase, 'U when 'D :> IDisposable>
+        (resource: 'D, body: 'D -> AsyncStep<'InLeaf, 'InPhase, 'U>)
+        : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+        if InternalCeState.IsProbing then
+            CeRuntime.DisposeResource resource
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun _ _ -> CeRuntime.ProbeDisposed ())
+        else
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalUsing (resource, body, prev, ct))
+
+    static member private ForSeqAsyncLoop<'T, 'L, 'P>
+        (enumerator: IEnumerator<'T>, body: 'T -> AsyncStep<'L, 'P, unit>, pendingFirst: Task<unit>, ct: CancellationToken)
+        : Task<unit> =
+#if FABLE_COMPILER
+        let bodyTask =
+            task {
+                let! () = pendingFirst
+                let dummyPrev = AsyncRunner.DummyPrevious<unit>()
+
+                while enumerator.MoveNext () do
+                    let! () =
+                        AsyncRunner.EvalTask (fun () -> (body enumerator.Current).EvalAsync(dummyPrev, ct))
+
+                    ()
+
+                return ()
+            }
+
+        AsyncRunner.RunAfterTask (bodyTask, fun () -> CeRuntime.DisposeResource enumerator)
+#else
+        task {
+            try
+                let! () = pendingFirst
+                let dummyPrev = AsyncRunner.DummyPrevious<unit>()
+
+                while enumerator.MoveNext () do
+                    let! () =
+                        AsyncRunner.EvalTask (fun () -> (body enumerator.Current).EvalAsync(dummyPrev, ct))
+
+                    ()
+
+                return ()
+            finally
+                CeRuntime.DisposeResource enumerator
+        }
+#endif
+
+    static member EvalForSeq<'T, 'L, 'P>(sequence: seq<'T>, body: 'T -> AsyncStep<'L, 'P, unit>, ct: CancellationToken) : AsyncEval<unit> =
+        let enumerator = sequence.GetEnumerator ()
+        let mutable handoff = false
+
+        try
+            let mutable pending: Task<unit> = Unchecked.defaultof<Task<unit>>
+            let dummyPrev = AsyncRunner.DummyPrevious<unit>()
+
+            while Platform.isNull pending && enumerator.MoveNext () do
+                match (body enumerator.Current).EvalAsync(dummyPrev, ct) with
+                | AsyncEvalSync () -> ()
+                | AsyncEvalTask t ->
+#if !FABLE_COMPILER
+                    if not t.IsCompletedSuccessfully then
+                        pending <- t
+#else
+                    pending <- t
+#endif
+
+            if Platform.isNull pending then
+                AsyncEvalSync ()
+            else
+                handoff <- true
+                AsyncEvalTask (AsyncRunner.ForSeqAsyncLoop (enumerator, body, pending, ct))
+        finally
+            if not handoff then
+                CeRuntime.DisposeResource enumerator
+
+    static member BindReturnReactive<'K, 'U>(source: IReactive<'K>, f: 'K -> 'U) : AsyncStep<NotLeaf, BoundPhase, 'U> =
+        if InternalCeState.IsEvaluating then
+            let key = CeRuntime.ReadCeTracked source
+            AsyncInline (CeRuntime.RunAsyncUntrackedArg (InternalCeState.IsOwning, source.Graph, f, key))
+        else
+            let build (k: 'K) (_prev: Previous<'U>) (_ct: CancellationToken) : Task<'U> =
+                Task.FromResult (CeRuntime.SuspendNested (fun () -> f k))
+
+            let evalDyn (_prev: Previous<'U>) (_ct: CancellationToken) : AsyncEval<'U> =
+                let key = CeRuntime.ReadCeTracked source
+                AsyncEvalSync (CeRuntime.RunAsyncUntrackedArg (InternalCeState.IsOwning, source.Graph, f, key))
+
+            AsyncStatic (source.Graph, (fun owning policy -> CeRuntime.CreateAsyncFromReactive (source, build, owning, policy)), evalDyn)
+
+    static member BindReactiveStatic<'K, 'U>
+        (source: IReactive<'K>, continuation: 'K -> AsyncStep<IsLeaf, ColdPhase, 'U>)
+        : AsyncStep<NotLeaf, BoundPhase, 'U> =
+        let evalDyn (prev: Previous<'U>) (ct: CancellationToken) : AsyncEval<'U> =
+            let key = CeRuntime.ReadCeTracked source
+            CeRuntime.RunAsyncUntrackedContinuation (InternalCeState.IsOwning, source.Graph, key, fun k -> (continuation k).EvalAsync(prev, ct))
+
+        if InternalCeState.IsEvaluating then
+            AsyncDynamic (source.Graph, evalDyn)
+        else
+            let build (k: 'K) (prev: Previous<'U>) (ct: CancellationToken) : Task<'U> =
+                CeRuntime.SuspendNested (fun () -> AsyncRunner.EvalTask (fun () -> (continuation k).EvalAsync(prev, ct)))
+
+            AsyncStatic (source.Graph, (fun owning policy -> CeRuntime.CreateAsyncFromReactive (source, build, owning, policy)), evalDyn)
+
+    static member BindReactiveDynamic<'K, 'AnyLeaf, 'ContPhase, 'U>
+        (source: IReactive<'K>, continuation: 'K -> AsyncStep<'AnyLeaf, 'ContPhase, 'U>)
+        : AsyncStep<NotLeaf, BoundPhase, 'U> =
+        let evalDyn (prev: Previous<'U>) (ct: CancellationToken) : AsyncEval<'U> =
+            let key = CeRuntime.ReadCeTracked source
+            let saved = InternalCeState.SwapReactiveBind true
+
+            try
+                CeRuntime.RunAsyncUntrackedContinuation (InternalCeState.IsOwning, source.Graph, key, fun k -> (continuation k).EvalAsync(prev, ct))
+            finally
+                InternalCeState.SwapReactiveBind saved |> ignore
+
+        AsyncDynamic (source.Graph, evalDyn)
+
+    static member BindPrevious<'Leaf, 'Phase, 'U>(continuation: Previous<'U> -> AsyncStep<'Leaf, 'Phase, 'U>) : AsyncStep<'Leaf, 'Phase, 'U> =
+        let g =
+            if InternalCeState.IsProbing then
+                let ambient = CeRuntime.TryGetAmbientGraph ()
+
+                if not (Platform.isNull (box ambient)) then
+                    ambient
+                else
+                    (continuation (AsyncRunner.DummyPrevious<'U>())).TryGraph
+            else
+                Unchecked.defaultof<Graph>
+
+        AsyncDynamic (g, fun prev ct -> (continuation prev).EvalAsync(prev, ct))
+
+    static member BindCancellationToken<'Leaf, 'Phase, 'U>
+        (continuation: CancellationToken -> AsyncStep<'Leaf, 'Phase, 'U>)
+        : AsyncStep<'Leaf, 'Phase, 'U> =
+        let g =
+            if InternalCeState.IsProbing then
+                let ambient = CeRuntime.TryGetAmbientGraph ()
+
+                if not (Platform.isNull (box ambient)) then
+                    ambient
+                else
+                    (continuation CancellationToken.None).TryGraph
+            else
+                Unchecked.defaultof<Graph>
+
+        AsyncDynamic (g, fun prev ct -> (continuation ct).EvalAsync(prev, ct))
+
+    static member EvalBindTaskReturn<'A, 'U>(source: Task<'A>, f: 'A -> 'U) : AsyncEval<'U> =
+#if !FABLE_COMPILER
+        if source.IsCompletedSuccessfully then
+            AsyncEvalSync (CeRuntime.RunAsyncUntracked (f, source.Result))
+        else
+            AsyncEvalTask (
+                task {
+                    let! result = source
+                    return CeRuntime.RunAsyncUntracked (f, result)
+                }
+            )
+#else
+        AsyncEvalTask (
+            task {
+                let! result = source
+                return CeRuntime.RunAsyncUntracked (f, result)
+            }
+        )
+#endif
+
+    static member EvalBindTask<'A, 'Leaf, 'U>
+        (source: Task<'A>, continuation: 'A -> AsyncStep<'Leaf, ColdPhase, 'U>, prev: Previous<'U>, ct: CancellationToken)
+        : AsyncEval<'U> =
+#if !FABLE_COMPILER
+        if source.IsCompletedSuccessfully then
+            CeRuntime.RunAsyncUntracked ((fun x -> (continuation x).EvalAsync(prev, ct)), source.Result)
+        else
+            AsyncEvalTask (
+                task {
+                    let! result = source
+                    return! AsyncRunner.EvalTask (fun () -> CeRuntime.RunAsyncUntracked ((fun x -> (continuation x).EvalAsync(prev, ct)), result))
+                }
+            )
+#else
+        AsyncEvalTask (
+            task {
+                let! result = source
+                return! AsyncRunner.EvalTask (fun () -> CeRuntime.RunAsyncUntracked ((fun x -> (continuation x).EvalAsync(prev, ct)), result))
+            }
+        )
+#endif
+
+    static member EvalBindUnitTaskReturn<'U>(source: Task, f: unit -> 'U) : AsyncEval<'U> =
+#if !FABLE_COMPILER
+        if source.IsCompletedSuccessfully then
+            AsyncEvalSync (CeRuntime.RunAsyncUntracked (f, ()))
+        else
+            AsyncEvalTask (
+                task {
+                    do! source
+                    return CeRuntime.RunAsyncUntracked (f, ())
+                }
+            )
+#else
+        AsyncEvalTask (
+            task {
+                do! source
+                return CeRuntime.RunAsyncUntracked (f, ())
+            }
+        )
+#endif
+
+    static member EvalBindUnitTask<'Leaf, 'U>
+        (source: Task, continuation: unit -> AsyncStep<'Leaf, ColdPhase, 'U>, prev: Previous<'U>, ct: CancellationToken)
+        : AsyncEval<'U> =
+#if !FABLE_COMPILER
+        if source.IsCompletedSuccessfully then
+            CeRuntime.RunAsyncUntracked ((fun () -> (continuation ()).EvalAsync(prev, ct)), ())
+        else
+            AsyncEvalTask (
+                task {
+                    do! source
+                    return! AsyncRunner.EvalTask (fun () -> CeRuntime.RunAsyncUntracked ((fun () -> (continuation ()).EvalAsync(prev, ct)), ()))
+                }
+            )
+#else
+        AsyncEvalTask (
+            task {
+                do! source
+                return! AsyncRunner.EvalTask (fun () -> CeRuntime.RunAsyncUntracked ((fun () -> (continuation ()).EvalAsync(prev, ct)), ()))
+            }
+        )
+#endif
+
+#if !FABLE_COMPILER
+    static member EvalBindValueTaskReturn<'A, 'U>(source: ValueTask<'A>, f: 'A -> 'U) : AsyncEval<'U> =
+        if source.IsCompletedSuccessfully then
+            AsyncEvalSync (CeRuntime.RunAsyncUntracked (f, source.Result))
+        else
+            let t = source.AsTask ()
+
+            AsyncEvalTask (
+                task {
+                    let! result = t
+                    return CeRuntime.RunAsyncUntracked (f, result)
+                }
+            )
+
+    static member EvalBindValueTask<'A, 'Leaf, 'U>
+        (source: ValueTask<'A>, continuation: 'A -> AsyncStep<'Leaf, ColdPhase, 'U>, prev: Previous<'U>, ct: CancellationToken)
+        : AsyncEval<'U> =
+        if source.IsCompletedSuccessfully then
+            CeRuntime.RunAsyncUntracked ((fun x -> (continuation x).EvalAsync(prev, ct)), source.Result)
+        else
+            let t = source.AsTask ()
+
+            AsyncEvalTask (
+                task {
+                    let! result = t
+                    return! AsyncRunner.EvalTask (fun () -> CeRuntime.RunAsyncUntracked ((fun x -> (continuation x).EvalAsync(prev, ct)), result))
+                }
+            )
+
+    static member EvalBindUnitValueTaskReturn<'U>(source: ValueTask, f: unit -> 'U) : AsyncEval<'U> =
+        if source.IsCompletedSuccessfully then
+            source.GetAwaiter().GetResult()
+            AsyncEvalSync (CeRuntime.RunAsyncUntracked (f, ()))
+        else
+            let t = source.AsTask ()
+
+            AsyncEvalTask (
+                task {
+                    do! t
+                    return CeRuntime.RunAsyncUntracked (f, ())
+                }
+            )
+
+    static member EvalBindUnitValueTask<'Leaf, 'U>
+        (source: ValueTask, continuation: unit -> AsyncStep<'Leaf, ColdPhase, 'U>, prev: Previous<'U>, ct: CancellationToken)
+        : AsyncEval<'U> =
+        if source.IsCompletedSuccessfully then
+            source.GetAwaiter().GetResult()
+            CeRuntime.RunAsyncUntracked ((fun () -> (continuation ()).EvalAsync(prev, ct)), ())
+        else
+            let t = source.AsTask ()
+
+            AsyncEvalTask (
+                task {
+                    do! t
+                    return! AsyncRunner.EvalTask (fun () -> CeRuntime.RunAsyncUntracked ((fun () -> (continuation ()).EvalAsync(prev, ct)), ()))
+                }
+            )
+#endif
+
+/// <summary>Result of evaluating one step in <c>StreamBuilder</c>, distinguishing <c>unit</c> statements from <c>StreamSource</c> values.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type StreamEval<'T> =
+    | StreamEvalUnit
+    | StreamEvalSource of streamSource: StreamSource<'T>
+
+/// <summary>Static factory bridge allowing <c>StreamStatic</c> to construct either latest-item or folded <c>StreamMemo</c> nodes.</summary>
+[<EditorBrowsable(EditorBrowsableState.Never)>]
+type IStreamStaticFactory<'T> =
+    abstract Graph: Graph
+    abstract CreateLatest: unit -> StreamMemo<'T>
+    abstract CreateFold: seed: 'S * folder: ('S -> 'T -> 'S) -> StreamMemo<'S>
+
+/// <summary>Static factory implementation dispatching single or merged reactive <c>stream</c> blocks to <c>CreateOn</c>/<c>CreateFoldOn</c>.</summary>
+[<Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
+type StreamOnFactory<'K, 'T>(source: IReactive<'K>, build: 'K -> CancellationToken -> StreamSource<'T>) =
+    interface IStreamStaticFactory<'T> with
+        member _.Graph = source.Graph
+
+        member _.CreateLatest() =
+            let g = source.Graph
+
+            g.Entered (
+                "Creating a node",
+                fun () ->
+                    match source with
+                    | :? ComparedReactive<'K> as cr -> StreamMemo<'T>.CreateOn(g, cr.Source.ReadTracked, build, keyComparer = cr.Comparer)
+                    | _ -> StreamMemo<'T>.CreateOn(g, source.ReadTracked, build)
+            )
+
+        member _.CreateFold<'S>(seed: 'S, folder: 'S -> 'T -> 'S) =
+            let g = source.Graph
+
+            g.Entered (
+                "Creating a node",
+                fun () ->
+                    match source with
+                    | :? ComparedReactive<'K> as cr ->
+                        StreamMemo<'S>.CreateFoldOn(g, seed, folder, cr.Source.ReadTracked, build, keyComparer = cr.Comparer)
+                    | _ -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, source.ReadTracked, build)
+            )
+
+/// <summary>Two-phase step carrier for <c>StreamBuilder</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type StreamStep<'Leaf, 'Phase, 'T> =
+    | StreamUnit
+    | StreamReady of readySource: StreamSource<'T>
+    | StreamDynamic of streamGraph: Graph * streamEval: (CancellationToken -> StreamEval<'T>)
+    | StreamStatic of streamFactory: IStreamStaticFactory<'T> * streamDynEval: (CancellationToken -> StreamEval<'T>)
+
+    member inline this.TryGraph =
+        match this with
+        | StreamUnit -> Unchecked.defaultof<Graph>
+        | StreamReady _ -> Unchecked.defaultof<Graph>
+        | StreamDynamic (g, _) -> g
+        | StreamStatic (f, _) -> f.Graph
+
+    member this.EvalResult(ct: CancellationToken) : StreamEval<'T> =
+        match this with
+        | StreamUnit -> StreamEvalUnit
+        | StreamReady src -> StreamEvalSource src
+        | StreamDynamic (_, f) -> f ct
+        | StreamStatic (_, f) -> f ct
+
+    member this.EvalUnit(ct: CancellationToken) : unit =
+        this.EvalResult ct |> ignore
+
+    member this.EvalSource(ct: CancellationToken) : StreamSource<'T> =
+        match this.EvalResult ct with
+        | StreamEvalSource src -> src
+        | StreamEvalUnit -> invalidOp "Stream computation expression did not return a StreamSource."
+
+/// <summary>Header descriptor configured via <c>fold</c> inside <c>stream</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type StreamHeader<'Mode> =
+    val Mode: 'Mode
+    new(mode: 'Mode) = { Mode = mode }
+
+/// <summary>Configured <c>stream</c> step preserving latest vs fold mode, leaf state, and phase.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type ConfiguredStream<'Mode, 'Leaf, 'Phase, 'T> =
+    val Header: StreamHeader<'Mode>
+    val Body: unit -> StreamStep<'Leaf, 'Phase, 'T>
+    new(header: StreamHeader<'Mode>, body: unit -> StreamStep<'Leaf, 'Phase, 'T>) = { Header = header; Body = body }
+
+/// <summary>Static builder support for <c>StreamBuilder</c> execution.</summary>
+[<AbstractClass; Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
+type StreamRunner =
+    static member EvalBoundLatest<'Leaf, 'T>(d: unit -> StreamStep<'Leaf, BoundPhase, 'T>) : StreamMemo<'T> =
+        CeRuntime.SuspendNested (fun () ->
+            match CeRuntime.ProbeBound d with
+            | StreamStatic (factory, _) -> factory.CreateLatest ()
+            | StreamDynamic (g, _) ->
+                let graph = if Platform.isNull (box g) then Graph.Current else g
+                CeRuntime.CreateDynamicStreamLatest (graph, fun ct -> (d ()).EvalSource(ct))
+            | StreamReady _
+            | StreamUnit -> CeRuntime.CreateDynamicStreamLatest (Graph.Current, fun ct -> (d ()).EvalSource(ct)))
+
+    static member EvalBoundFold<'S, 'Leaf, 'T>(d: unit -> StreamStep<'Leaf, BoundPhase, 'T>, seed: 'S, folder: 'S -> 'T -> 'S) : StreamMemo<'S> =
+        CeRuntime.SuspendNested (fun () ->
+            match CeRuntime.ProbeBound d with
+            | StreamStatic (factory, _) -> factory.CreateFold<'S>(seed, folder)
+            | StreamDynamic (g, _) ->
+                let graph = if Platform.isNull (box g) then Graph.Current else g
+                CeRuntime.CreateDynamicStreamFold (graph, seed, folder, fun ct -> (d ()).EvalSource(ct))
+            | StreamReady _
+            | StreamUnit -> CeRuntime.CreateDynamicStreamFold (Graph.Current, seed, folder, fun ct -> (d ()).EvalSource(ct)))
+
+    static member EvalColdLatest<'Leaf, 'T>(d: unit -> StreamStep<'Leaf, ColdPhase, 'T>) : StreamMemo<'T> =
+        CeRuntime.CreateDynamicStreamLatest (Graph.Current, fun ct -> (d ()).EvalSource(ct))
+
+    static member EvalColdFold<'S, 'Leaf, 'T>(d: unit -> StreamStep<'Leaf, ColdPhase, 'T>, seed: 'S, folder: 'S -> 'T -> 'S) : StreamMemo<'S> =
+        CeRuntime.CreateDynamicStreamFold (Graph.Current, seed, folder, fun ct -> (d ()).EvalSource(ct))
+
+    static member UsingStep<'D, 'InLeaf, 'InPhase, 'OutLeaf, 'OutPhase, 'T when 'D :> IDisposable>
+        (resource: 'D, body: 'D -> StreamStep<'InLeaf, 'InPhase, 'T>)
+        : StreamStep<'OutLeaf, 'OutPhase, 'T> =
+        if InternalCeState.IsProbing then
+            CeRuntime.DisposeResource resource
+            StreamDynamic (Unchecked.defaultof<Graph>, fun _ -> CeRuntime.ProbeDisposed ())
+        else
+            StreamDynamic (Unchecked.defaultof<Graph>, fun ct -> CeRuntime.RunUsing (resource, fun () -> (body resource).EvalResult(ct)))
+
+    static member BindReturnReactive<'K, 'T>(source: IReactive<'K>, f: 'K -> StreamSource<'T>) : StreamStep<NotLeaf, BoundPhase, 'T> =
+        if InternalCeState.IsEvaluating then
+            let key = CeRuntime.ReadCeTracked source
+            StreamReady (CeRuntime.RunStreamUntrackedArg (source.Graph, f, key))
+        else
+            let build (k: 'K) (_ct: CancellationToken) : StreamSource<'T> =
+                CeRuntime.SuspendNested (fun () -> f k)
+
+            let evalDyn (_ct: CancellationToken) : StreamEval<'T> =
+                let key = CeRuntime.ReadCeTracked source
+                StreamEvalSource (CeRuntime.RunStreamUntrackedArg (source.Graph, f, key))
+
+            StreamStatic (StreamOnFactory<'K, 'T>(source, build) :> IStreamStaticFactory<'T>, evalDyn)
+
+    static member BindReactiveStatic<'K, 'T>
+        (source: IReactive<'K>, continuation: 'K -> StreamStep<IsLeaf, ColdPhase, 'T>)
+        : StreamStep<NotLeaf, BoundPhase, 'T> =
+        let evalDyn (ct: CancellationToken) : StreamEval<'T> =
+            let key = CeRuntime.ReadCeTracked source
+            CeRuntime.RunStreamUntrackedContinuation (source.Graph, key, fun k -> (continuation k).EvalResult(ct))
+
+        if InternalCeState.IsEvaluating then
+            StreamDynamic (source.Graph, evalDyn)
+        else
+            let build (k: 'K) (ct: CancellationToken) : StreamSource<'T> =
+                CeRuntime.SuspendNested (fun () -> (continuation k).EvalSource(ct))
+
+            StreamStatic (StreamOnFactory<'K, 'T>(source, build) :> IStreamStaticFactory<'T>, evalDyn)
+
+    static member BindReactiveDynamic<'K, 'AnyLeaf, 'ContPhase, 'T>
+        (source: IReactive<'K>, continuation: 'K -> StreamStep<'AnyLeaf, 'ContPhase, 'T>)
+        : StreamStep<NotLeaf, BoundPhase, 'T> =
+        let evalDyn (ct: CancellationToken) : StreamEval<'T> =
+            let key = CeRuntime.ReadCeTracked source
+            let saved = InternalCeState.SwapReactiveBind true
+
+            try
+                CeRuntime.RunStreamUntrackedContinuation (source.Graph, key, fun k -> (continuation k).EvalResult(ct))
+            finally
+                InternalCeState.SwapReactiveBind saved |> ignore
+
+        StreamDynamic (source.Graph, evalDyn)
+
+    static member BindCancellationToken<'Leaf, 'Phase, 'T>
+        (continuation: CancellationToken -> StreamStep<'Leaf, 'Phase, 'T>)
+        : StreamStep<'Leaf, 'Phase, 'T> =
+        let g =
+            if InternalCeState.IsProbing then
+                let ambient = CeRuntime.TryGetAmbientGraph ()
+
+                if not (Platform.isNull (box ambient)) then
+                    ambient
+                else
+                    (continuation CancellationToken.None).TryGraph
+            else
+                Unchecked.defaultof<Graph>
+
+        StreamDynamic (g, fun ct -> (continuation ct).EvalResult(ct))
+
 namespace Ranvier.CE
 
 open System
 open System.Collections.Generic
 open System.ComponentModel
+open System.Threading
+open System.Threading.Tasks
 open Ranvier
 open Ranvier.Internal
 
@@ -2649,6 +3647,319 @@ type RowBuilder() =
     member inline _.Run(d: unit -> RowStep<ColdPhase, 'V>) : unit -> 'V =
         fun () -> CeRuntime.EvalRow (fun () -> (d ()).EvalValue())
 
+/// <summary>Two-phase computation expression builder producing <c>AsyncMemo&lt;'U&gt;</c> nodes with compile-time static/dynamic dispatch.</summary>
+[<Sealed>]
+type AsyncMemoBuilder() =
+    /// <summary>Context token bound via <c>let! prev = asyncMemo.previous</c> for <c>Previous&lt;'U&gt;</c>.</summary>
+    member inline _.previous: AsyncPreviousToken = AsyncPreviousToken ()
+
+    /// <summary>Context token bound via <c>let! ct = asyncMemo.cancellationToken</c> for the flight <c>CancellationToken</c>.</summary>
+    member inline _.cancellationToken: AsyncCancellationToken = AsyncCancellationToken ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Yield(_: unit) : AsyncHeader<PureMode, DefaultPolicy> =
+        AsyncHeader<PureMode, DefaultPolicy>(DefaultPolicy ())
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Zero() : AsyncStep<'Leaf, 'Phase, unit> =
+        AsyncInline ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Return(value: 'U) : AsyncStep<'Leaf, 'Phase, 'U> =
+        AsyncInline value
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.ReturnFrom(value: Task<'U>) : AsyncStep<'Leaf, 'Phase, 'U> =
+        AsyncRunner.ReturnTask value
+
+#if !FABLE_COMPILER
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.ReturnFrom(value: ValueTask<'U>) : AsyncStep<'Leaf, 'Phase, 'U> =
+        AsyncRunner.ReturnValueTask value
+#endif
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Delay([<InlineIfLambda>] f: unit -> 'T) : unit -> 'T = f
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Combine
+        (first: AsyncStep<IsLeaf, 'P1, unit>, [<InlineIfLambda>] second: unit -> AsyncStep<IsLeaf, 'P2, 'U>)
+        : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalCombine (first, second, prev, ct))
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.While
+        ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> AsyncStep<IsLeaf, 'P, unit>)
+        : AsyncStep<'OutLeaf, 'OutPhase, unit> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun _ ct -> AsyncRunner.EvalWhile (guard, body, ct))
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryWith
+        ([<InlineIfLambda>] body: unit -> AsyncStep<IsLeaf, 'P1, 'U>, [<InlineIfLambda>] handler: exn -> AsyncStep<IsLeaf, 'P2, 'U>)
+        : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalTryWith (body, handler, prev, ct))
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryFinally
+        ([<InlineIfLambda>] body: unit -> AsyncStep<IsLeaf, 'P, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
+        : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalTryFinally (body, compensation, prev, ct))
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Using
+        (resource: 'D, [<InlineIfLambda>] body: 'D -> AsyncStep<IsLeaf, 'P, 'U>)
+        : AsyncStep<'OutLeaf, 'OutPhase, 'U> when 'D :> IDisposable =
+        AsyncRunner.UsingStep (resource, body)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For
+        (header: AsyncHeader<'Mode, 'Pol>, [<InlineIfLambda>] body: unit -> AsyncStep<'Leaf, 'Phase, 'U>)
+        : ConfiguredAsync<'Mode, 'Pol, 'Leaf, 'Phase, 'U> =
+        ConfiguredAsync<'Mode, 'Pol, 'Leaf, 'Phase, 'U>(header, body)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> AsyncStep<IsLeaf, 'P, unit>) : AsyncStep<'OutLeaf, 'OutPhase, unit> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun _ ct -> AsyncRunner.EvalForSeq (sequence, body, ct))
+
+    /// <summary>Allows the Phase-2 computation up to its first await to own child reactive nodes and cleanups.</summary>
+    [<CustomOperation("owning")>]
+    member inline _.Owning(header: AsyncHeader<PureMode, 'Pol>) : AsyncHeader<OwningMode, 'Pol> =
+        AsyncHeader<OwningMode, 'Pol>(header.Pol)
+
+    /// <summary>Configures the concurrency policy applied when Phase 1 changes while a flight is active.</summary>
+    [<CustomOperation("policy")>]
+    member inline _.Policy(header: AsyncHeader<'Mode, DefaultPolicy>, policy: FlightPolicy) : AsyncHeader<'Mode, ExplicitPolicy> =
+        AsyncHeader<'Mode, ExplicitPolicy>(ExplicitPolicy policy)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.MergeSources(source1: Signal<'A>, source2: Signal<'B>) : MergedSignals<'A, 'B> =
+        MergedSignals<'A, 'B>(source1, source2)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.MergeSources(source1: Memo<'A>, source2: Memo<'B>) : MergedMemos<'A, 'B> =
+        MergedMemos<'A, 'B>(source1, source2)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.MergeSources(source1: IReactive<'A>, source2: IReactive<'B>) : MergedReactive<'A, 'B> =
+        MergedReactive<'A, 'B>(source1, source2)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.BindReturn(source: IReactive<'K>, f: 'K -> 'U) : AsyncStep<NotLeaf, BoundPhase, 'U> =
+        AsyncRunner.BindReturnReactive (source, f)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.BindReturn(_token: AsyncPreviousToken, f: Previous<'U> -> 'U) : AsyncStep<'Leaf, 'Phase, 'U> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun prev _ -> AsyncEvalSync (f prev))
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.BindReturn(_token: AsyncCancellationToken, f: CancellationToken -> 'U) : AsyncStep<'Leaf, 'Phase, 'U> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun _ ct -> AsyncEvalSync (f ct))
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.BindReturn(source: Task<'A>, f: 'A -> 'U) : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun _ _ -> AsyncRunner.EvalBindTaskReturn (source, f))
+
+#if !FABLE_COMPILER
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.BindReturn(source: ValueTask<'A>, f: 'A -> 'U) : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun _ _ -> AsyncRunner.EvalBindValueTaskReturn (source, f))
+#endif
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> AsyncStep<IsLeaf, ColdPhase, 'U>) : AsyncStep<NotLeaf, BoundPhase, 'U> =
+        AsyncRunner.BindReactiveStatic (source, continuation)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Bind(_token: AsyncPreviousToken, continuation: Previous<'U> -> AsyncStep<'Leaf, 'Phase, 'U>) : AsyncStep<'Leaf, 'Phase, 'U> =
+        AsyncRunner.BindPrevious continuation
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Bind
+        (_token: AsyncCancellationToken, continuation: CancellationToken -> AsyncStep<'Leaf, 'Phase, 'U>)
+        : AsyncStep<'Leaf, 'Phase, 'U> =
+        AsyncRunner.BindCancellationToken continuation
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Bind(source: Task<'A>, continuation: 'A -> AsyncStep<IsLeaf, ColdPhase, 'U>) : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalBindTask (source, continuation, prev, ct))
+
+#if !FABLE_COMPILER
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Bind(source: ValueTask<'A>, continuation: 'A -> AsyncStep<IsLeaf, ColdPhase, 'U>) : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+        AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalBindValueTask (source, continuation, prev, ct))
+#endif
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> AsyncStep<'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
+        AsyncRunner.EvalCold (d, false, ValueNone)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> ConfiguredAsync<PureMode, DefaultPolicy, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
+        AsyncRunner.EvalCold ((fun () -> (d ()).Body()), false, ValueNone)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, DefaultPolicy, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
+        AsyncRunner.EvalCold ((fun () -> (d ()).Body()), true, ValueNone)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> ConfiguredAsync<PureMode, ExplicitPolicy, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
+        let cfg = d ()
+        AsyncRunner.EvalCold (cfg.Body, false, ValueSome cfg.Header.Pol.Policy)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, ExplicitPolicy, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
+        let cfg = d ()
+        AsyncRunner.EvalCold (cfg.Body, true, ValueSome cfg.Header.Pol.Policy)
+
+/// <summary>Two-phase computation expression builder producing <c>StreamMemo&lt;'U&gt;</c> nodes.</summary>
+[<Sealed>]
+type StreamBuilder() =
+    /// <summary>Context token bound via <c>let! ct = stream.cancellationToken</c> for the stream run <c>CancellationToken</c>.</summary>
+    member inline _.cancellationToken: StreamCancellationToken = StreamCancellationToken ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Yield(_: unit) : StreamHeader<LatestMode> =
+        StreamHeader<LatestMode>(LatestMode ())
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Zero() : StreamStep<'Leaf, 'Phase, unit> =
+        StreamUnit
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Return(source: StreamSource<'T>) : StreamStep<'Leaf, 'Phase, 'T> =
+        StreamReady source
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.ReturnFrom(source: StreamSource<'T>) : StreamStep<'Leaf, 'Phase, 'T> =
+        StreamReady source
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Delay([<InlineIfLambda>] f: unit -> 'T) : unit -> 'T = f
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Combine
+        (first: StreamStep<IsLeaf, 'P1, unit>, [<InlineIfLambda>] second: unit -> StreamStep<IsLeaf, 'P2, 'T>)
+        : StreamStep<'OutLeaf, 'OutPhase, 'T> =
+        StreamDynamic (
+            Unchecked.defaultof<Graph>,
+            fun ct ->
+                first.EvalUnit ct
+                (second ()).EvalResult(ct)
+        )
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.While
+        ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> StreamStep<IsLeaf, 'P, unit>)
+        : StreamStep<'OutLeaf, 'OutPhase, unit> =
+        StreamDynamic (
+            Unchecked.defaultof<Graph>,
+            fun ct ->
+                while guard () do
+                    (body ()).EvalUnit(ct)
+
+                StreamEvalUnit
+        )
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryWith
+        ([<InlineIfLambda>] body: unit -> StreamStep<IsLeaf, 'P1, 'T>, [<InlineIfLambda>] handler: exn -> StreamStep<IsLeaf, 'P2, 'T>)
+        : StreamStep<'OutLeaf, 'OutPhase, 'T> =
+        StreamDynamic (
+            Unchecked.defaultof<Graph>,
+            fun ct ->
+                try
+                    (body ()).EvalResult(ct)
+                with ex ->
+                    CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalResult(ct))
+        )
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryFinally
+        ([<InlineIfLambda>] body: unit -> StreamStep<IsLeaf, 'P, 'T>, [<InlineIfLambda>] compensation: unit -> unit)
+        : StreamStep<'OutLeaf, 'OutPhase, 'T> =
+        StreamDynamic (
+            Unchecked.defaultof<Graph>,
+            fun ct ->
+                try
+                    (body ()).EvalResult(ct)
+                finally
+                    compensation ()
+        )
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Using
+        (resource: 'D, [<InlineIfLambda>] body: 'D -> StreamStep<IsLeaf, 'P, 'T>)
+        : StreamStep<'OutLeaf, 'OutPhase, 'T> when 'D :> IDisposable =
+        StreamRunner.UsingStep (resource, body)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For
+        (header: StreamHeader<'Mode>, [<InlineIfLambda>] body: unit -> StreamStep<'Leaf, 'Phase, 'T>)
+        : ConfiguredStream<'Mode, 'Leaf, 'Phase, 'T> =
+        ConfiguredStream<'Mode, 'Leaf, 'Phase, 'T>(header, body)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For
+        (sequence: seq<'TItem>, [<InlineIfLambda>] body: 'TItem -> StreamStep<IsLeaf, 'P, unit>)
+        : StreamStep<'OutLeaf, 'OutPhase, unit> =
+        StreamDynamic (
+            Unchecked.defaultof<Graph>,
+            fun ct ->
+                for item in sequence do
+                    (body item).EvalUnit(ct)
+
+                StreamEvalUnit
+        )
+
+    /// <summary>Accumulates incoming stream items onto <c>seed</c> using <c>folder</c>, starting from <c>seed</c> on each stream restart.</summary>
+    [<CustomOperation("fold")>]
+    member inline _.Fold(_header: StreamHeader<LatestMode>, seed: 'S, folder: 'S -> 'T -> 'S) : StreamHeader<FoldMode<'S, 'T>> =
+        CeRuntime.RequireStreamFolder folder
+        StreamHeader<FoldMode<'S, 'T>>(FoldMode<'S, 'T>(seed, folder))
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.MergeSources(source1: Signal<'A>, source2: Signal<'B>) : MergedSignals<'A, 'B> =
+        MergedSignals<'A, 'B>(source1, source2)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.MergeSources(source1: Memo<'A>, source2: Memo<'B>) : MergedMemos<'A, 'B> =
+        MergedMemos<'A, 'B>(source1, source2)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.MergeSources(source1: IReactive<'A>, source2: IReactive<'B>) : MergedReactive<'A, 'B> =
+        MergedReactive<'A, 'B>(source1, source2)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.BindReturn(source: IReactive<'K>, f: 'K -> StreamSource<'T>) : StreamStep<NotLeaf, BoundPhase, 'T> =
+        StreamRunner.BindReturnReactive (source, f)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.BindReturn(_token: StreamCancellationToken, f: CancellationToken -> StreamSource<'T>) : StreamStep<'Leaf, 'Phase, 'T> =
+        StreamDynamic (Unchecked.defaultof<Graph>, fun ct -> StreamEvalSource (f ct))
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> StreamStep<IsLeaf, ColdPhase, 'T>) : StreamStep<NotLeaf, BoundPhase, 'T> =
+        StreamRunner.BindReactiveStatic (source, continuation)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Bind
+        (_token: StreamCancellationToken, continuation: CancellationToken -> StreamStep<'Leaf, 'Phase, 'T>)
+        : StreamStep<'Leaf, 'Phase, 'T> =
+        StreamRunner.BindCancellationToken continuation
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> StreamStep<'Leaf, ColdPhase, 'T>) : StreamMemo<'T> =
+        StreamRunner.EvalColdLatest d
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> ConfiguredStream<LatestMode, 'Leaf, ColdPhase, 'T>) : StreamMemo<'T> =
+        StreamRunner.EvalColdLatest (fun () -> (d ()).Body())
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> ConfiguredStream<FoldMode<'S, 'T>, 'Leaf, ColdPhase, 'T>) : StreamMemo<'S> =
+        let cfg = d ()
+        StreamRunner.EvalColdFold (cfg.Body, cfg.Header.Mode.Seed, cfg.Header.Mode.Folder)
+
 /// <summary>Computation expression builders and combinators explicitly gated behind <c>Ranvier.CE</c>.</summary>
 [<AutoOpen>]
 module Builders =
@@ -2657,6 +3968,12 @@ module Builders =
 
     /// <summary>Computation expression builder producing <c>Effect</c> / <c>EffectOn</c> nodes with closed action bodies.</summary>
     let effect = EffectBuilder ()
+
+    /// <summary>Computation expression builder producing <c>AsyncMemo&lt;'U&gt;</c> nodes with compile-time Phase-1/Phase-2 dispatch.</summary>
+    let asyncMemo = AsyncMemoBuilder ()
+
+    /// <summary>Computation expression builder producing <c>StreamMemo&lt;'U&gt;</c> nodes with latest-item or <c>fold</c> mode.</summary>
+    let stream = StreamBuilder ()
 
     /// <summary>Computation expression builder producing <c>Editable&lt;'U&gt;</c> handles.</summary>
     let editable = EditableBuilder ()
@@ -3109,3 +4426,179 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Run(d: unit -> RowStep<BoundPhase, 'V>) : unit -> 'V =
             fun () -> CeRuntime.EvalRow (fun () -> (d ()).EvalValue())
+
+    type AsyncMemoBuilder with
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.ReturnFrom(value: Task) : AsyncStep<'Leaf, 'Phase, unit> =
+            AsyncRunner.ReturnUnitTask value
+
+#if !FABLE_COMPILER
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.ReturnFrom(value: ValueTask) : AsyncStep<'Leaf, 'Phase, unit> =
+            AsyncRunner.ReturnUnitValueTask value
+#endif
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Combine
+            (first: AsyncStep<'L1, 'P1, unit>, [<InlineIfLambda>] second: unit -> AsyncStep<'L2, 'P2, 'U>)
+            : AsyncStep<NotLeaf, 'OutPhase, 'U> =
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalCombine (first, second, prev, ct))
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.While
+            ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> AsyncStep<'L, 'P, unit>)
+            : AsyncStep<NotLeaf, 'OutPhase, unit> =
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun _ ct -> AsyncRunner.EvalWhile (guard, body, ct))
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.TryWith
+            ([<InlineIfLambda>] body: unit -> AsyncStep<'L1, 'P1, 'U>, [<InlineIfLambda>] handler: exn -> AsyncStep<'L2, 'P2, 'U>)
+            : AsyncStep<NotLeaf, 'OutPhase, 'U> =
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalTryWith (body, handler, prev, ct))
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.TryFinally
+            ([<InlineIfLambda>] body: unit -> AsyncStep<'L, 'P, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
+            : AsyncStep<NotLeaf, 'OutPhase, 'U> =
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalTryFinally (body, compensation, prev, ct))
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Using
+            (resource: 'D, [<InlineIfLambda>] body: 'D -> AsyncStep<'L, 'P, 'U>)
+            : AsyncStep<NotLeaf, 'OutPhase, 'U> when 'D :> IDisposable =
+            AsyncRunner.UsingStep (resource, body)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> AsyncStep<'L, 'P, unit>) : AsyncStep<NotLeaf, 'OutPhase, unit> =
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun _ ct -> AsyncRunner.EvalForSeq (sequence, body, ct))
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.BindReturn(source: Task, f: unit -> 'U) : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun _ _ -> AsyncRunner.EvalBindUnitTaskReturn (source, f))
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Bind(source: Task, continuation: unit -> AsyncStep<IsLeaf, ColdPhase, 'U>) : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalBindUnitTask (source, continuation, prev, ct))
+
+#if !FABLE_COMPILER
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.BindReturn(source: ValueTask, f: unit -> 'U) : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun _ _ -> AsyncRunner.EvalBindUnitValueTaskReturn (source, f))
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Bind(source: ValueTask, continuation: unit -> AsyncStep<IsLeaf, ColdPhase, 'U>) : AsyncStep<'OutLeaf, 'OutPhase, 'U> =
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalBindUnitValueTask (source, continuation, prev, ct))
+#endif
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Bind(source: IReactive<'K>, continuation: 'K -> AsyncStep<'AnyLeaf, 'ContPhase, 'U>) : AsyncStep<NotLeaf, BoundPhase, 'U> =
+            AsyncRunner.BindReactiveDynamic (source, continuation)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> AsyncStep<'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
+            AsyncRunner.EvalBound (d, false, ValueNone)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredAsync<PureMode, DefaultPolicy, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
+            AsyncRunner.EvalBound ((fun () -> (d ()).Body()), false, ValueNone)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, DefaultPolicy, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
+            AsyncRunner.EvalBound ((fun () -> (d ()).Body()), true, ValueNone)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredAsync<PureMode, ExplicitPolicy, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
+            let cfg = d ()
+            AsyncRunner.EvalBound (cfg.Body, false, ValueSome cfg.Header.Pol.Policy)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, ExplicitPolicy, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
+            let cfg = d ()
+            AsyncRunner.EvalBound (cfg.Body, true, ValueSome cfg.Header.Pol.Policy)
+
+    type StreamBuilder with
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Combine
+            (first: StreamStep<'L1, 'P1, unit>, [<InlineIfLambda>] second: unit -> StreamStep<'L2, 'P2, 'T>)
+            : StreamStep<NotLeaf, 'OutPhase, 'T> =
+            StreamDynamic (
+                Unchecked.defaultof<Graph>,
+                fun ct ->
+                    first.EvalUnit ct
+                    (second ()).EvalResult(ct)
+            )
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.While
+            ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> StreamStep<'L, 'P, unit>)
+            : StreamStep<NotLeaf, 'OutPhase, unit> =
+            StreamDynamic (
+                Unchecked.defaultof<Graph>,
+                fun ct ->
+                    while guard () do
+                        (body ()).EvalUnit(ct)
+
+                    StreamEvalUnit
+            )
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.TryWith
+            ([<InlineIfLambda>] body: unit -> StreamStep<'L1, 'P1, 'T>, [<InlineIfLambda>] handler: exn -> StreamStep<'L2, 'P2, 'T>)
+            : StreamStep<NotLeaf, 'OutPhase, 'T> =
+            StreamDynamic (
+                Unchecked.defaultof<Graph>,
+                fun ct ->
+                    try
+                        (body ()).EvalResult(ct)
+                    with ex ->
+                        CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalResult(ct))
+            )
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.TryFinally
+            ([<InlineIfLambda>] body: unit -> StreamStep<'L, 'P, 'T>, [<InlineIfLambda>] compensation: unit -> unit)
+            : StreamStep<NotLeaf, 'OutPhase, 'T> =
+            StreamDynamic (
+                Unchecked.defaultof<Graph>,
+                fun ct ->
+                    try
+                        (body ()).EvalResult(ct)
+                    finally
+                        compensation ()
+            )
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Using
+            (resource: 'D, [<InlineIfLambda>] body: 'D -> StreamStep<'L, 'P, 'T>)
+            : StreamStep<NotLeaf, 'OutPhase, 'T> when 'D :> IDisposable =
+            StreamRunner.UsingStep (resource, body)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.For
+            (sequence: seq<'TItem>, [<InlineIfLambda>] body: 'TItem -> StreamStep<'L, 'P, unit>)
+            : StreamStep<NotLeaf, 'OutPhase, unit> =
+            StreamDynamic (
+                Unchecked.defaultof<Graph>,
+                fun ct ->
+                    for item in sequence do
+                        (body item).EvalUnit(ct)
+
+                    StreamEvalUnit
+            )
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Bind(source: IReactive<'K>, continuation: 'K -> StreamStep<'AnyLeaf, 'ContPhase, 'T>) : StreamStep<NotLeaf, BoundPhase, 'T> =
+            StreamRunner.BindReactiveDynamic (source, continuation)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> StreamStep<'Leaf, BoundPhase, 'T>) : StreamMemo<'T> =
+            StreamRunner.EvalBoundLatest d
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredStream<LatestMode, 'Leaf, BoundPhase, 'T>) : StreamMemo<'T> =
+            StreamRunner.EvalBoundLatest (fun () -> (d ()).Body())
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredStream<FoldMode<'S, 'T>, 'Leaf, BoundPhase, 'T>) : StreamMemo<'S> =
+            let cfg = d ()
+            StreamRunner.EvalBoundFold (cfg.Body, cfg.Header.Mode.Seed, cfg.Header.Mode.Folder)

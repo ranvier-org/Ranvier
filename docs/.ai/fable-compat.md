@@ -83,6 +83,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
+| Builders.fs | 26 | 26 | 26 | 26 | 26 | 26 | 0 | 2 |
 | VendoredThoth.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | WireDecoding.fs | 31 | 31 | 31 | 31 | 31 | 31 | 2 | 0 |
 | NumericDecoding.fs | 66 | 66 | 66 | 66 | 66 | 66 | 1 | 0 |
@@ -91,7 +92,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1849 | 1835 | 1832 | 2077 | 2059 | 2056 | 161 | 1 |
+| **Total** | 1875 | 1861 | 1858 | 2103 | 2085 | 2082 | 161 | 3 |
 
 ## Tests.fs
 
@@ -2563,6 +2564,44 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Back disposes the editor while its client-owned save reconciles retained pages
 - adding a word stores the saved draft without fetching full detail
 - Home cancels the old load and ignores messages for removed pages
+
+</details>
+
+## Builders.fs
+
+| Excluded | Reason |
+| --- | --- |
+| part of: Null argument validation on descriptors, withComparer, Merged* carriers, and *On/createReactiveBind | Fable erases optional `Some null` and `ValueSome null` parameters to None/ValueNone in JS. |
+| part of: Review Focus #2 & #5: asyncMemo keyComparer, match!, Phase-2 pending, use across await | ValueTask is a .NET BCL struct. |
+
+<details><summary>26 passed in every build and delivery that runs them</summary>
+
+- IReactive<'T> resolves Graph without Activate and ReadTracked delegates across all 8 reactive node types
+- BoundaryAdapter, TimedAdapter, and StreamMemoAdapter work via CombinatorMemos.createSourceMap
+- Projection.at, Projection.tryAt, Projection.keys, Lookup.at, Lookup.tryAt, and KeyedCollection descriptors
+- Null argument validation on descriptors, withComparer, Merged* carriers, and *On/createReactiveBind
+- Merged* carriers enforce same-graph membership, preserve left-to-right precedence, and InternalCeState manages evalDepth
+- withComparer and custom keyComparer on Memo.CreateOn, AsyncMemo.CreateOn, StreamMemo.CreateOn/CreateFoldOn, and createReactiveBind
+- Review Focus #2: throwing custom keyComparer surfaces Phase-1 Status.Error, preserves Phase-2 value/flight/stream/scope, and recovers on valid settle
+- createReactiveBind edge cases, TimedAdapter errors, and KeyedCollection Remove/Clear
+- memo static 1-source dispatch across all 8 node types and collection descriptors without Activate, closed Phase 2, and ColdPhase laziness
+- Review Focus #1: 3-stage and 4-stage memo chains fuse and mid-chain .Value or .Dispose preserves values and ErrorOrigin
+- memo and!, cross-graph validation, withComparer, owning/comparer/option headers, return! (MemoTail), and memo.previous
+- Review Focus #3 & #5: memo dynamic match!, nested memo in owning, evalDepth unwind on NotReadyException/exn, try/while/for/use disposal
+- effect builder: node/unit, static EffectOn cutoff + withComparer, dynamic Bind & match!, ColdPhase, and Review Focus #5 use disposal
+- editable and draft builders: graph resolution without Activate, closed Phase 2, previous/previousOr, ColdPhase laziness, and edit retention
+- boundary builder: pending, failed, both orders, comparer, Graph resolution without Activate, closed Phase 2, and ColdPhase laziness
+- row builder: projection item + reactive and!/match!, zero extra node allocations, closed return tracking, and factoryRow violation
+- Fix Round 1 Critical #1: effect preserves nested let! inside control flow after outer let! and lazy top-level use
+- Fix Round 1 Important #1: boundary closed Phase-2 pending read fails with InvalidOperationException instead of Pending
+- Fix Round 1 Important #2: non-BindReturn return after reactive let! stays untracked across memo, editable, draft, boundary, row
+- Fix Round 1 Important #3: previous/previousOr construction does not eagerly execute preamble or unready reads
+- Fix Round 2 Important #1: if/match mixes direct let! arm with use/Combine+let! arms across all 6 builders and preserves EffectOn leaf use
+- Fix Round 2 Important #2: try/with catching 2nd+ Phase-1 NotReadyException preserves Pending, clears Phase1Pending, and Row works outside Activate
+- Fix Round 3 Important #1: top-level effect control flow defers acquisition in Batch and unread mixed Using leaks zero disposables
+- asyncMemo builder: FlightPolicy x6, previous, cancellationToken, owning, and ColdPhase
+- Review Focus #2 & #5: asyncMemo keyComparer, match!, Phase-2 pending, use across await
+- stream builder: latest & fold, withComparer, throwing keyComparer, reset, ct, and ColdPhase
 
 </details>
 

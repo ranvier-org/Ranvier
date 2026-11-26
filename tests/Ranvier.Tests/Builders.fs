@@ -21,6 +21,9 @@ type private Flight<'T>() =
     member _.Fail(ex: exn) =
         tcs.SetException ex
 
+    member _.Cancel() =
+        tcs.SetCanceled ()
+
 [<AllowNullLiteral>]
 type private BoxPayload(id: int, label: string) =
     member _.Id = id
@@ -77,7 +80,8 @@ let tests =
     testList
         "Builders"
         [
-            test "IReactive<'T> resolves Graph without Activate and ReadTracked delegates across all 8 reactive node types" {
+            testCaseAsync "IReactive<'T> resolves Graph without Activate and ReadTracked delegates across all 8 reactive node types"
+            <| async {
                 use g = new Graph ()
                 let mutable hasAmbient = true
 
@@ -141,6 +145,7 @@ let tests =
                 Expect.equal readTimed.Value 310 "Timed ReadTracked"
 
                 am1.TryValue |> ignore
+                do! drained ()
                 Expect.equal readAm.Value 15 "AsyncMemo ReadTracked"
 
                 Expect.equal sm1.TryValue Pending "StreamMemo starts Pending"
@@ -412,6 +417,26 @@ let tests =
 
                 Expect.throwsT<ArgumentNullException>
                     (fun () ->
+                        CombinatorMemos.createReactiveBind (Unchecked.defaultof<Graph>, (fun () -> 1), (fun _ -> m), ValueNone, ValueNone)
+                        |> ignore)
+                    "createReactiveBind null graph"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        CombinatorMemos.createReactiveBind (g, Unchecked.defaultof<unit -> int>, (fun _ -> m), ValueNone, ValueNone)
+                        |> ignore)
+                    "createReactiveBind null readKey"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        CombinatorMemos.createReactiveBind (g, (fun () -> 1), Unchecked.defaultof<int -> Memo<int>>, ValueNone, ValueNone)
+                        |> ignore)
+                    "createReactiveBind null binder"
+
+#if !FABLE_COMPILER
+                // .NET only: Fable erases optional `Some null` and `ValueSome null` parameters to None/ValueNone in JS.
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
                         Memo.CreateOn (g, (fun () -> 1), id, ScopeMode.Pure, ValueNone, ?keyComparer = Some nullCmp)
                         |> ignore)
                     "Memo.CreateOn null keyComparer"
@@ -446,24 +471,6 @@ let tests =
 
                 Expect.throwsT<ArgumentNullException>
                     (fun () ->
-                        CombinatorMemos.createReactiveBind (Unchecked.defaultof<Graph>, (fun () -> 1), (fun _ -> m), ValueNone, ValueNone)
-                        |> ignore)
-                    "createReactiveBind null graph"
-
-                Expect.throwsT<ArgumentNullException>
-                    (fun () ->
-                        CombinatorMemos.createReactiveBind (g, Unchecked.defaultof<unit -> int>, (fun _ -> m), ValueNone, ValueNone)
-                        |> ignore)
-                    "createReactiveBind null readKey"
-
-                Expect.throwsT<ArgumentNullException>
-                    (fun () ->
-                        CombinatorMemos.createReactiveBind (g, (fun () -> 1), Unchecked.defaultof<int -> Memo<int>>, ValueNone, ValueNone)
-                        |> ignore)
-                    "createReactiveBind null binder"
-
-                Expect.throwsT<ArgumentNullException>
-                    (fun () ->
                         CombinatorMemos.createReactiveBind (g, (fun () -> 1), (fun _ -> m), ValueSome nullCmp, ValueNone)
                         |> ignore)
                     "createReactiveBind null keyComparer"
@@ -473,6 +480,7 @@ let tests =
                         CombinatorMemos.createReactiveBind (g, (fun () -> 1), (fun _ -> m), ValueNone, ValueSome nullCmp)
                         |> ignore)
                     "createReactiveBind null outputComparer"
+#endif
             }
 
             test "Merged* carriers enforce same-graph membership, preserve left-to-right precedence, and InternalCeState manages evalDepth" {
@@ -538,7 +546,9 @@ let tests =
                 Expect.isFalse InternalCeState.IsEvaluating "exited evalDepth = 0"
             }
 
-            test "withComparer and custom keyComparer on Memo.CreateOn, AsyncMemo.CreateOn, StreamMemo.CreateOn/CreateFoldOn, and createReactiveBind" {
+            testCaseAsync
+                "withComparer and custom keyComparer on Memo.CreateOn, AsyncMemo.CreateOn, StreamMemo.CreateOn/CreateFoldOn, and createReactiveBind"
+            <| async {
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let mod10 = comparer (fun (a: int) b -> a % 10 = b % 10)
@@ -606,12 +616,14 @@ let tests =
                 Expect.isFalse tokens[0].IsCancellationRequested "flight 1 not cancelled"
 
                 flights[0].Settle "ok-1"
+                do! drained ()
                 Expect.equal am.Value "ok-1" "flight 1 result"
 
                 sigAsync.Value <- 22
                 Expect.equal am.TryValue Pending "unequal key starts flight 2"
                 Expect.equal flights.Count 2 "2 flights started"
                 flights[1].Settle "ok-2"
+                do! drained ()
                 Expect.equal am.Value "ok-2" "flight 2 result"
 
                 // 3. StreamMemo.CreateOn and CreateFoldOn with ?keyComparer
@@ -724,8 +736,9 @@ let tests =
                 Expect.sequenceEqual downstreamSeen [ 10; 13; 20 ] "downstream saw 20"
             }
 
-            test
-                "Review Focus #2: throwing custom keyComparer surfaces Phase-1 Status.Error, preserves Phase-2 value/flight/stream/scope, and recovers on valid settle" {
+            testCaseAsync
+                "Review Focus #2: throwing custom keyComparer surfaces Phase-1 Status.Error, preserves Phase-2 value/flight/stream/scope, and recovers on valid settle"
+            <| async {
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let armThrow = ref false
@@ -821,6 +834,7 @@ let tests =
                 Expect.equal flights.Count 1 "AsyncMemo launches no new flight"
 
                 flights[0].Settle "flight-done"
+                do! drained ()
                 Expect.equal (failedWith aNode.TryValue).Message "throwing keyComparer" "Phase-1 Error still overlays until Phase 1 recovers"
                 armThrow.Value <- false
                 aLeft.Value <- 11
@@ -1049,8 +1063,9 @@ let tests =
                 Expect.isEmpty (kcKeys.ReadTracked ()) "KeyedCollection.keys empty after Clear"
             }
 
-            test
-                "memo static 1-source dispatch across all 8 node types and collection descriptors without Activate, closed Phase 2, and ColdPhase laziness" {
+            testCaseAsync
+                "memo static 1-source dispatch across all 8 node types and collection descriptors without Activate, closed Phase 2, and ColdPhase laziness"
+            <| async {
                 use g = new Graph ()
                 let mutable hasAmbient = true
 
@@ -1131,6 +1146,9 @@ let tests =
                 let chainBnd = memo { let! x = mBnd in return x * 2 }
                 let chainTmd = memo { let! x = mTmd in return x * 2 }
 
+                chainAm.TryValue |> ignore
+                do! drained ()
+
                 Expect.equal chainSig.Value 1011 "fused chain over mSig"
                 Expect.equal chainMem.Value 42 "fused chain over mMem"
                 Expect.equal chainEdit.Value 24 "fused chain over mEdit"
@@ -1164,6 +1182,8 @@ let tests =
                 Expect.equal mMem.Value 23 "mMem value"
                 Expect.equal mEdit.Value 13 "mEdit value"
                 Expect.equal mAsrc.Value 6 "mAsrc value"
+                mAm.TryValue |> ignore
+                do! drained ()
                 Expect.equal mAm.Value 14 "mAm value"
                 Expect.equal mSm.TryValue Pending "mSm initially Pending"
                 feed.Push 9
@@ -3361,5 +3381,995 @@ let tests =
 
                 Expect.equal outerMemo.Value 41 "nested memo evaluated during outer ProbeBound does not trigger probe disposal error"
                 Expect.equal nestedDisposed.Value nestedCreated.Value "nested ProbeBound reentrancy leaves created = disposed"
+            }
+
+            testCaseAsync "asyncMemo builder: FlightPolicy x6, previous, cancellationToken, owning, and ColdPhase"
+            <| async {
+                use g = new Graph ()
+                let mutable hasAmbient = true
+
+                try
+                    createSignal 0 |> ignore
+                with _ ->
+                    hasAmbient <- false
+
+                Expect.isFalse hasAmbient "precondition: graph is not activated"
+
+                // Inert context tokens outside CE
+                ignore (asyncMemo.previous, asyncMemo.cancellationToken)
+
+                // 1. Static 1-source CancelPrevious without Activate(), closed Phase 2, transient Phase-1 unready, and cancellationToken after let!
+                let pend1 = AsyncSource<int> g
+                let stray = Signal (g, 100)
+                let mod10 = comparer (fun (a: int) b -> a % 10 = b % 10)
+                let sStatic = Signal (g, 1)
+                let gateStatic = Signal (g, 0)
+                let staticFlights = ResizeArray<Flight<string>>()
+                let staticTokens = ResizeArray<CancellationToken>()
+
+                let staticMode =
+                    Make.Memo (
+                        g,
+                        (fun _ ->
+                            if gateStatic.Value = 1 then pend1.Value
+                            elif gateStatic.Value = 2 then failwith "static-p1"
+                            else sStatic.Value)
+                    )
+
+                let aStatic =
+                    asyncMemo {
+                        policy FlightPolicy.CancelPrevious
+                        let! k = staticMode |> withComparer mod10
+                        let! ct = asyncMemo.cancellationToken
+                        staticTokens.Add ct
+                        let s0 = stray.Value
+                        let f = Flight<string>()
+                        staticFlights.Add f
+                        let! res = f.Task
+                        return $"{k}:{res}:{s0}:{stray.Value}"
+                    }
+
+                Expect.equal staticFlights.Count 0 "static asyncMemo starts no flight at construction"
+                Expect.equal aStatic.TryValue Pending "static asyncMemo starts flight 0 on read"
+                Expect.equal staticFlights.Count 1 "1 flight started"
+                Expect.equal stray.ObserverCount 0 "Phase 2 pre-await stray read is untracked"
+
+                // Equal key (1 -> 11 under mod10) and transient Phase-1 Pending / Failed preserve flight 0!
+                sStatic.Value <- 11
+                Expect.equal aStatic.TryValue Pending "equal key preserves active flight"
+                gateStatic.Value <- 1
+                Expect.equal aStatic.TryValue Pending "Phase-1 Pending overlay preserves active flight"
+                gateStatic.Value <- 2
+                Expect.equal (failedWith aStatic.TryValue).Message "static-p1" "Phase-1 Failed overlay surfaces"
+                gateStatic.Value <- 0
+                Expect.equal aStatic.TryValue Pending "recovery to equal key restores active flight"
+                Expect.isFalse staticTokens[0].IsCancellationRequested "flight 0 token uncancelled"
+                Expect.equal staticFlights.Count 1 "still 1 flight"
+
+                stray.Value <- 200
+                staticFlights[0].Settle "v0"
+                do! drained ()
+                Expect.equal aStatic.Value "1:v0:100:200" "flight 0 captured stray=100 pre-await and read stray=200 post-await"
+                Expect.equal stray.ObserverCount 0 "Phase 2 post-await stray read is untracked"
+
+                // Unequal key 2 cancels flight 0 token? Let's test cancellation across active flights!
+                sStatic.Value <- 2
+                Expect.equal aStatic.TryValue Pending "unequal key 2 starts flight 1"
+                sStatic.Value <- 3
+                Expect.equal aStatic.TryValue Pending "unequal key 3 cancels flight 1 and starts flight 2"
+                Expect.isTrue staticTokens[1].IsCancellationRequested "CancelPrevious cancelled flight 1 token"
+                Expect.isFalse staticTokens[2].IsCancellationRequested "flight 2 token uncancelled"
+
+                staticFlights[1].Settle "stale-1"
+                staticFlights[2].Settle "v2"
+                do! drained ()
+                Expect.equal aStatic.Value "3:v2:200:200" "CancelPrevious published newest flight and dropped stale"
+
+                // 2. KeepLatest with `and!`
+                let klA = Signal (g, 1)
+                let klB = Signal (g, 10)
+                let klFlights = ResizeArray<Flight<int>>()
+                let klTokens = ResizeArray<CancellationToken>()
+
+                let aKeepLatest =
+                    asyncMemo {
+                        policy FlightPolicy.KeepLatest
+                        let! a = klA
+                        and! b = klB
+                        let! ct = asyncMemo.cancellationToken
+                        klTokens.Add ct
+                        let f = Flight<int>()
+                        klFlights.Add f
+                        let! res = f.Task
+                        return a + b + res
+                    }
+
+                Expect.equal aKeepLatest.TryValue Pending "KeepLatest flight 0"
+                klA.Value <- 2
+                Expect.equal aKeepLatest.TryValue Pending "KeepLatest flight 1"
+                Expect.isFalse klTokens[0].IsCancellationRequested "KeepLatest does not cancel flight 0"
+                klFlights[1].Settle 100
+                klFlights[0].Settle 50
+                do! drained ()
+                Expect.equal aKeepLatest.Value 112 "KeepLatest publishes latest (2 + 10 + 100)"
+
+                // 3. Queue with asyncMemo.previous + prev.Settled + owning + policy in both orders
+                let qSig = Signal (g, 1)
+                let qFlights = ResizeArray<Flight<int>>()
+                let qCleanups = ResizeArray<int>()
+                let qChildVal = Signal (g, 10)
+
+                let aQueue =
+                    asyncMemo {
+                        owning
+                        policy FlightPolicy.Queue
+                        let! k = qSig
+                        onCleanup (fun () -> qCleanups.Add k)
+                        let child = memo { let! c = qChildVal in return c + k }
+                        let c0 = child.Value
+                        let! prev = asyncMemo.previous
+                        let f = Flight<int>()
+                        qFlights.Add f
+                        let! delta = f.Task
+                        let! settledPrev = prev.Settled
+                        let acc = ValueOption.defaultValue 0 settledPrev
+                        return acc + c0 + delta
+                    }
+
+                Expect.equal aQueue.TryValue Pending "Queue flight 0"
+                qSig.Value <- 2
+                Expect.equal aQueue.TryValue Pending "Queue flight 1"
+                Expect.sequenceEqual qCleanups [ 1 ] "owning disposed flight 0 Phase-2 scope on unequal key"
+
+                // Out-of-order settle: flight 1 settles before flight 0, waits for flight 0 via prev.Settled!
+                qFlights[1].Settle 200
+                do! drained ()
+                Expect.equal aQueue.TryValue Pending "Queue holds flight 1 behind unsettled flight 0"
+                qFlights[0].Settle 100
+                do! drained ()
+
+#if FABLE_COMPILER
+                do! drained ()
+                do! drained ()
+#else
+                // .NET only: `prev.Settled` resumes on the thread pool and posts queued publication to `g`.
+                let qDeadline = DateTime.UtcNow.AddSeconds 5.0
+
+                while aQueue.TryValue <> Ready 323 do
+                    if DateTime.UtcNow > qDeadline then
+                        failtestf "timed out waiting for Queue flight 1, current TryValue = %A" aQueue.TryValue
+
+                    if g.PendingWork > 0 then
+                        g.Pump () |> ignore
+                    else
+                        Thread.Sleep 1
+#endif
+
+                // flight 0: acc=0 + (10+1) + 100 = 111; flight 1: acc=111 + (10+2) + 200 = 323
+                Expect.equal aQueue.Value 323 "Queue chained previous.Settled in FIFO start order"
+
+                // 4. FinishCurrent (reversed header order: policy; owning)
+                let fcSig = Signal (g, 1)
+                let fcFlights = ResizeArray<Flight<int>>()
+                let fcKeys = ResizeArray<int>()
+                let fcCleanups = ResizeArray<int>()
+
+                let aFinish =
+                    asyncMemo {
+                        policy FlightPolicy.FinishCurrent
+                        owning
+                        let! k = fcSig
+                        fcKeys.Add k
+                        onCleanup (fun () -> fcCleanups.Add k)
+                        let f = Flight<int>()
+                        fcFlights.Add f
+                        let! v = f.Task
+                        return k * 10 + v
+                    }
+
+                Expect.equal aFinish.TryValue Pending "FinishCurrent flight 0"
+                fcSig.Value <- 2
+                fcSig.Value <- 3
+                Expect.equal aFinish.TryValue Pending "FinishCurrent defers changes during flight 0"
+                Expect.sequenceEqual fcKeys [ 1 ] "only flight 0 launched"
+                fcFlights[0].Settle 5
+                do! drained ()
+                Expect.equal aFinish.Peek 15 "FinishCurrent Peek has flight 0 result"
+                Expect.equal aFinish.TryValue Pending "FinishCurrent trailing run launches for k=3"
+                Expect.sequenceEqual fcKeys [ 1; 3 ] "trailing run launched with latest key 3"
+                Expect.sequenceEqual fcCleanups [ 1 ] "owning scope discharged before trailing run"
+                fcFlights[1].Settle 7
+                do! drained ()
+                Expect.equal aFinish.Value 37 "FinishCurrent trailing flight published (3*10 + 7)"
+
+                // 5. Drop
+                let dSig = Signal (g, 1)
+                let dFlights = ResizeArray<Flight<int>>()
+
+                let aDrop =
+                    asyncMemo {
+                        policy FlightPolicy.Drop
+                        let! k = dSig
+                        let f = Flight<int>()
+                        dFlights.Add f
+                        let! v = f.Task
+                        return k * 100 + v
+                    }
+
+                Expect.equal aDrop.TryValue Pending "Drop flight 0"
+                dSig.Value <- 2
+                Expect.equal aDrop.TryValue Pending "Drop discards change during flight"
+                dFlights[0].Settle 4
+                do! drained ()
+                Expect.equal aDrop.Value 104 "Drop keeps flight 0 result"
+                Expect.equal dFlights.Count 1 "Drop did not launch flight for 2"
+                dSig.Value <- 3
+                Expect.equal aDrop.TryValue Pending "Drop launches after settle"
+                dFlights[1].Settle 5
+                do! drained ()
+                Expect.equal aDrop.Value 305 "Drop flight 1 result"
+
+                // 6. DropWhilePending
+                let dwpSig = Signal (g, 1)
+                let dwpFlights = ResizeArray<Flight<int>>()
+                let dwpKeys = ResizeArray<int>()
+
+                let aDwp =
+                    asyncMemo {
+                        policy FlightPolicy.DropWhilePending
+                        let! k = dwpSig
+                        dwpKeys.Add k
+                        let f = Flight<int>()
+                        dwpFlights.Add f
+                        let! v = f.Task
+                        return k * 10 + v
+                    }
+
+                Expect.equal aDwp.TryValue Pending "DropWhilePending flight 0"
+                dwpSig.Value <- 2
+                dwpFlights[0].Fail(exn "transient-fail")
+                do! drained ()
+                Expect.equal aDwp.TryValue Pending "DropWhilePending starts replacing run on failed flight"
+                Expect.sequenceEqual dwpKeys [ 1; 2 ] "replacing run launched for k=2"
+                dwpFlights[1].Settle 9
+                do! drained ()
+                Expect.equal aDwp.Value 29 "DropWhilePending replacing run settles"
+
+                // 7. cancellationToken BEFORE reactive let! (resolves graph without Activate, cancels superseded flight)
+                let preSig = Signal (g, 10)
+                let preFlights = ResizeArray<Flight<int>>()
+                let preTokens = ResizeArray<CancellationToken>()
+
+                let aPreCt =
+                    asyncMemo {
+                        policy FlightPolicy.CancelPrevious
+                        let! ct = asyncMemo.cancellationToken
+                        let! k = preSig
+                        preTokens.Add ct
+                        let f = Flight<int>()
+                        preFlights.Add f
+                        let! v = f.Task
+                        return k + v
+                    }
+
+                Expect.equal aPreCt.TryValue Pending "pre-let! cancellationToken flight 0"
+                preSig.Value <- 20
+                Expect.equal aPreCt.TryValue Pending "pre-let! cancellationToken flight 1"
+                Expect.isTrue preTokens[0].IsCancellationRequested "pre-let! flight 0 token cancelled"
+                Expect.isFalse preTokens[1].IsCancellationRequested "pre-let! flight 1 token active"
+                preFlights[1].Settle 5
+                do! drained ()
+                Expect.equal aPreCt.Value 25 "pre-let! cancellationToken settled"
+
+                // 8. ColdPhase 0-reactive-bind laziness (fireTask runs 0 times at construction)
+                let fireCount = ref 0
+                let coldFlight = Flight<int>()
+
+                let fireTask () =
+                    fireCount.Value <- fireCount.Value + 1
+                    coldFlight.Task
+
+                let aCold =
+                    g.Run (fun () ->
+                        asyncMemo {
+                            let! v = fireTask ()
+                            return v + 1 + stray.Value
+                        })
+
+                let fireReturnFromCount = ref 0
+                let coldRfFlight = Flight<int>()
+
+                let fireReturnFrom () =
+                    fireReturnFromCount.Value <- fireReturnFromCount.Value + 1
+                    coldRfFlight.Task
+
+                let aColdRf =
+                    g.Run (fun () ->
+                        asyncMemo {
+                            policy FlightPolicy.KeepLatest
+                            return! fireReturnFrom ()
+                        })
+
+                Expect.equal fireCount.Value 0 "ColdPhase 0-bind asyncMemo does not invoke fireTask at construction"
+                Expect.equal fireReturnFromCount.Value 0 "ColdPhase ReturnFrom asyncMemo does not invoke fireReturnFrom at construction"
+                Expect.equal aCold.TryValue Pending "aCold pending on first read"
+                Expect.equal aColdRf.TryValue Pending "aColdRf pending on first read"
+                Expect.equal fireCount.Value 1 "fireTask ran once on first read"
+                Expect.equal fireReturnFromCount.Value 1 "fireReturnFrom ran once on first read"
+
+                coldFlight.Settle 50
+                coldRfFlight.Settle 60
+                do! drained ()
+                Expect.equal aCold.Value 251 "aCold settled (50 + 1 + 200)"
+                Expect.equal aColdRf.Value 60 "aColdRf settled (60)"
+
+                // ColdPhase after completed task keeps Phase-2 stray untracked and wraps synchronous pending.Value
+                let aColdCompleted =
+                    g.Run (fun () ->
+                        asyncMemo {
+                            let! v = completed 7
+                            return v + stray.Value
+                        })
+
+                aColdCompleted.TryValue |> ignore
+                do! drained ()
+                Expect.equal aColdCompleted.Value 207 "aColdCompleted initial"
+                let strayObserversBefore = stray.ObserverCount
+                stray.Value <- 300
+                Expect.equal aColdCompleted.Value 207 "reads after completed Task await remain untracked"
+                Expect.equal stray.ObserverCount strayObserversBefore "stray gained no observer"
+
+                let aColdPendAfterAwait =
+                    g.Run (fun () ->
+                        asyncMemo {
+                            let! v = completed 7
+                            return v + pend1.Value
+                        })
+
+                aColdPendAfterAwait.TryValue |> ignore
+                do! drained ()
+                let coldPendEx = failedWith aColdPendAfterAwait.TryValue
+                Expect.isTrue (isInvalidOperation coldPendEx) "pending read after completed Task await wraps InvalidOperationException"
+                Expect.isTrue (isNotReadyException coldPendEx.InnerException) "InnerException preserves NotReadyException"
+
+                // Clean up owning async memos
+                aQueue.Dispose ()
+                aFinish.Dispose ()
+            }
+
+            testCaseAsync "Review Focus #2 & #5: asyncMemo keyComparer, match!, Phase-2 pending, use across await"
+            <| async {
+                use g = new Graph ()
+                let armThrow = ref false
+
+                let throwingCmp =
+                    comparer (fun (struct (a: int, _: int)) (struct (b: int, _: int)) ->
+                        if armThrow.Value then
+                            raise (InvalidOperationException "throwing async keyComparer")
+
+                        a % 10 = b % 10)
+
+                // 1. Review Focus #2: throwing keyComparer over and!-merged key |> withComparer throwingCmp in asyncMemo
+                let aLeft = Signal (g, 1)
+                let aRight = Signal (g, 100)
+                let cmpFlights = ResizeArray<Flight<string>>()
+                let cmpTokens = ResizeArray<CancellationToken>()
+
+                let aCmp =
+                    asyncMemo {
+                        policy FlightPolicy.CancelPrevious
+
+                        let! (struct (k, _)) =
+                            asyncMemo.MergeSources (aLeft, aRight)
+                            |> withComparer throwingCmp
+
+                        let! ct = asyncMemo.cancellationToken
+                        cmpTokens.Add ct
+                        let f = Flight<string>()
+                        cmpFlights.Add f
+                        let! res = f.Task
+                        return $"{k}:{res}"
+                    }
+
+                Expect.equal aCmp.TryValue Pending "aCmp initial flight running"
+                armThrow.Value <- true
+                aLeft.Value <- 2
+                let aCmpEx = failedWith aCmp.TryValue
+                Expect.equal aCmpEx.Message "throwing async keyComparer" "asyncMemo surfaces Phase-1 throwingCmp exception"
+                Expect.equal aCmp.Status Status.Error "asyncMemo enters Status.Error"
+                Expect.isFalse cmpTokens[0].IsCancellationRequested "asyncMemo keeps active flight uncancelled on throwingCmp"
+                Expect.equal cmpFlights.Count 1 "asyncMemo launches no new flight on throwingCmp"
+
+                cmpFlights[0].Settle "cmp-done"
+                do! drained ()
+                Expect.equal (failedWith aCmp.TryValue).Message "throwing async keyComparer" "Phase-1 Error overlays settled flight until recovery"
+                armThrow.Value <- false
+                aLeft.Value <- 11
+                Expect.equal aCmp.Value "1:cmp-done" "asyncMemo recovers and publishes settled flight value on equal key"
+                Expect.equal cmpFlights.Count 1 "still only 1 flight"
+
+                // Cross-graph and! throws InvalidOperationException
+                use otherG = new Graph ()
+                let otherSig = Signal (otherG, 99)
+
+                let crossEx =
+                    Expect.throwsC
+                        (fun () ->
+                            asyncMemo {
+                                let! a = aLeft
+                                and! b = otherSig
+                                return a + b
+                            }
+                            |> ignore)
+                        id
+
+                Expect.isTrue (isInvalidOperation crossEx) "asyncMemo cross-graph and! throws InvalidOperationException"
+
+                // 2. match! mixing return fallback + direct Task arm + nested reactive let! arm
+                let modeSig = Signal (g, 0)
+                let nestedSig = Signal (g, 10)
+                let straySig = Signal (g, 500)
+                let pendSrc = AsyncSource<int> g
+                let arm1Flight = Flight<int>()
+                let arm2Flights = ResizeArray<Flight<int>>()
+                let matchRuns = ref 0
+
+                let aMatch =
+                    asyncMemo {
+                        match! modeSig with
+                        | 0 -> return 42 + straySig.Value
+                        | 1 ->
+                            matchRuns.Value <- matchRuns.Value + 1
+                            let! v = arm1Flight.Task
+                            return v + 100
+                        | 2 -> return pendSrc.Value
+                        | _ ->
+                            let! b = nestedSig
+                            let f = Flight<int>()
+                            arm2Flights.Add f
+                            let! v = f.Task
+                            return b + v + straySig.Value
+                    }
+
+                aMatch.TryValue |> ignore
+                do! drained ()
+                Expect.equal aMatch.Value 542 "match! arm 0 closed return fallback"
+                straySig.Value <- 600
+                Expect.equal aMatch.Value 542 "match! arm 0 return keeps straySig untracked"
+
+                // Mutating nestedSig while modeSig = 0 does not run arm 1 or 3
+                nestedSig.Value <- 20
+                Expect.equal matchRuns.Value 0 "nestedSig ignored while modeSig = 0"
+
+                // Arm 1: direct Task arm
+                modeSig.Value <- 1
+                Expect.equal aMatch.TryValue Pending "match! arm 1 awaits direct Task"
+                arm1Flight.Settle 7
+                do! drained ()
+                Expect.equal aMatch.Value 107 "match! arm 1 settled (7 + 100)"
+                Expect.equal matchRuns.Value 1 "arm 1 ran once"
+
+                // Arm 2: closed Phase-2 pending.Value wraps into InvalidOperationException
+                modeSig.Value <- 2
+                aMatch.TryValue |> ignore
+                do! drained ()
+                let p2PendEx = failedWith aMatch.TryValue
+                Expect.isTrue (isInvalidOperation p2PendEx) "match! closed return pendSrc.Value wraps InvalidOperationException"
+                Expect.isTrue (isNotReadyException p2PendEx.InnerException) "InnerException preserves NotReadyException"
+
+                // Arm 3: nested reactive let! arm tracks nestedSig dynamically
+                modeSig.Value <- 3
+                Expect.equal aMatch.TryValue Pending "match! arm 3 starts flight for nestedSig=20"
+                arm2Flights[0].Settle 5
+                do! drained ()
+                Expect.equal aMatch.Value 625 "match! arm 3 settled (20 + 5 + 600)"
+
+                nestedSig.Value <- 30
+                Expect.equal aMatch.TryValue Pending "nestedSig update triggers new flight in arm 3"
+                arm2Flights[1].Settle 6
+                do! drained ()
+                Expect.equal aMatch.Value 636 "match! arm 3 updated (30 + 6 + 600)"
+
+                // Switching back to 0 drops nestedSig dependency
+                modeSig.Value <- 0
+                aMatch.TryValue |> ignore
+                do! drained ()
+                Expect.equal aMatch.Value 642 "match! back to arm 0"
+                nestedSig.Value <- 40
+                Expect.equal arm2Flights.Count 2 "nestedSig unsubscribed after leaving arm 3"
+
+                // 3. Review Focus #5: use d = ... disposed deterministically across await, on fault, on cancel, and on Phase-1 Pending
+                let useLog = ResizeArray<string>()
+                let useKey = Signal (g, 1)
+                let useFlights = ResizeArray<Flight<int>>()
+                let failAfterAwait = Signal (g, false)
+
+                let aUseStatic =
+                    asyncMemo {
+                        let! k = useKey
+                        use _d = new TrackedDisposable ($"st{k}", useLog)
+                        let f = Flight<int>()
+                        useFlights.Add f
+                        let! v = f.Task
+
+                        if failAfterAwait.Peek then
+                            failwith "after-await-boom"
+
+                        return k + v
+                    }
+
+                // Not constructed before first read!
+                Expect.isEmpty useLog "use inside static asyncMemo not acquired before read"
+                Expect.equal aUseStatic.TryValue Pending "use static flight 0 pending"
+                Expect.isEmpty useLog "Review Focus #5: use NOT disposed while flight 0 is suspended at await"
+
+                useFlights[0].Settle 10
+                do! drained ()
+                Expect.equal aUseStatic.Value 11 "use static flight 0 settled"
+                Expect.sequenceEqual useLog [ "disp:st1" ] "Review Focus #5: use disposed deterministically when awaited flight completes"
+
+                // Faulted awaited Task disposes use deterministically
+                useKey.Value <- 2
+                Expect.equal aUseStatic.TryValue Pending "use static flight 1 pending"
+                Expect.sequenceEqual useLog [ "disp:st1" ] "st2 still alive across await"
+                useFlights[1].Fail(exn "flight-fault")
+                do! drained ()
+                Expect.equal (failedWith aUseStatic.TryValue).Message "flight-fault" "flight 1 fault surfaced"
+                Expect.sequenceEqual useLog [ "disp:st1"; "disp:st2" ] "Review Focus #5: use disposed deterministically on awaited Task fault"
+
+                // Post-await throw disposes use deterministically
+                failAfterAwait.Value <- true
+                useKey.Value <- 3
+                Expect.equal aUseStatic.TryValue Pending "use static flight 2 pending"
+                useFlights[2].Settle 1
+                do! drained ()
+                Expect.equal (failedWith aUseStatic.TryValue).Message "after-await-boom" "post-await throw surfaced"
+
+                Expect.sequenceEqual
+                    useLog
+                    [ "disp:st1"; "disp:st2"; "disp:st3" ]
+                    "Review Focus #5: use disposed deterministically on post-await throw"
+
+                // Canceled awaited Task disposes use deterministically
+                failAfterAwait.Value <- false
+                useKey.Value <- 4
+                Expect.equal aUseStatic.TryValue Pending "use static flight 3 pending"
+                useFlights[3].Cancel()
+                do! drained ()
+                Expect.equal aUseStatic.Status Status.Error "canceled flight enters Status.Error"
+
+                Expect.sequenceEqual
+                    useLog
+                    [ "disp:st1"; "disp:st2"; "disp:st3"; "disp:st4" ]
+                    "Review Focus #5: use disposed deterministically on canceled Task"
+
+                // Top-level ColdPhase use + await & top-level use + reactive let! + await: lazy at construction, alive across await, disposed on settle/fault
+                let topUseCreated = ref 0
+                let topUseDisposed = ref 0
+                let topColdFlight = Flight<int>()
+                let topBoundFlight = Flight<int>()
+                let topBoundSig = Signal (g, 5)
+                let topGate = Signal (g, 0)
+
+                let trackTop tag =
+                    topUseCreated.Value <- topUseCreated.Value + 1
+
+                    { new IDisposable with
+                        member _.Dispose() =
+                            topUseDisposed.Value <- topUseDisposed.Value + 1
+                            useLog.Add ("disp:" + tag)
+                    }
+
+                let aTopColdUse =
+                    g.Run (fun () ->
+                        asyncMemo {
+                            use _d = trackTop "tc"
+                            let! v = topColdFlight.Task
+                            return v + 1
+                        })
+
+                let aTopBoundUse =
+                    g.Run (fun () ->
+                        asyncMemo {
+                            use _d = trackTop "tb"
+                            let! k = topBoundSig
+
+                            if topGate.Peek = 1 then
+                                let! _ = pendSrc
+                                return 0
+                            else
+                                let! v = topBoundFlight.Task
+                                return k + v
+                        })
+
+                Expect.equal topUseCreated.Value 0 "top-level use+Task and use+let!+Task do not acquire at construction"
+                Expect.equal topUseDisposed.Value 0 "zero disposals before read"
+
+                // Phase-1 Pending inside aTopBoundUse disposes tb synchronously right away
+                topGate.Value <- 1
+                Expect.equal aTopBoundUse.TryValue Pending "aTopBoundUse Phase-1 Pending"
+                Expect.equal topUseCreated.Value 1 "tb acquired on Phase-1 read"
+                Expect.equal topUseDisposed.Value 1 "tb disposed synchronously when Phase-1 NotReadyException unwound"
+
+                topGate.Value <- 0
+                topBoundSig.Value <- 6
+                Expect.equal aTopColdUse.TryValue Pending "aTopColdUse awaiting"
+                Expect.equal aTopBoundUse.TryValue Pending "aTopBoundUse awaiting"
+                Expect.equal topUseCreated.Value 3 "both top-level uses acquired"
+                Expect.equal topUseDisposed.Value 1 "neither disposed while awaiting"
+
+                topColdFlight.Settle 10
+                topBoundFlight.Fail (exn "tb-fail")
+                do! drained ()
+                Expect.equal aTopColdUse.Value 11 "aTopColdUse settled"
+                Expect.equal (failedWith aTopBoundUse.TryValue).Message "tb-fail" "aTopBoundUse faulted"
+                Expect.equal topUseDisposed.Value 3 "both top-level uses disposed deterministically across await (settle & fault)"
+
+                // Pure violation in static & dynamic asyncMemo + try/with catching 2nd+ Phase-1 NotReadyException
+                let pureStatic =
+                    asyncMemo {
+                        let! k = useKey
+                        // Asserts the runtime failure of an owned node created in a pure derivation.
+                        // fsharpanalyzer: ignore-line-next RAN010
+                        onCleanup ignore
+                        return k
+                    }
+
+                let pureEx = failedWith pureStatic.TryValue
+                Expect.isTrue (isInvalidOperation pureEx) "pure static asyncMemo rejects onCleanup"
+
+                let pureDyn =
+                    asyncMemo {
+                        let! a = useKey
+                        let! b = topBoundSig
+                        // Asserts the runtime failure of an owned node created in a pure derivation.
+                        // fsharpanalyzer: ignore-line-next RAN010
+                        onCleanup ignore
+                        return a + b
+                    }
+
+                let pureDynEx = failedWith pureDyn.TryValue
+                Expect.isTrue (isInvalidOperation pureDynEx) "pure dynamic asyncMemo rejects onCleanup"
+
+                let aTryPend =
+                    asyncMemo {
+                        let! a = useKey
+
+                        try
+                            let! b = pendSrc
+                            return a + b
+                        with _ ->
+                            return 99
+                    }
+
+                Expect.equal aTryPend.TryValue Pending "try/with catching 2nd+ Phase-1 NotReadyException in asyncMemo still suspends Pending"
+                Expect.isTrue (isNull InternalCeState.CurrentPhase1Pending) "Phase1Pending cleared when try/with swallowed NotReadyException"
+
+                // Try/with, try/finally, while, for across await in asyncMemo
+                let loopFlight1 = Flight<int>()
+                let loopFlight2 = Flight<int>()
+                let finLog = ResizeArray<string>()
+
+                let aControlFlow =
+                    g.Run (fun () ->
+                        asyncMemo {
+                            let mutable total = 0
+
+                            try
+                                try
+                                    for f in [ loopFlight1.Task; loopFlight2.Task ] do
+                                        let! v = f
+                                        total <- total + v
+
+                                    return total
+                                finally
+                                    finLog.Add "fin"
+                            with ex ->
+                                return -1
+                        })
+
+                Expect.equal aControlFlow.TryValue Pending "for+try/finally+try/with awaiting loopFlight1"
+                Expect.isEmpty finLog "finally not run before awaits finish"
+                loopFlight1.Settle 10
+                do! drained ()
+                Expect.isEmpty finLog "finally not run while awaiting loopFlight2"
+                loopFlight2.Settle 20
+                do! drained ()
+                Expect.equal aControlFlow.Value 30 "for+try/finally+try/with completed cleanly (10 + 20)"
+                Expect.sequenceEqual finLog [ "fin" ] "finally ran once after loop awaits completed"
+
+                // Non-generic Task do! + mixed if unread disposal check
+                let nonGenTcs = Flight<unit>()
+
+                let aDoTask =
+                    g.Run (fun () ->
+                        asyncMemo {
+                            let! k = useKey
+                            do! (nonGenTcs.Task :> Task)
+                            return k * 10
+                        })
+
+                Expect.equal aDoTask.TryValue Pending "do! non-generic Task awaiting"
+                nonGenTcs.Settle ()
+                do! drained ()
+                Expect.equal aDoTask.Value 40 "do! non-generic Task resumed cleanly"
+
+#if !FABLE_COMPILER
+                // .NET only: ValueTask is a .NET BCL struct.
+                let vtDone = ValueTask<int>(7)
+                let vtUnitDone = ValueTask ()
+                let vtFlight = Flight<int>()
+                let vtUnitFlight = Flight<unit>()
+
+                let aVt =
+                    asyncMemo {
+                        let! k = useKey
+                        let! v1 = vtDone
+                        do! vtUnitDone
+                        let! v2 = ValueTask<int>(vtFlight.Task)
+                        do! ValueTask (vtUnitFlight.Task :> Task)
+                        return k + v1 + v2
+                    }
+
+                Expect.equal aVt.TryValue Pending "ValueTask awaiting pending flight"
+                vtFlight.Settle 100
+                vtUnitFlight.Settle ()
+                do! drained ()
+                Expect.equal aVt.Value 111 "ValueTask<int> and ValueTask completed cleanly (4 + 7 + 100)"
+#endif
+            }
+
+            testCaseAsync "stream builder: latest & fold, withComparer, throwing keyComparer, reset, ct, and ColdPhase"
+            <| async {
+                use g = new Graph ()
+                let mutable hasAmbient = true
+
+                try
+                    createSignal 0 |> ignore
+                with _ ->
+                    hasAmbient <- false
+
+                Expect.isFalse hasAmbient "precondition: graph is not activated"
+
+                // Inert context token outside CE
+                ignore stream.cancellationToken
+
+                let room = Signal (g, 1)
+                let untrackedMeta = Signal (g, "v1")
+                let mod10 = comparer (fun (a: int) b -> a % 10 = b % 10)
+                let latestFeed = ManualStream<string>()
+                let foldFeed = ManualStream<int>()
+                let startedKeys = ResizeArray<string>()
+
+                // 1. Static latest-item & fold with withComparer + stream.cancellationToken without Activate()
+                let sLatest =
+                    stream {
+                        let! k = room |> withComparer mod10
+                        let! _ct = stream.cancellationToken
+                        startedKeys.Add $"{k}:{untrackedMeta.Value}"
+                        return latestFeed.Source
+                    }
+
+                let sFold =
+                    stream {
+                        fold 100 (+)
+                        let! _k = room |> withComparer mod10
+                        let! _ct = stream.cancellationToken
+                        return foldFeed.Source
+                    }
+
+                Expect.equal latestFeed.Starts 0 "static latest stream does not start at construction"
+                Expect.equal foldFeed.Starts 0 "static fold stream does not start at construction"
+                Expect.equal sLatest.TryValue Pending "sLatest starts Pending"
+                Expect.equal sFold.TryValue Pending "sFold starts Pending"
+                Expect.equal untrackedMeta.ObserverCount 0 "Phase 2 meta read is untracked"
+
+                latestFeed.Push "hello"
+                foldFeed.Push 10
+                foldFeed.Push 5
+                Expect.equal sLatest.Value "hello" "sLatest item"
+                Expect.equal sFold.Value 115 "sFold accumulated from seed 100"
+
+                // Equal key (1 -> 11 under mod10) preserves open stream & accumulator without cancellation or seed reset
+                untrackedMeta.Value <- "v2"
+                room.Value <- 11
+                Expect.equal sLatest.Value "hello" "equal key keeps latest value"
+                Expect.equal sFold.Value 115 "equal key keeps folded accumulator without seed reset"
+                Expect.isFalse latestFeed.Latest.Token.IsCancellationRequested "latest token alive on equal key"
+                Expect.isFalse foldFeed.Latest.Token.IsCancellationRequested "fold token alive on equal key"
+                Expect.equal latestFeed.Starts 1 "no reconnect on equal key"
+                Expect.equal foldFeed.Starts 1 "no reconnect on equal key fold"
+
+                // Open stream keeps delivering after equal-key check
+                foldFeed.Push 20
+                Expect.equal sFold.Value 135 "open fold stream keeps accumulating (115 + 20)"
+
+                // Unequal key (11 -> 2) cancels old token, resets to Pending, resets fold to seed 100
+                let prevLatestStart = latestFeed.Latest
+                let prevFoldStart = foldFeed.Latest
+                room.Value <- 2
+                Expect.equal sLatest.TryValue Pending "unequal key resets latest stream to Pending"
+                Expect.equal sFold.TryValue Pending "unequal key resets fold stream to Pending"
+                Expect.isTrue prevLatestStart.Token.IsCancellationRequested "unequal key cancelled previous latest token"
+                Expect.isTrue prevFoldStart.Token.IsCancellationRequested "unequal key cancelled previous fold token"
+                Expect.equal latestFeed.Starts 2 "latest reopened"
+                Expect.equal foldFeed.Starts 2 "fold reopened"
+
+                foldFeed.Push 7
+                latestFeed.Push "world"
+                Expect.equal sLatest.Value "world" "new latest value"
+                Expect.equal sFold.Value 107 "fold reset to seed 100 + 7"
+                Expect.sequenceEqual startedKeys [ "1:v1"; "2:v2" ] "unequal key observed updated untracked meta"
+
+                // 2. Review Focus #2: throwing keyComparer with and! in stream preserves open stream & accumulated items
+                let armThrow = ref false
+
+                let throwingCmp =
+                    comparer (fun (struct (a: int, _: int)) (struct (b: int, _: int)) ->
+                        if armThrow.Value then
+                            raise (InvalidOperationException "throwing stream keyComparer")
+
+                        a % 10 = b % 10)
+
+                let sLeft = Signal (g, 1)
+                let sRight = Signal (g, 100)
+                let cmpFeed = ManualStream<int>()
+
+                let sCmpFold =
+                    stream {
+                        fold 0 (+)
+
+                        let! (struct (_, _)) =
+                            stream.MergeSources (sLeft, sRight)
+                            |> withComparer throwingCmp
+
+                        return cmpFeed.Source
+                    }
+
+                Expect.equal sCmpFold.TryValue Pending "sCmpFold initial Pending"
+                cmpFeed.Push 5
+                Expect.equal sCmpFold.Value 5 "sCmpFold initial item"
+
+                armThrow.Value <- true
+                sLeft.Value <- 2
+                let sCmpEx = failedWith sCmpFold.TryValue
+                Expect.equal sCmpEx.Message "throwing stream keyComparer" "stream surfaces Phase-1 throwingCmp exception"
+                Expect.isFalse cmpFeed.Latest.Token.IsCancellationRequested "stream keeps open stream running on throwingCmp"
+                Expect.equal cmpFeed.Starts 1 "stream does not restart on throwingCmp"
+
+                cmpFeed.Push 7
+                armThrow.Value <- false
+                sLeft.Value <- 11
+                Expect.equal sCmpFold.Value 12 "stream recovers with items folded during Phase-1 error (5 + 7)"
+                Expect.equal cmpFeed.Starts 1 "still 1 start"
+
+                // 3. ColdPhase 0-reactive-bind laziness (openSource runs 0 times at construction)
+                let openCount = ref 0
+                let coldFeed = ManualStream<int>()
+                let coldTokens = ResizeArray<CancellationToken>()
+
+                let openSource (ct: CancellationToken) =
+                    openCount.Value <- openCount.Value + 1
+                    coldTokens.Add ct
+                    coldFeed.Source
+
+                let sCold =
+                    g.Run (fun () ->
+                        stream {
+                            let! ct = stream.cancellationToken
+                            return openSource ct
+                        })
+
+                let sColdFold =
+                    g.Run (fun () ->
+                        stream {
+                            fold 10 (+)
+                            return openSource CancellationToken.None
+                        })
+
+                Expect.equal openCount.Value 0 "ColdPhase 0-bind stream does not invoke openSource at construction"
+                Expect.equal sCold.TryValue Pending "sCold starts on first read"
+                Expect.equal sColdFold.TryValue Pending "sColdFold starts on first read"
+                Expect.equal openCount.Value 2 "both ColdPhase streams started once on first read"
+                coldFeed.At(0).Sink.Next 42
+                coldFeed.At(1).Sink.Next 5
+                Expect.equal sCold.Value 42 "sCold published 42"
+                Expect.equal sColdFold.Value 15 "sColdFold published 15"
+                sCold.Dispose ()
+                Expect.isTrue coldTokens[0].IsCancellationRequested "sCold cancelled its cancellationToken on Dispose"
+
+                // 4. cancellationToken BEFORE reactive let! + dynamic match! + synchronous Phase-2 NotReadyException + 2nd+ Phase-1 Pending try/with
+                let dynMode = Signal (g, 0)
+                let dynSub = Signal (g, 5)
+                let pendSrc = AsyncSource<int> g
+                let dynFeed0 = ManualStream<int>()
+                let dynFeed1 = ManualStream<int>()
+                let dynTokens = ResizeArray<CancellationToken>()
+
+                let sPreCt =
+                    stream {
+                        let! ct = stream.cancellationToken
+                        let! m = dynMode
+                        dynTokens.Add ct
+
+                        match m with
+                        | 0 -> return dynFeed0.Source
+                        | 1 ->
+                            let! sub = dynSub
+
+                            return
+                                StreamSource.create (fun sink token ->
+                                    sink.Next sub
+                                    dynFeed1.Source.Run (sink, token))
+                        | 2 ->
+                            let _ = pendSrc.Value
+                            return dynFeed0.Source
+                        | _ ->
+                            try
+                                let! b = pendSrc
+
+                                return
+                                    StreamSource.create (fun sink token ->
+                                        sink.Next b
+                                        dynFeed1.Source.Run (sink, token))
+                            with _ ->
+                                return dynFeed0.Source
+                    }
+
+                Expect.equal sPreCt.TryValue Pending "dynamic stream starts Pending"
+                dynFeed0.Push 1
+                Expect.equal sPreCt.Value 1 "mode 0 published"
+                dynMode.Value <- 1
+                Expect.equal sPreCt.Value 5 "mode 1 tracked dynSub synchronously"
+                Expect.isTrue dynTokens[0].IsCancellationRequested "mode switch cancelled pre-let! ct"
+                dynSub.Value <- 9
+                Expect.equal sPreCt.Value 9 "dynSub mutation restarted mode 1 stream"
+
+                // Closed Phase-2 pending.Value wraps into InvalidOperationException
+                dynMode.Value <- 2
+                let sPendEx = failedWith sPreCt.TryValue
+                Expect.isTrue (isInvalidOperation sPendEx) "closed Phase-2 pending read in stream wraps InvalidOperationException"
+                Expect.isTrue (isNotReadyException sPendEx.InnerException) "InnerException preserves NotReadyException"
+
+                // Caught 2nd+ Phase-1 NotReadyException still suspends Pending
+                dynMode.Value <- 3
+                Expect.equal sPreCt.TryValue Pending "try/with catching 2nd+ Phase-1 NotReadyException in stream preserves Pending"
+                Expect.isTrue (isNull InternalCeState.CurrentPhase1Pending) "Phase1Pending cleared after swallowed NotReadyException"
+                pendSrc.Settle 77
+                Expect.equal sPreCt.Value 77 "dynamic stream wakes to 77 after pendSrc settles"
+
+                // Top-level use before let! stays lazy until first read and disposes cleanly; pure violation fails
+                let streamUseCreated = ref 0
+                let streamUseDisposed = ref 0
+
+                let sTopUse =
+                    g.Run (fun () ->
+                        stream {
+                            use _d =
+                                { new IDisposable with
+                                    member _.Dispose() =
+                                        streamUseDisposed.Value <- streamUseDisposed.Value + 1
+                                }
+
+                            streamUseCreated.Value <- streamUseCreated.Value + 1
+                            let! _ = dynSub
+                            return dynFeed0.Source
+                        })
+
+                Expect.equal streamUseCreated.Value 0 "top-level stream use+let! does not execute at construction"
+                sTopUse.TryValue |> ignore
+                Expect.equal streamUseCreated.Value 1 "top-level stream use+let! executes on read"
+                Expect.equal streamUseDisposed.Value 1 "top-level stream use+let! disposes after returning StreamSource"
+
+                let sPureBad =
+                    stream {
+                        let! _ = dynSub
+                        // Asserts the runtime failure of an owned node created in a pure derivation.
+                        // fsharpanalyzer: ignore-line-next RAN010
+                        onCleanup ignore
+                        return dynFeed0.Source
+                    }
+
+                Expect.isTrue (isInvalidOperation (failedWith sPureBad.TryValue)) "pure stream rejects onCleanup"
             }
         ]
