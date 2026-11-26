@@ -558,6 +558,8 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
     /// <summary>The source responsible for the published failure, or null when no failure is published.</summary>
     member _.ErrorOrigin = Failure.OriginOf failure
 
+    member inline internal _.Failure = failure
+
     /// <summary>Tracks and reads the published value; raises when that state is pending or failed.</summary>
 #if FABLE_COMPILER
     member this.Value =
@@ -629,6 +631,12 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
         member this.Dispose() =
             this.Dispose ()
 
+    interface IReactive<'T> with
+        member _.Graph = graph
+
+        member this.ReadTracked() =
+            this.Value
+
 #if RANVIER_TRACE
     interface ITimedTrace with
         member _.TimingGraph = box graph
@@ -663,3 +671,16 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                 WinningCapture = if hasCandidate then capture else log.TimedWinner id
             }
 #endif
+
+[<Sealed>]
+type internal TimedAdapter<'T>(src: Timed<'T>) =
+    inherit CombinatorSource<'T>()
+
+    override _.Graph = src.Graph
+    override _.Source = src :> ISource
+    override _.Node = src :> INode
+    override _.RefreshAndCheckStale(_n: MemoNode) = ()
+    override _.MarkStaleAfterPreRefresh(_n: MemoNode) = ()
+    override _.Status = src.Status
+    override _.Peek = src.Peek
+    override _.Failure = src.Failure
