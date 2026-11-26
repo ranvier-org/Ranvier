@@ -1966,7 +1966,9 @@ type AsyncOnFactory<'K, 'U>(source: IReactive<'K>, buildWithKey: 'K -> Previous<
             AsyncOnFactory<'K, 'U>(
                 source,
                 fun k prev ct ->
-                    let nextFactory = CeRuntime.ProbeBound (fun () -> extract prev ct)
+                    let nextFactory =
+                        CeRuntime.SuspendNested (fun () -> CeRuntime.ProbeBound (fun () -> extract prev ct))
+
                     (unbox<AsyncOnFactory<'K, 'U>>(box nextFactory)).InvokeKey(k, prev, ct)
             )
             :> IAsyncStaticFactory<'U>
@@ -2666,7 +2668,9 @@ type StreamOnFactory<'K, 'T>(source: IReactive<'K>, build: 'K -> CancellationTok
             StreamOnFactory<'K, 'T>(
                 source,
                 fun k ct ->
-                    let nextFactory = CeRuntime.ProbeBound (fun () -> extract ct)
+                    let nextFactory =
+                        CeRuntime.SuspendNested (fun () -> CeRuntime.ProbeBound (fun () -> extract ct))
+
                     (unbox<StreamOnFactory<'K, 'T>>(box nextFactory)).InvokeKey(k, ct)
             )
             :> IStreamStaticFactory<'T>

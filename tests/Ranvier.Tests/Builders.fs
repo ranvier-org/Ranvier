@@ -4926,4 +4926,149 @@ let tests =
                 Expect.equal vtConsumed 1 "consumed exactly once when evaluated"
 #endif
             }
+
+            testCaseAsync "Task 4 Fix Round 2: WithContext SuspendNested reentrancy inside dynamic memo and boundary"
+            <| async {
+                use g = new Graph ()
+                let mod10 = comparer (fun (a: int) b -> a % 10 = b % 10)
+                let tokKey = Signal (g, 1)
+                let outerGate = Signal (g, 0)
+                let streamGate = Signal (g, 0)
+
+                // Token-first static asyncMemo (sync BindReturnReactive & async BindReactiveStatic with withComparer)
+                let amSync =
+                    g.Run (fun () ->
+                        asyncMemo {
+                            let! _ct = asyncMemo.cancellationToken
+                            let! k = tokKey |> withComparer mod10
+                            return k * 100
+                        })
+
+                let flights = ResizeArray<Flight<int>>()
+
+                let amAsync =
+                    g.Run (fun () ->
+                        asyncMemo {
+                            let! _prev = asyncMemo.previous
+                            let! _ct = asyncMemo.cancellationToken
+                            let! k = tokKey |> withComparer mod10
+                            let f = Flight<int>()
+                            flights.Add f
+                            let! res = f.Task
+                            return k + res
+                        })
+
+                // Token-first static stream (Latest & Fold with withComparer)
+                let feedLatest = ManualStream<int>()
+                let feedFold = ManualStream<int>()
+
+                let sLatest =
+                    g.Run (fun () ->
+                        stream {
+                            let! _ct = stream.cancellationToken
+                            let! _k = tokKey |> withComparer mod10
+                            return feedLatest.Source
+                        })
+
+                let sFold =
+                    g.Run (fun () ->
+                        stream {
+                            fold 1000 (+)
+                            let! _ct = stream.cancellationToken
+                            let! _k = tokKey |> withComparer mod10
+                            return feedFold.Source
+                        })
+
+                // Multi-let! dynamic memo reading streams lazily while IsEvaluating = true
+                let outerStreamRuns = ref 0
+
+                let outerStreamMemo =
+                    g.Run (fun () ->
+                        memo {
+                            let! _g = streamGate
+                            let! x = sLatest
+                            let! y = sFold
+                            outerStreamRuns.Value <- outerStreamRuns.Value + 1
+                            return x + y
+                        })
+
+                // Multi-let! dynamic memo + boundary reading amSync & amAsync lazily while IsEvaluating = true
+                let outerAsyncRuns = ref 0
+
+                let outerAsyncMemo =
+                    g.Run (fun () ->
+                        memo {
+                            let! g0 = outerGate
+                            let! a = amSync
+                            let! b = amAsync
+                            outerAsyncRuns.Value <- outerAsyncRuns.Value + 1
+                            return g0 + a + b
+                        })
+
+                let bndRuns = ref 0
+
+                let outerBoundary =
+                    g.Run (fun () ->
+                        boundary {
+                            pending (fun _ -> -1)
+                            let! g0 = outerGate
+                            let! a = amSync
+                            let! b = amAsync
+                            bndRuns.Value <- bndRuns.Value + 1
+                            return g0 + a + b
+                        })
+
+                // First lazy read of streams from inside evaluating outerStreamMemo (IsEvaluating = true)
+                Expect.equal outerStreamMemo.TryValue Pending "outerStreamMemo suspends Pending at sLatest before push"
+                feedLatest.Push 5
+                Expect.equal outerStreamMemo.TryValue Pending "outerStreamMemo suspends Pending at sFold before push"
+                feedFold.Push 20
+                Expect.equal outerStreamMemo.Value 1025 "outerStreamMemo initial value (5 + 1020)"
+
+                // First lazy read of asyncMemos from inside evaluating outerAsyncMemo & outerBoundary (IsEvaluating = true)
+                Expect.equal outerBoundary.Value -1 "outerBoundary surfaces fallback on initial read"
+                Expect.equal outerAsyncMemo.TryValue Pending "outerAsyncMemo suspends Pending on initial read"
+                do! drained ()
+                // Ensure amSync has settled under Fable promise delivery before pulling amAsync
+                Expect.equal outerBoundary.Value -1 "outerBoundary surfaces fallback while amAsync Pending"
+                Expect.equal outerAsyncMemo.TryValue Pending "outerAsyncMemo suspends Pending while amAsync Pending"
+                Expect.equal flights.Count 1 "flight 0 launched on first lazy read inside outer CE"
+                flights[0].Settle 10
+                do! drained ()
+                Expect.equal outerAsyncMemo.Value 111 "outerAsyncMemo initial value (0 + 100 + 11)"
+                Expect.equal outerBoundary.Value 111 "outerBoundary settled (0 + 100 + 11)"
+
+                // Equal key (1 -> 11 under mod10): cutoff prevents outer re-runs and tokKey has ZERO leaked edges on outer nodes!
+                let baseStreamRuns = outerStreamRuns.Value
+                let baseAsyncRuns = outerAsyncRuns.Value
+                let baseBndRuns = bndRuns.Value
+                tokKey.Value <- 11
+                Expect.equal outerStreamMemo.Value 1025 "equal key keeps outerStreamMemo cut off"
+                Expect.equal outerAsyncMemo.Value 111 "equal key keeps outerAsyncMemo cut off"
+                Expect.equal outerBoundary.Value 111 "equal key keeps outerBoundary cut off"
+                Expect.equal outerStreamRuns.Value baseStreamRuns "outerStreamMemo did not re-run on equal key"
+                Expect.equal outerAsyncRuns.Value baseAsyncRuns "outerAsyncMemo did not re-run on equal key"
+                Expect.equal bndRuns.Value baseBndRuns "outerBoundary did not re-run on equal key"
+                Expect.equal tokKey.ObserverCount 4 "tokKey only subscribed by the 4 static inner nodes (no leak to outer dynamic CEs)"
+
+                // Unequal key refresh (11 -> 2): pulled lazily from inside evaluating outerStreamMemo, outerAsyncMemo, outerBoundary!
+                tokKey.Value <- 2
+                Expect.equal outerStreamMemo.TryValue Pending "unequal key restarts sLatest Pending inside outerStreamMemo"
+                feedLatest.Push 7
+                Expect.equal outerStreamMemo.TryValue Pending "unequal key restarts sFold Pending inside outerStreamMemo"
+                feedFold.Push 30
+                Expect.equal outerStreamMemo.Value 1037 "outerStreamMemo refreshed after unequal key (7 + 1030)"
+
+                Expect.equal outerBoundary.Value -1 "outerBoundary refreshes fallback on unequal key"
+                Expect.equal outerAsyncMemo.TryValue Pending "outerAsyncMemo refreshes Pending on unequal key"
+                do! drained ()
+                Expect.equal outerBoundary.Value -1 "outerBoundary refreshes fallback while amAsync flight 1 Pending"
+                Expect.equal outerAsyncMemo.TryValue Pending "outerAsyncMemo refreshes Pending while amAsync flight 1 Pending"
+                Expect.equal flights.Count 2 "flight 1 launched on unequal key refresh inside outer CE"
+                flights[1].Settle 20
+                do! drained ()
+                Expect.equal outerAsyncMemo.Value 222 "outerAsyncMemo refreshed (0 + 200 + 22)"
+                Expect.equal outerBoundary.Value 222 "outerBoundary refreshed (0 + 200 + 22)"
+                Expect.equal tokKey.ObserverCount 4 "tokKey observer count stays 4 after unequal key refresh"
+            }
         ]
