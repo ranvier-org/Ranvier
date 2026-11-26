@@ -21,6 +21,25 @@ type private Flight<'T>() =
     member _.Fail(ex: exn) =
         tcs.SetException ex
 
+[<AllowNullLiteral>]
+type private BoxPayload(id: int, label: string) =
+    member _.Id = id
+    member _.Label = label
+
+    override _.Equals(other: obj) =
+        match other with
+        | :? BoxPayload as that -> id = that.Id
+        | _ -> false
+
+    override _.GetHashCode() = id
+
+type private TrackedDisposable(tag: string, log: ResizeArray<string>) =
+    member _.Tag = tag
+
+    interface IDisposable with
+        member _.Dispose() =
+            log.Add ("disp:" + tag)
+
 let private failedWith (reading: Reading<'T>) =
     match reading with
     | Failed ex -> ex
@@ -41,13 +60,9 @@ let private isNullReference (ex: exn) =
 #endif
 
 let private isNotReadyException (ex: exn) =
-#if FABLE_COMPILER
-    not (isNull (box ex))
-#else
     match ex with
     | NotReadyException _ -> true
     | _ -> false
-#endif
 
 let private comparer (equals: 'T -> 'T -> bool) =
     { new IEqualityComparer<'T> with
@@ -190,15 +205,10 @@ let tests =
 
                 // TimedAdapter: ready, pending capture, failure, timed update, cutoff
                 let clock = ManualClock ()
-                let timedGate = Signal (g, false)
                 let timedIn = Signal (g, 3)
 
                 let timedNode =
-                    debounceWith
-                        { Clock = clock; Comparer = None }
-                        (TimeSpan.FromMilliseconds 100.)
-                        (fun () -> if timedGate.Value then pendingSrc.Value else timedIn.Value)
-                        g
+                    debounceWith { Clock = clock; Comparer = None } (TimeSpan.FromMilliseconds 100.) (fun () -> timedIn.Value) g
 
                 let mappedTimed =
                     CombinatorMemos.createSourceMap (fun x -> x * 2) (TimedAdapter<int> timedNode)
@@ -1037,5 +1047,1118 @@ let tests =
 
                 kc.Clear ()
                 Expect.isEmpty (kcKeys.ReadTracked ()) "KeyedCollection.keys empty after Clear"
+            }
+
+            test
+                "memo static 1-source dispatch across all 8 node types and collection descriptors without Activate, closed Phase 2, and ColdPhase laziness" {
+                use g = new Graph ()
+                let mutable hasAmbient = true
+
+                try
+                    createSignal 0 |> ignore
+                with _ ->
+                    hasAmbient <- false
+
+                Expect.isFalse hasAmbient "precondition: graph is not activated"
+
+                let sig1 = Signal (g, 10)
+                let stray = Signal (g, 1000)
+                let mem1 = Make.Memo (g, (fun _ -> sig1.Value * 2))
+                let edit1 = g.Run (fun () -> createEditable (fun _ -> sig1.Value + 1))
+                let asrc1 = AsyncSource<int> g
+                asrc1.Settle 5
+                let am1 = Make.AsyncMemo<int>(g, (fun _ _ -> completed (sig1.Value + 2)))
+                let feed = ManualStream<int>()
+                let sm1 = g.Run (fun () -> createStream (fun _ -> feed.Source))
+
+                let bnd1 =
+                    g.Run (fun () -> createBoundary (fun _ -> -1) (fun _ _ -> -2) (fun _ -> sig1.Value + 3))
+
+                let clock = ManualClock ()
+
+                let tmd1 =
+                    debounceWith { Clock = clock; Comparer = None } (TimeSpan.FromMilliseconds 50.) (fun () -> sig1.Value + 4) g
+
+                let listSig = Signal (g, [ (1, "a"); (2, "b") ])
+                let proj = g.Run (fun () -> createProjection fst snd (fun () -> listSig.Value))
+
+                let lkp =
+                    g.Run (fun () -> createLookup (fun m k -> m + k) (fun _ _ -> seq { yield 5 }) (fun () -> sig1.Value))
+
+                let kc = g.Run (fun () -> createKeyedCollection fst)
+                kc.AddOrUpdate (1, "k1")
+
+                let closedRuns = ref 0
+
+                let mSig =
+                    memo {
+                        let! x = sig1
+                        closedRuns.Value <- closedRuns.Value + 1
+                        return x + stray.Value
+                    }
+
+                let mMem = memo { let! x = mem1 in return x + 1 }
+                let mEdit = memo { let! x = edit1 in return x + 1 }
+                let mAsrc = memo { let! x = asrc1 in return x + 1 }
+                let mAm = memo { let! x = am1 in return x + 1 }
+                let mSm = memo { let! x = sm1 in return x + 1 }
+                let mBnd = memo { let! x = bnd1 in return x + 1 }
+                let mTmd = memo { let! x = tmd1 in return x + 1 }
+                let mProjAt = memo { let! v = proj |> Projection.at 1 in return v + "!" }
+
+                let mProjTry =
+                    memo { let! v = proj |> Projection.tryAt 9 in return Option.defaultValue "miss" v }
+
+                let mProjKeys = memo { let! ks = proj |> Projection.keys in return ks.Length }
+                let mLkpAt = memo { let! v = lkp |> Lookup.at 5 in return v * 2 }
+
+                let mLkpTry =
+                    memo { let! v = lkp |> Lookup.tryAt 99 in return Option.defaultValue -1 v }
+
+                let mKcAt = memo { let! (_, v) = kc |> KeyedCollection.at 1 in return v }
+
+                let mKcTry =
+                    memo { let! opt = kc |> KeyedCollection.tryAt 2 in return Option.isSome opt }
+
+                let mKcKeys = memo { let! ks = kc |> KeyedCollection.keys in return ks.Length }
+
+#if !RANVIER_TRACE
+                let chainSig = memo { let! x = mSig in return x + 1 }
+                let chainMem = memo { let! x = mMem in return x * 2 }
+                let chainEdit = memo { let! x = mEdit in return x * 2 }
+                let chainAsrc = memo { let! x = mAsrc in return x * 2 }
+                let chainAm = memo { let! x = mAm in return x * 2 }
+                let chainBnd = memo { let! x = mBnd in return x * 2 }
+                let chainTmd = memo { let! x = mTmd in return x * 2 }
+
+                Expect.equal chainSig.Value 1011 "fused chain over mSig"
+                Expect.equal chainMem.Value 42 "fused chain over mMem"
+                Expect.equal chainEdit.Value 24 "fused chain over mEdit"
+                Expect.equal chainAsrc.Value 12 "fused chain over mAsrc"
+                Expect.equal chainAm.Value 26 "fused chain over mAm"
+                Expect.equal chainBnd.Value 28 "fused chain over mBnd"
+                Expect.equal chainTmd.Value 30 "fused chain over mTmd"
+
+                Expect.equal mSig.ObserverCount 0 "mSig started fusible FusedSignalMap1 and was claimed by chainSig"
+                Expect.equal mMem.ObserverCount 0 "mMem started fusible FusedSourceMap1 and was claimed by chainMem"
+                Expect.equal mEdit.ObserverCount 0 "mEdit started fusible FusedSourceMap1 over Editable.ValueMemo"
+                Expect.equal mAsrc.ObserverCount 0 "mAsrc started fusible FusedSourceMap1 and was claimed by chainAsrc"
+                Expect.equal mAm.ObserverCount 0 "mAm started fusible FusedSourceMap1 and was claimed by chainAm"
+                Expect.equal mBnd.ObserverCount 0 "mBnd started fusible FusedSourceMap1 and was claimed by chainBnd"
+                Expect.equal mTmd.ObserverCount 0 "mTmd started fusible FusedSourceMap1 and was claimed by chainTmd"
+#endif
+
+                Expect.equal mSig.Value 1010 "mSig initial"
+#if !RANVIER_TRACE
+                Expect.equal closedRuns.Value 1 "mSig materialized without re-running closed mapper"
+#else
+                Expect.equal closedRuns.Value 1 "mSig ran once"
+#endif
+                stray.Value <- 2000
+                Expect.equal mSig.Value 1010 "closed Phase 2 does not subscribe to stray"
+                Expect.equal closedRuns.Value 1 "mSig did not re-run on stray change"
+                sig1.Value <- 11
+                Expect.equal mSig.Value 2011 "mSig wakes on bound sig1 and reads updated stray"
+                Expect.equal closedRuns.Value 2 "mSig ran twice"
+
+                Expect.equal mMem.Value 23 "mMem value"
+                Expect.equal mEdit.Value 13 "mEdit value"
+                Expect.equal mAsrc.Value 6 "mAsrc value"
+                Expect.equal mAm.Value 14 "mAm value"
+                Expect.equal mSm.TryValue Pending "mSm initially Pending"
+                feed.Push 9
+                Expect.equal mSm.Value 10 "mSm updated on push"
+                Expect.equal mBnd.Value 15 "mBnd value"
+                Expect.equal mTmd.Value 15 "mTmd debounced before clock advance"
+                clock.AdvanceTo 50.
+                Expect.equal mTmd.Value 16 "mTmd value after clock advance"
+                Expect.equal mProjAt.Value "a!" "Projection.at"
+                Expect.equal mProjTry.Value "miss" "Projection.tryAt"
+                Expect.equal mProjKeys.Value 2 "Projection.keys"
+                Expect.equal mLkpAt.Value 32 "Lookup.at ((11 + 5) * 2)"
+                sig1.Value <- 12
+                Expect.equal mLkpAt.Value 34 "Lookup.at tracks diff key update ((12 + 5) * 2)"
+                sig1.Value <- 11
+                Expect.equal mLkpTry.Value -1 "Lookup.tryAt"
+                Expect.equal mKcAt.Value "k1" "KeyedCollection.at"
+                Expect.isFalse mKcTry.Value "KeyedCollection.tryAt"
+                Expect.equal mKcKeys.Value 1 "KeyedCollection.keys"
+
+                // Unready read inside closed Phase 2 fails immediately instead of hanging Pending
+                let pendingSrc = AsyncSource<int> g
+
+                let mBadPhase2 =
+                    memo {
+                        let! x = sig1
+                        return x + pendingSrc.Value
+                    }
+
+                let badEx = failedWith mBadPhase2.TryValue
+                Expect.isTrue (isInvalidOperation badEx) "unready read in closed Phase 2 fails with InvalidOperationException"
+                Expect.isTrue (isNotReadyException badEx.InnerException) "wrapped InnerException is NotReadyException"
+
+                // ColdPhase 0-bind memo never invokes body at construction time
+                let coldRuns = ref 0
+
+                let mCold =
+                    g.Run (fun () ->
+                        memo {
+                            coldRuns.Value <- coldRuns.Value + 1
+                            return sig1.Value * 3
+                        })
+
+                Expect.equal coldRuns.Value 0 "ColdPhase memo is lazy at construction"
+                Expect.equal mCold.Value 33 "ColdPhase memo runs on first read"
+                Expect.equal coldRuns.Value 1 "ColdPhase memo ran once"
+                sig1.Value <- 12
+                Expect.equal mCold.Value 36 "ColdPhase memo tracks reactive reads inside body"
+            }
+
+            test "Review Focus #1: 3-stage and 4-stage memo chains fuse and mid-chain .Value or .Dispose preserves values and ErrorOrigin" {
+                use g = new Graph ()
+                let s = Signal (g, 2)
+                let stage2Calls = ref 0
+
+                let m1 = memo { let! x = s in return x + 1 }
+
+                let m2 =
+                    memo {
+                        let! x = m1
+                        stage2Calls.Value <- stage2Calls.Value + 1
+                        return x * 10
+                    }
+
+                let m3 = memo { let! x = m2 in return x + 5 }
+                let m4 = memo { let! x = m3 in return x * 2 }
+
+                Expect.equal m4.Value 70 "4-stage fused value ((2+1)*10 + 5)*2 = 70"
+                Expect.equal stage2Calls.Value 1 "stage 2 mapper evaluated once for initial pull"
+#if !RANVIER_TRACE
+                Expect.equal m1.ObserverCount 0 "m1 is claimed inside 4-stage chain before mid-chain read"
+                Expect.equal m2.ObserverCount 0 "m2 is claimed inside 4-stage chain before mid-chain read"
+                Expect.equal m3.ObserverCount 0 "m3 is claimed inside 4-stage chain before mid-chain read"
+                Expect.equal s.ObserverCount 1 "4-stage fused chain subscribes once at root signal"
+#endif
+
+                // Mid-chain observation materializes/de-fuses m2 cleanly without extra stage2 call or losing value
+                Expect.equal m2.Value 30 "mid-chain m2.Value materializes cleanly"
+                Expect.equal stage2Calls.Value 1 "mid-chain m2.Value runs stage 2 mapper 0 extra times"
+                Expect.equal m2.Runs 1 "m2 materialized with Runs = 1"
+                Expect.equal m4.Value 70 "m4 preserves cached value"
+                s.Value <- 3
+                Expect.equal m4.Value 90 "4-stage updates after mid-chain de-fusion ((3+1)*10 + 5)*2 = 90"
+                Expect.equal m2.Value 40 "m2 shares updated value without duplicate stage2 evaluation"
+                Expect.equal stage2Calls.Value 2 "stage 2 mapper evaluated once for s <- 3"
+
+                // Mid-chain Dispose freezes downstream value and preserves ErrorOrigin
+                let sVal = Signal (g, 4)
+                let f1 = memo { let! x = sVal in return x + 1 }
+                let f2 = memo { let! x = f1 in return x * 10 }
+                let f3 = memo { let! x = f2 in return x + 7 }
+                Expect.equal f3.Value 57 "warm 3-stage chain before mid-chain Dispose"
+                f2.Dispose ()
+                sVal.Value <- 99
+                Expect.equal f3.Value 57 "f3 freezes at cached 57 when f2 disposes"
+
+                // ErrorOrigin preserved across mid-chain observation & Dispose on stage-2 throw
+                let errSig = Signal (g, 1)
+                let stageErr = InvalidOperationException "ce-stage2-err"
+                let e1 = memo { let! x = errSig in return x + 1 }
+
+                let e2 =
+                    memo {
+                        let! x = e1
+
+                        return if x = 2 then raise stageErr else x * 100
+                    }
+
+                let e3 = memo { let! x = e2 in return x + 1 }
+                let e3Ex = failedWith e3.TryValue
+                Expect.isTrue (obj.ReferenceEquals (e3Ex, stageErr)) "e3 surfaces stageErr"
+                Expect.isTrue (obj.ReferenceEquals (e3.ErrorOrigin, e2 :> INode)) "e3 attributes ErrorOrigin to stage 2 (e2)"
+                e2.Dispose ()
+                let e3Frozen = failedWith e3.TryValue
+                Expect.isTrue (obj.ReferenceEquals (e3Frozen, stageErr)) "e3 preserves cached failure after e2.Dispose()"
+                Expect.isTrue (obj.ReferenceEquals (e3.ErrorOrigin, e2 :> INode)) "e3 preserves ErrorOrigin = e2 after e2.Dispose()"
+            }
+
+            test "memo and!, cross-graph validation, withComparer, owning/comparer/option headers, return! (MemoTail), and memo.previous" {
+                use g = new Graph ()
+                use otherG = new Graph ()
+
+                let s1 = Signal (g, 1)
+                let s2 = Signal (g, 10)
+                let sOther = Signal (otherG, 99)
+                let mA = Make.Memo (g, (fun _ -> s1.Value * 2))
+                let mB = Make.Memo (g, (fun _ -> s2.Value * 3))
+                let editA = g.Run (fun () -> createEditable (fun _ -> s1.Value + 5))
+                let editB = g.Run (fun () -> createEditable (fun _ -> s2.Value + 5))
+
+                let mSigs =
+                    memo {
+                        let! a = s1 in
+                        and! b = s2
+                        return a + b
+                    }
+
+                let mMems =
+                    memo {
+                        let! a = mA in
+                        and! b = mB
+                        return a + b
+                    }
+
+                let mEdits =
+                    memo {
+                        let! a = editA in
+                        and! b = editB
+                        return a + b
+                    }
+
+                Expect.equal mSigs.Value 11 "2-way signals"
+                Expect.equal mMems.Value 32 "2-way memos"
+                Expect.equal mEdits.Value 21 "2-way editables"
+
+                // 3-way and 4-way heterogeneous and! without Activate() + cross-graph check
+                let listSig = Signal (g, [ (1, 100); (2, 200) ])
+                let proj = g.Run (fun () -> createProjection fst snd (fun () -> listSig.Value))
+
+                let lkp =
+                    g.Run (fun () -> createLookup (fun v k -> v + k) (fun _ _ -> Seq.empty) (fun () -> s1.Value))
+
+                let m4Way =
+                    memo {
+                        let! a = s1
+                        and! b = mB
+                        and! c = proj |> Projection.tryAt 1
+                        and! d = lkp |> Lookup.at 3
+                        return a + b + (Option.defaultValue 0 c) + d
+                    }
+
+                Expect.equal m4Way.Value 135 "4-way heterogeneous and!"
+
+                let exCross =
+                    Expect.throwsC
+                        (fun () ->
+                            memo {
+                                let! a = s1 in
+                                and! b = sOther
+                                return a + b
+                            }
+                            |> ignore)
+                        id
+
+                Expect.isTrue (isInvalidOperation exCross) "cross-graph and! throws InvalidOperationException"
+
+                // owning, comparer, and both orders (owning; comparer and comparer; owning) + withComparer
+                let mod10 = comparer (fun (a: int) b -> a % 10 = b % 10)
+                let evenOut = comparer (fun (a: int) b -> a % 2 = b % 2)
+                let ownLogs1 = ResizeArray<string>()
+                let ownLogs2 = ResizeArray<string>()
+                let sigOwn = Signal (g, 1)
+
+                let mOwnCmp1 =
+                    memo {
+                        owning
+                        comparer evenOut
+                        let! k = sigOwn |> withComparer mod10
+                        onCleanup (fun () -> ownLogs1.Add $"clean:{k}")
+                        let child = createMemo (fun _ -> k * 10 + (k % 2))
+                        return child.Value
+                    }
+
+                let mOwnCmp2 =
+                    memo {
+                        comparer evenOut
+                        owning
+                        let! k = sigOwn
+                        onCleanup (fun () -> ownLogs2.Add $"c2:{k}")
+                        let child = createMemo (fun _ -> k * 2)
+                        return child.Value + 1
+                    }
+
+                let mCmpOnly =
+                    memo {
+                        comparer evenOut
+                        let! a = sigOwn
+                        and! b = s2
+                        return a + b
+                    }
+
+                let downstream1 = ResizeArray<int>()
+                let downstream2 = ResizeArray<int>()
+                g.Run (fun () -> createEffect (fun () -> downstream1.Add mOwnCmp1.Value))
+                g.Run (fun () -> createEffect (fun () -> downstream2.Add mCmpOnly.Value))
+                Expect.equal mOwnCmp1.Value 11 "owning+comparer initial"
+                Expect.equal mOwnCmp2.Value 3 "comparer+owning initial"
+                Expect.sequenceEqual downstream1 [ 11 ] "downstream1 saw 11"
+                Expect.sequenceEqual downstream2 [ 11 ] "downstream2 saw 11"
+
+                // Equal Phase-1 key under mod10 preserves Phase-2 scope and skips recompute on mOwnCmp1;
+                // odd->odd output keeps mCmpOnly output cutoff intact while mOwnCmp2 cleans old child scope on unequal key
+                sigOwn.Value <- 11
+                Expect.equal mOwnCmp1.Value 11 "withComparer keeps scope & value on 1 -> 11"
+                Expect.isEmpty ownLogs1 "mOwnCmp1 skipped Phase 2 cleanup on equal key 1 -> 11"
+                Expect.sequenceEqual downstream1 [ 11 ] "downstream1 did not wake"
+                Expect.sequenceEqual downstream2 [ 11 ] "mCmpOnly output parity cutoff skipped downstream2"
+                Expect.equal mOwnCmp2.Value 23 "mOwnCmp2 recomputed to 23"
+                Expect.sequenceEqual ownLogs2 [ "c2:1" ] "mOwnCmp2 disposed old owning child scope on 1 -> 11"
+
+                sigOwn.Value <- 2
+                Expect.equal mOwnCmp1.Value 20 "unequal mod10 recomputes mOwnCmp1 (even output 20)"
+                Expect.sequenceEqual ownLogs1 [ "clean:1" ] "mOwnCmp1 discharged old Phase-2 scope on 11 -> 2"
+                Expect.sequenceEqual downstream1 [ 11; 20 ] "downstream1 woke on parity change 11 -> 20"
+
+                // Verify output cutoff cleanly via signal transition odd(11) -> odd(13) -> even(14)
+                let sOut = Signal (g, 11)
+
+                let mPar =
+                    memo {
+                        comparer evenOut
+                        let! k = sOut
+                        return k
+                    }
+
+                let seenPar = ResizeArray<int>()
+                g.Run (fun () -> createEffect (fun () -> seenPar.Add mPar.Value))
+                sOut.Value <- 13
+                sOut.Value <- 14
+                Expect.sequenceEqual seenPar [ 11; 14 ] "comparer suppresses downstream on equal parity (11 -> 13) and wakes on 14"
+
+                // option header deduplicates Some reference identity
+                use optGraph = new Graph (GraphOptions.Default.WithEquality (StructuralPolicy ()))
+                let sOpt = Signal (optGraph, (1, "v1"))
+
+                let mOpt =
+                    memo {
+                        option
+                        let! (id, lbl) = sOpt
+                        return if id > 0 then Some (BoxPayload (id, lbl)) else None
+                    }
+
+                let firstSome = mOpt.Value
+                sOpt.Value <- (1, "v2")
+                let secondSome = mOpt.Value
+
+                match firstSome, secondSome with
+                | Some p1, Some p2 ->
+                    Expect.isTrue (obj.ReferenceEquals (p1, p2)) "option header preserves Some payload reference when inner equals"
+                    Expect.equal p2.Label "v1" "kept first payload label"
+                | _ -> failtest "expected Some"
+
+                sOpt.Value <- (0, "none")
+                Expect.equal mOpt.Value None "option transitions to None"
+                sOpt.Value <- (1, "v3")
+
+                match firstSome, mOpt.Value with
+                | Some p1, Some p3 -> Expect.isFalse (obj.ReferenceEquals (p1, p3)) "option issues fresh Some after None"
+                | _ -> failtest "expected Some after None"
+
+                // return! (MemoTail): Signal, Memo, and!, withComparer, match!, and sequential let!
+                let keySig = Signal (g, 1)
+                let inner1 = Signal (g, 100)
+                let inner2 = Signal (g, 200)
+                let mInner1 = Make.Memo (g, (fun _ -> inner1.Value))
+                let mInner2 = Make.Memo (g, (fun _ -> inner2.Value))
+                let bindCalls = ref 0
+                let bindCleanups = ResizeArray<int>()
+
+                let mBindSig =
+                    memo {
+                        let! k = keySig
+                        bindCalls.Value <- bindCalls.Value + 1
+                        if k = 1 then return! mInner1 else return! mInner2
+                    }
+
+                Expect.equal mBindSig.Value 100 "return! Signal initial"
+                Expect.equal bindCalls.Value 1 "Signal.bind binder ran once"
+                inner1.Value <- 101
+                Expect.equal mBindSig.Value 101 "inner Memo update propagates without outer binder re-run"
+                Expect.equal bindCalls.Value 1 "binder still ran only once"
+
+                let mBindMatch =
+                    memo {
+                        owning
+                        comparer evenOut
+                        let! k = keySig |> withComparer mod10
+                        onCleanup (fun () -> bindCleanups.Add k)
+
+                        match k % 2 with
+                        | 0 -> return! mInner2
+                        | _ -> return! mInner1
+                    }
+
+                Expect.equal mBindMatch.Value 101 "match! return! initial"
+                keySig.Value <- 11
+                Expect.equal mBindMatch.Value 101 "withComparer keeps match! binder on 1 -> 11"
+                Expect.isEmpty bindCleanups "no binder scope cleanup on 1 -> 11"
+                keySig.Value <- 2
+                Expect.equal mBindMatch.Value 200 "match! switches inner memo on 2"
+                Expect.sequenceEqual bindCleanups [ 1 ] "old binder scope discharged on key switch"
+
+                // Sequential let! before return!
+                let gateSig = Signal (g, true)
+                let innerKeySig = Signal (g, 1)
+                let seqBindCleanups = ResizeArray<string>()
+
+                let mSeqBind =
+                    memo {
+                        let! active = gateSig
+
+                        if not active then
+                            return! mInner1
+                        else
+                            onCleanup (fun () -> seqBindCleanups.Add "outer-branch")
+                            let! k = innerKeySig
+                            if k = 1 then return! mInner2 else return! mInner1
+                    }
+
+                Expect.equal mSeqBind.Value 200 "sequential let! before return! active branch"
+                innerKeySig.Value <- 2
+                Expect.equal mSeqBind.Value 101 "inner return! re-binds cleanly"
+                Expect.isEmpty seqBindCleanups "outer branch kept while gate true"
+                gateSig.Value <- false
+                Expect.equal mSeqBind.Value 101 "mSeqBind switches to mInner1 when gate becomes false"
+                Expect.sequenceEqual seqBindCleanups [ "outer-branch" ] "switching outer branch disposes sequential child SplitBind"
+
+                // memo.previous and memo.previousOr (before reactive let!, after reactive let!, 0-bind, inert outside)
+                let inertPrev = memo.previous
+                let inertPrevOr = memo.previousOr 7
+                ignore (inertPrev, inertPrevOr)
+
+                let prevSig = Signal (g, 5)
+
+                let mPrevBefore =
+                    memo {
+                        let! prev = memo.previous
+                        let! x = prevSig
+
+                        return
+                            match prev with
+                            | ValueNone -> x
+                            | ValueSome p -> p + x
+                    }
+
+                let mPrevAfter =
+                    memo {
+                        let! x = prevSig
+                        let! prev = memo.previousOr 100
+                        return x + prev
+                    }
+
+                let mPrevCold =
+                    g.Run (fun () ->
+                        memo {
+                            let! p = memo.previousOr 1
+                            return p + prevSig.Value
+                        })
+
+                Expect.equal mPrevBefore.Value 5 "memo.previous before let! initial ValueNone"
+                Expect.equal mPrevAfter.Value 105 "memo.previousOr after let! initial seed 100 + 5"
+                Expect.equal mPrevCold.Value 6 "0-bind memo.previousOr initial"
+                prevSig.Value <- 10
+                Expect.equal mPrevBefore.Value 15 "memo.previous sees previous 5 -> 5 + 10"
+                Expect.equal mPrevAfter.Value 115 "memo.previousOr sees previous 105 -> 105 + 10"
+                Expect.equal mPrevCold.Value 16 "0-bind memo.previousOr sees previous 6 -> 6 + 10"
+            }
+
+            test
+                "Review Focus #3 & #5: memo dynamic match!, nested memo in owning, evalDepth unwind on NotReadyException/exn, try/while/for/use disposal" {
+                use g = new Graph ()
+                let s1 = Signal (g, 1)
+                let stray = Signal (g, 999)
+                let listSig = Signal (g, [ (1, "Alice") ])
+                let proj = g.Run (fun () -> createProjection fst snd (fun () -> listSig.Value))
+                let ownerReads = ref 0
+
+                let owners =
+                    g.Run (fun () ->
+                        createLookup
+                            (fun n _ ->
+                                ownerReads.Value <- ownerReads.Value + 1
+                                n * 10)
+                            (fun _ _ -> Seq.empty)
+                            (fun () -> s1.Value))
+
+                let matchMemo =
+                    memo {
+                        match! proj |> Projection.tryAt 2 with
+                        | None -> return "none"
+                        | Some name ->
+                            let! o = owners |> Lookup.at name
+                            return $"{name}:{o}:{stray.Value}"
+                    }
+
+                Expect.equal matchMemo.Value "none" "dynamic match! initially misses"
+                Expect.equal ownerReads.Value 0 "right arm Lookup.at not queried while None"
+                listSig.Value <- [ (1, "Alice"); (2, "Bob") ]
+                Expect.equal matchMemo.Value "Bob:10:999" "match! switches to Some arm"
+                Expect.equal ownerReads.Value 1 "Lookup.at ran once"
+                stray.Value <- 555
+                Expect.equal matchMemo.Value "Bob:10:999" "terminal BindReturn inside match! arm closes stray tracking"
+
+                // Nested memo constructed inside owning Phase 2 (SuspendForNestedRun)
+                let childCleanups = ResizeArray<int>()
+
+                let outerOwn =
+                    memo {
+                        owning
+                        let! x = s1
+
+                        let child =
+                            memo {
+                                onCleanup (fun () -> childCleanups.Add x)
+                                let! y = stray
+                                return y + x
+                            }
+
+                        return child.Value
+                    }
+
+                Expect.equal outerOwn.Value 556 "nested child memo inside owning Phase 2"
+                s1.Value <- 2
+                Expect.equal outerOwn.Value 557 "outer owning recomputes child"
+                Expect.sequenceEqual childCleanups [ 1 ] "old nested child memo disposed with Phase-2 scope"
+
+                // Review Focus #3: NotReadyException and exn inside dynamic 2nd let! unwind evalDepth cleanly
+                let pendSrc = AsyncSource<int> g
+                let errSrc = Make.Memo (g, (fun _ -> failwith "dyn-2nd-boom"))
+                let dynMode = Signal (g, 0)
+
+                let mFailDyn =
+                    memo {
+                        let! a = dynMode
+
+                        let! b =
+                            (if a = 1 then (pendSrc :> IReactive<int>)
+                             elif a = 2 then (errSrc :> IReactive<int>)
+                             else (s1 :> IReactive<int>))
+
+                        return a + b
+                    }
+
+                Expect.equal mFailDyn.Value 2 "dynamic sequential memo initial ready"
+                dynMode.Value <- 1
+                Expect.equal mFailDyn.TryValue Pending "2nd let! Pending suspends dynamic memo"
+
+                // Immediately construct a top-level static 1-source memo on the same thread!
+                let topAfterPend = memo { let! x = s1 in return x + 1 }
+                let claimAfterPend = memo { let! y = topAfterPend in return y * 10 }
+                Expect.equal claimAfterPend.Value 30 "claimAfterPend computes cleanly"
+#if !RANVIER_TRACE
+                Expect.equal topAfterPend.ObserverCount 0 "evalDepth unwound cleanly after NotReadyException -> topAfterPend fused and was claimed"
+#endif
+                Expect.equal topAfterPend.Value 3 "topAfterPend computes properly"
+
+                dynMode.Value <- 2
+                let dynErr = failedWith mFailDyn.TryValue
+                Expect.equal dynErr.Message "dyn-2nd-boom" "2nd let! exception surfaces"
+
+                let topAfterExn = memo { let! x = s1 in return x + 2 }
+                let claimAfterExn = memo { let! y = topAfterExn in return y * 10 }
+                Expect.equal claimAfterExn.Value 40 "claimAfterExn computes cleanly"
+#if !RANVIER_TRACE
+                Expect.equal topAfterExn.ObserverCount 0 "evalDepth unwound cleanly after exn -> topAfterExn fused and was claimed"
+#endif
+                Expect.equal topAfterExn.Value 4 "topAfterExn computes properly"
+
+                // Review Focus #5 & try/with/finally/while/for inside memo { owning ... }
+                let useLog = ResizeArray<string>()
+                let throwUse = Signal (g, false)
+                let resId = ref 0
+
+                let mUse =
+                    g.Run (fun () ->
+                        memo {
+                            owning
+                            resId.Value <- resId.Value + 1
+                            let tag = $"m{resId.Value}"
+                            use _d = new TrackedDisposable (tag, useLog)
+                            onCleanup (fun () -> useLog.Add ("scope:" + tag))
+                            let! shouldFail = throwUse
+
+                            if shouldFail then
+                                failwith "use-boom"
+
+                            return s1.Value
+                        })
+
+                Expect.equal mUse.Value 2 "mUse initial"
+                Expect.sequenceEqual useLog [ "disp:m1" ] "use disposes deterministically when step returns, before scope discharge"
+                throwUse.Value <- true
+                Expect.equal (failedWith mUse.TryValue).Message "use-boom" "mUse throws cleanly"
+
+                Expect.sequenceEqual
+                    useLog
+                    [ "disp:m1"; "scope:m1"; "disp:m2" ]
+                    "old scope discharges on re-run, and use disposes deterministically on exception unwind"
+
+                // while / for / try-with / try-finally inside memo
+                let mLoops =
+                    g.Run (fun () ->
+                        memo {
+                            let mutable acc = 0
+
+                            for i in [ 1; 2; 3 ] do
+                                acc <- acc + i
+
+                            let mutable k = 0
+
+                            while k < 2 do
+                                k <- k + 1
+                                acc <- acc + s1.Value
+
+                            let finRan = ref false
+
+                            try
+                                try
+                                    return acc + (if finRan.Value then 100 else 0)
+                                finally
+                                    finRan.Value <- true
+                            with _ ->
+                                return -1
+                        })
+
+                Expect.equal mLoops.Value 10 "for + while + try/finally + try/with inside memo (1+2+3 + 2*2 = 10)"
+            }
+
+            test
+                "effect builder: node/unit, static EffectOn cutoff + withComparer, dynamic Bind & match!, ColdPhase, and Review Focus #5 use disposal" {
+                use g = new Graph ()
+                let mod10 = comparer (fun (a: int) b -> a % 10 = b % 10)
+                let keySig = Signal (g, 1)
+                let straySig = Signal (g, 100)
+                let acted = ResizeArray<int>()
+                let effCleanups = ResizeArray<string>()
+                let useLog = ResizeArray<string>()
+
+                // Static EffectOn with `node` + `withComparer` + `use` without Activate()
+                let effNode =
+                    effect {
+                        node
+                        let! k = keySig |> withComparer mod10
+                        use _d = new TrackedDisposable ($"on{k}", useLog)
+                        onCleanup (fun () -> effCleanups.Add $"scope:{k}")
+                        acted.Add (k + straySig.Value)
+                    }
+
+                Expect.equal effNode.Status Status.None "effect { node ... } exposes INode.Status"
+                Expect.sequenceEqual acted [ 101 ] "effect acted initially"
+                Expect.sequenceEqual useLog [ "disp:on1" ] "Review Focus #5: use disposes deterministically after EffectOn action"
+                Expect.isEmpty effCleanups "scope kept alive after act"
+
+                // Changing straySig in closed Phase 2 or changing keySig to equal key under mod10 skips act
+                straySig.Value <- 200
+                keySig.Value <- 11
+                Expect.sequenceEqual acted [ 101 ] "equal key under mod10 and stray mutation skip EffectOn act"
+                Expect.isEmpty effCleanups "scope still preserved on equal key"
+
+                keySig.Value <- 2
+                Expect.sequenceEqual acted [ 101; 202 ] "unequal key re-acts with fresh stray read"
+                Expect.sequenceEqual effCleanups [ "scope:1" ] "old scope discharged before new act"
+                Expect.sequenceEqual useLog [ "disp:on1"; "disp:on2" ] "use disposed deterministically on second act"
+
+                // and! EffectOn cutoff (sum equality comparer)
+                let sA = Signal (g, 1)
+                let sB = Signal (g, 2)
+                let andActed = ResizeArray<int>()
+                let sumCmp = comparer (fun (struct (a1, b1)) (struct (a2, b2)) -> a1 + b1 = a2 + b2)
+
+                effect {
+                    let! (struct (a, b)) =
+                        effect.MergeSources (sA, sB)
+                        |> withComparer sumCmp
+
+                    andActed.Add (a + b)
+                }
+
+                // Also idiomatic `and!` syntax with `let!`
+                let andActedPlain = ResizeArray<int>()
+
+                effect {
+                    let! a = sA
+                    and! b = sB
+                    andActedPlain.Add (a * 10 + b)
+                }
+
+                Expect.sequenceEqual andActed [ 3 ] "and! + withComparer EffectOn initial"
+                Expect.sequenceEqual andActedPlain [ 12 ] "and! EffectOn initial"
+
+                g.Batch (fun () ->
+                    sA.Value <- 2
+                    sB.Value <- 1)
+
+                Expect.sequenceEqual andActed [ 3 ] "and! + withComparer cuts off when key sums equal (1+2 = 2+1)"
+                Expect.sequenceEqual andActedPlain [ 12; 21 ] "plain and! acts on unequal (1,2) -> (2,1)"
+
+                // Dynamic sequential Bind & match! mixing Signal<int>, Memo<string>, () arm, closed act, and use unwind
+                let flagSig = Signal (g, false)
+                let numSig = Signal (g, 10)
+                let msgMemo = Make.Memo (g, (fun _ -> $"n={numSig.Value}"))
+                let dynLog = ResizeArray<string>()
+                let dynUseLog = ResizeArray<string>()
+                let mutable runNo = 0
+
+                let dynEffNode =
+                    g.Run (fun () ->
+                        effect {
+                            node
+
+                            use _d =
+                                new TrackedDisposable (
+                                    (runNo <- runNo + 1
+                                     $"dyn{runNo}"),
+                                    dynUseLog
+                                )
+
+                            match! flagSig with
+                            | false -> dynLog.Add ("off:" + straySig.Value.ToString ())
+                            | true ->
+                                let! s = msgMemo
+
+                                if numSig.Peek < 0 then
+                                    failwith "dyn-eff-boom"
+
+                                dynLog.Add (s + ":" + straySig.Value.ToString ())
+                        })
+
+                // Also verify BoundPhase effect without Activate() where `let!`/`match!` precedes `use`
+                let boundUseLog = ResizeArray<string>()
+
+                let _boundEffNoActivate =
+                    effect {
+                        node
+
+                        match! flagSig with
+                        | true ->
+                            use _d = new TrackedDisposable ("bound-true", boundUseLog)
+                            ()
+                        | false ->
+                            use _d = new TrackedDisposable ("bound-false", boundUseLog)
+                            ()
+                    }
+
+                Expect.sequenceEqual boundUseLog [ "disp:bound-false" ] "BoundPhase effect resolves graph without Activate and disposes use"
+
+                Expect.sequenceEqual dynLog [ "off:200" ] "dynamic match! initial () arm"
+                Expect.sequenceEqual dynUseLog [ "disp:dyn1" ] "use disposed on normal dynamic effect exit"
+                straySig.Value <- 300
+                Expect.sequenceEqual dynLog [ "off:200" ] "straySig inside arm did not subscribe"
+
+                // Updating numSig while flagSig=false does not wake effect (msgMemo not bound yet)
+                numSig.Value <- 20
+                Expect.sequenceEqual dynLog [ "off:200" ] "msgMemo not tracked while flagSig=false"
+
+                flagSig.Value <- true
+                Expect.sequenceEqual dynLog [ "off:200"; "n=20:300" ] "flagSig=true binds msgMemo"
+                Expect.sequenceEqual dynUseLog [ "disp:dyn1"; "disp:dyn2" ] "use disposed on branch 2"
+                Expect.sequenceEqual boundUseLog [ "disp:bound-false"; "disp:bound-true" ] "BoundPhase effect switches branch and disposes use"
+
+                numSig.Value <- -1
+                Expect.equal dynEffNode.Status Status.Error "exception inside dynamic effect surfaces on node.Status"
+
+                Expect.sequenceEqual
+                    dynUseLog
+                    [ "disp:dyn1"; "disp:dyn2"; "disp:dyn3" ]
+                    "Review Focus #5: use disposes deterministically on exception unwind"
+
+                numSig.Value <- 30
+                Expect.equal dynEffNode.Status Status.None "dynamic effect recovers on next update"
+
+                // ColdPhase 0-bind effect on Graph.Current
+                let coldLog = ResizeArray<int>()
+                g.Run (fun () -> effect { coldLog.Add sA.Value })
+                Expect.sequenceEqual coldLog [ 2 ] "0-bind effect ran once on start"
+                sA.Value <- 5
+                Expect.sequenceEqual coldLog [ 2; 5 ] "0-bind effect tracks dynamic signal reads"
+            }
+
+            test
+                "editable and draft builders: graph resolution without Activate, closed Phase 2, previous/previousOr, ColdPhase laziness, and edit retention" {
+                use g = new Graph ()
+                let seedSig = Signal (g, 10)
+                let otherSig = Signal (g, 5)
+                let straySig = Signal (g, 1000)
+
+                // Inert context tokens outside CE
+                ignore (editable.previous, editable.previousOr 0, draft.previous, draft.previousOr 0)
+
+                let eStatic =
+                    editable {
+                        let! x = seedSig
+                        return x + straySig.Value
+                    }
+
+                let dStatic =
+                    draft {
+                        let! a = seedSig
+                        and! b = otherSig
+                        return a + b + straySig.Value
+                    }
+
+                Expect.equal eStatic.Value 1010 "editable static initial"
+                Expect.equal dStatic.Value 1015 "draft static and! initial"
+
+                eStatic.Value <- 42
+                dStatic.Value <- 77
+                Expect.equal eStatic.Value 42 "editable holds local edit"
+                Expect.equal dStatic.Value 77 "draft holds local edit"
+
+                // Changing straySig in closed Phase 2 does NOT drop local edit
+                straySig.Value <- 2000
+                Expect.equal eStatic.Value 42 "editable keeps local edit on closed stray change"
+                Expect.equal dStatic.Value 77 "draft keeps local edit on closed stray change"
+
+                // Changing seedSig drops editable edit, while draft retains edit until Reset()
+                seedSig.Value <- 20
+                Expect.equal eStatic.Value 2020 "editable drops edit when upstream seed changes"
+                Expect.equal dStatic.Value 77 "draft retains edit across upstream seed change"
+                dStatic.Reset ()
+                Expect.equal dStatic.Value 2025 "draft returns to latest seed after Reset()"
+
+                // previous and previousOr inside editable and draft
+                let ePrev =
+                    editable {
+                        let! prev = editable.previous
+                        let! x = seedSig
+
+                        return
+                            match prev with
+                            | ValueNone -> x
+                            | ValueSome p -> p + x
+                    }
+
+                let dPrev =
+                    draft {
+                        let! x = seedSig
+                        let! prev = draft.previousOr 100
+                        return x + prev
+                    }
+
+                Expect.equal ePrev.Value 20 "editable.previous initial ValueNone -> 20"
+                Expect.equal dPrev.Value 120 "draft.previousOr initial seed 100 + 20"
+                seedSig.Value <- 30
+                Expect.equal ePrev.Value 50 "editable.previous sees 20 -> 20 + 30"
+                Expect.equal dPrev.Value 150 "draft.previousOr sees 120 -> 120 + 30"
+
+                // ColdPhase 0-bind laziness
+                let eColdCalls = ref 0
+                let dColdCalls = ref 0
+
+                let eCold =
+                    g.Run (fun () ->
+                        editable {
+                            eColdCalls.Value <- eColdCalls.Value + 1
+                            return seedSig.Value
+                        })
+
+                let dCold =
+                    g.Run (fun () ->
+                        draft {
+                            dColdCalls.Value <- dColdCalls.Value + 1
+                            return seedSig.Value
+                        })
+
+                Expect.equal eColdCalls.Value 0 "editable ColdPhase is lazy at construction"
+                Expect.equal dColdCalls.Value 0 "draft ColdPhase is lazy at construction"
+                Expect.equal eCold.Value 30 "editable ColdPhase runs on read"
+                Expect.equal dCold.Value 30 "draft ColdPhase runs on read"
+                Expect.equal eColdCalls.Value 1 "editable ran once"
+                Expect.equal dColdCalls.Value 1 "draft ran once"
+            }
+
+            test "boundary builder: pending, failed, both orders, comparer, Graph resolution without Activate, closed Phase 2, and ColdPhase laziness" {
+                use g = new Graph ()
+                let src = AsyncSource<int> g
+                let modeSig = Signal (g, 0)
+                let straySig = Signal (g, 10)
+                let bndCleanups = ResizeArray<int>()
+
+                // Resolves outer src.Graph via g.Entered when ambient graph is inactive
+                let bPendingOnly =
+                    boundary {
+                        pending (fun last -> ValueOption.defaultValue -1 last)
+                        let! v = src
+                        return v + straySig.Value
+                    }
+
+                let bFailedOnly =
+                    boundary {
+                        failed (fun ex last ->
+                            if ex.Message = "recover" then
+                                ValueOption.defaultValue 0 last - 1
+                            else
+                                raise ex)
+
+                        let! v = src
+                        return v
+                    }
+
+                // pending; failed; comparer and failed; comparer; pending in different orders
+                let mod10 = comparer (fun (a: int) b -> ((a % 10) + 10) % 10 = ((b % 10) + 10) % 10)
+                let valSig = Signal (g, 6)
+                let bnd1Seen = ResizeArray<int>()
+
+                let bPendingFailedCmp =
+                    boundary {
+                        pending (fun _ -> -10)
+                        failed (fun ex _ -> if ex.Message = "boom" then -20 else raise ex)
+                        comparer mod10
+                        let! m = modeSig
+                        onCleanup (fun () -> bndCleanups.Add m)
+
+                        if m = 1 then
+                            return src.Value
+                        elif m = 2 then
+                            failwith "boom"
+                            return 0
+                        elif m = 3 then
+                            let! x = valSig
+                            return x
+                        else
+                            let! x = src
+                            return x + straySig.Value
+                    }
+
+                let bFailedCmpPending =
+                    boundary {
+                        failed (fun _ _ -> -99)
+                        comparer mod10
+                        pending (fun _ -> -55)
+                        let! v = src
+                        return v
+                    }
+
+                g.Run (fun () -> createEffect (fun () -> bnd1Seen.Add bPendingFailedCmp.Value))
+
+                Expect.equal bPendingOnly.Value -1 "pending handler runs initially"
+                Expect.equal bFailedOnly.TryValue Pending "failed-only propagates Pending"
+                Expect.equal bPendingFailedCmp.Value -10 "pending+failed+comparer handles Pending"
+                Expect.equal bFailedCmpPending.Value -55 "failed+comparer+pending handles Pending"
+
+                src.Settle 5
+                Expect.equal bPendingOnly.Value 15 "pending-only settles (5 + 10)"
+                Expect.equal bFailedOnly.Value 5 "failed-only settles"
+                Expect.equal bPendingFailedCmp.Value 15 "settled Ready"
+                Expect.equal bFailedCmpPending.Value 5 "settled Ready 2"
+
+                // Closed Phase-2 straySig read in bPendingOnly does not re-run boundary
+                straySig.Value <- 20
+                Expect.equal bPendingOnly.Value 15 "closed Phase 2 does not track straySig"
+
+                // Output comparer mod10 suppresses downstream notification when mod10 equal (6 -> 16)
+                modeSig.Value <- 3
+                Expect.sequenceEqual bnd1Seen [ -10; 15; 6 ] "switched to valSig=6 (uneq mod10 vs 15)"
+                valSig.Value <- 16
+                Expect.sequenceEqual bnd1Seen [ -10; 15; 6 ] "output comparer mod10 cuts off downstream (6 -> 16)"
+
+                modeSig.Value <- 2
+                Expect.equal bPendingFailedCmp.Value -20 "failed handler recovers on boom"
+
+                Expect.sequenceEqual
+                    bndCleanups
+                    [ 0; 0; 3; 3 ]
+                    "boundary discharges scope on every re-run (pending settle, mode switches, and cutoff updates)"
+
+                // ColdPhase 0-bind boundary laziness
+                let coldBndCalls = ref 0
+
+                let bCold =
+                    g.Run (fun () ->
+                        boundary {
+                            pending (fun _ -> -1)
+                            coldBndCalls.Value <- coldBndCalls.Value + 1
+                            return src.Value
+                        })
+
+                Expect.equal coldBndCalls.Value 0 "ColdPhase boundary does not execute at construction"
+                Expect.equal bCold.Value 5 "ColdPhase boundary executes on read"
+                Expect.equal coldBndCalls.Value 1 "ColdPhase boundary ran once"
+            }
+
+            test "row builder: projection item + reactive and!/match!, zero extra node allocations, closed return tracking, and factoryRow violation" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let itemsSig = createSignal [ (1, 10); (2, 20) ]
+                let taxSig = createSignal 2
+                let straySig = createSignal 500
+                let rowRuns = ref 0
+
+                let baselineBefore = g.NodeCount
+
+                let baseProj =
+                    createProjectionWith fst (fun item -> fun () -> item ()) (fun () -> itemsSig.Value)
+
+                ignore (baseProj.Get 1)
+                let baseNodesPerRowProj = g.NodeCount - baselineBefore
+
+                let rowBefore = g.NodeCount
+
+                let rowProj =
+                    createProjectionWith
+                        fst
+                        (fun item ->
+                            row {
+                                let! (_, price) = item
+                                and! tax = taxSig
+                                rowRuns.Value <- rowRuns.Value + 1
+                                return price * tax + straySig.Value
+                            })
+                        (fun () -> itemsSig.Value)
+
+                Expect.equal (rowProj.Get 1) 520 "row initial on createProjectionWith (10 * 2 + 500 = 520)"
+                let rowNodesDelta = g.NodeCount - rowBefore
+                Expect.equal rowNodesDelta baseNodesPerRowProj "row builder allocates zero extra nodes compared to hand-written reader"
+
+                let runsAfterKey1 = rowRuns.Value
+                // Mutating straySig read inside closed return does NOT wake row
+                straySig.Value <- 900
+                Expect.equal (rowProj.Get 1) 520 "row closed return does not track straySig"
+                Expect.equal rowRuns.Value runsAfterKey1 "row did not recompute on straySig update"
+
+                // Mutating bound taxSig DOES wake row
+                taxSig.Value <- 3
+                Expect.equal (rowProj.Get 1) 930 "row recomputes on bound taxSig update (10 * 3 + 900 = 930)"
+
+                // Projection.mapWith + createIndexProjectionWith + dynamic match! inside row
+                let indexedProj =
+                    createIndexProjectionWith
+                        (fun item ->
+                            row {
+                                let! (k, v) = item
+                                and! tax = taxSig
+                                return $"{k}:{v * tax}"
+                            })
+                        (fun () -> itemsSig.Value)
+
+                let mappedProj =
+                    rowProj
+                    |> Projection.mapWith (fun k item ->
+                        row {
+                            match! item with
+                            | x when x > 900 ->
+                                let! tax = taxSig
+                                return k + x + tax
+                            | x -> return x
+                        })
+
+                Expect.equal (indexedProj.Get 0) "1:30" "createIndexProjectionWith with row"
+                Expect.equal (mappedProj.Get 1) 934 "Projection.mapWith with row dynamic match! (1 + 930 + 3 = 934)"
+
+                // Owned node inside row closed return raises ScopeMessages.factoryRow
+                let badProj =
+                    createProjectionWith
+                        fst
+                        (fun item ->
+                            row {
+                                let! (_, v) = item
+                                createEffect ignore
+                                return v
+                            })
+                        (fun () -> itemsSig.Value)
+
+                let badEx = Expect.throwsC (fun () -> badProj.Get 1 |> ignore) id
+                Expect.isTrue (isInvalidOperation badEx) "owned node in row throws InvalidOperationException"
+                Expect.stringContains badEx.Message "factory body" "error cites factoryRow scope message"
             }
         ]
