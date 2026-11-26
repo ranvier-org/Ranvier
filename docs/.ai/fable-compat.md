@@ -24,11 +24,13 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Effects.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Bindings.fs | 17 | 17 | 17 | 17 | 17 | 17 | 0 | 0 |
 | EffectSplit.fs | 26 | 26 | 26 | 26 | 26 | 26 | 0 | 0 |
+| MemoSplit.fs | 11 | 11 | 11 | 12 | 12 | 12 | 0 | 0 |
 | AmbientGraph.fs | 12 | 12 | 12 | 12 | 12 | 12 | 6 | 0 |
 | Owners.fs | 23 | 23 | 23 | 23 | 23 | 23 | 0 | 0 |
 | Equality.fs | 26 | 25 | 25 | 26 | 25 | 25 | 8 | 0 |
 | ValueReaders.fs | 22 | 22 | 22 | 22 | 22 | 22 | 0 | 0 |
 | Async.fs | 56 | 50 | 50 | 56 | 50 | 50 | 4 | 0 |
+| AsyncSplit.fs | 8 | 8 | 8 | 9 | 9 | 9 | 0 | 0 |
 | Boundaries.fs | 27 | 27 | 27 | 27 | 27 | 27 | 1 | 0 |
 | Threading.fs | 9 | 9 | 9 | 9 | 9 | 9 | 42 | 0 |
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
@@ -64,11 +66,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Combinators.fs | 273 | 273 | 273 | 273 | 273 | 273 | 3 | 0 |
 | Timed.fs | 33 | 33 | 33 | 42 | 42 | 42 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
+| StreamSplit.fs | 5 | 5 | 5 | 6 | 6 | 6 | 0 | 0 |
+| ValueCombinators.fs | 9 | 9 | 9 | 10 | 10 | 10 | 0 | 0 |
+| MapFusion.fs | 15 | 15 | 15 | 16 | 16 | 16 | 0 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
 | Journal.fs | 86 | 85 | 85 | 89 | 88 | 88 | 3 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
-| NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
+| NullChecks.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Editables.fs | 48 | 48 | 48 | 48 | 48 | 48 | 5 | 0 |
 | MvuBridge.fs | 14 | 14 | 14 | 14 | 14 | 14 | 3 | 0 |
 | QueryComposition.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
@@ -86,7 +91,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1798 | 1784 | 1781 | 2021 | 2003 | 2000 | 161 | 1 |
+| **Total** | 1849 | 1835 | 1832 | 2077 | 2059 | 2056 | 161 | 1 |
 
 ## Tests.fs
 
@@ -177,6 +182,25 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - createEffectOn keeps acting after an action throws
 - createEffectOn fails a run whose compute catches its own purity violation
 - createEffectOn disposed while pending never acts
+
+</details>
+
+## MemoSplit.fs
+
+<details><summary>12 passed in every build and delivery that runs them</summary>
+
+- createMemoOn cuts off on equal Phase 1 key and closes tracking in Phase 2
+- createMemoOnWithComparer and createOwningMemoOnWithComparer cut off downstream on equal output
+- Phase 1 enforces ScopeMode.Pure even in createMemoWithOn and after Phase 2 owns a scope
+- createMemoWithOn preserves Phase 2 scope and value across transient Pending and Failed Phase 1 excursions
+- Phase 2 untracked NotReadyException wraps into InvalidOperationException originating at the memo
+- createMemoWithOn cleanup mutating a Phase 1 source schedules a clean follow-up refresh
+- createMemoWithOn cleanup disposing its enclosing root stops before running the next compute
+- Phase 2 throw counts as keyed on 'T across equal keys and transient Phase 1 Pending or Error
+- createMemoWithOn cleanup self-disposal after Pending restores Status.Pending and PendingSources
+- Memo chain through createMemoWithOn preserves Phase 2 scope on equal key and propagates on unequal key
+- throwing keyEqual and outputEqual comparers fail the memo, preserve scope on key throw, and latch phase2Failure
+- Trace.reconcile holds across createMemoOn and createMemoWithOn lifecycles (traced only)
 
 </details>
 
@@ -391,6 +415,22 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a node's policy overrides the graph's
 - a node without a policy follows the graph's beside one with its own
 - an owning async memo takes its own policy
+
+</details>
+
+## AsyncSplit.fs
+
+<details><summary>9 passed in every build and delivery that runs them</summary>
+
+- equal key leaves active flight uncancelled and settled value un-refetched; compute reads are untracked
+- CancelPrevious and KeepLatest preserve active flights across equal keys and transient Phase 1 unready
+- FinishCurrent, Drop, and DropWhilePending handle equal keys, unready overlays, owed trailing runs, and owed fault drops
+- Queue chains unequal keys in FIFO order and treats Phase 1 Pending or Failed as overlay without appending FIFO faults
+- background flight settle or fault while Phase 1 is Pending or Failed stores into Phase 2 slot and surfaces on recovery
+- createAsyncWithOn enforces Phase 1 Pure, preserves scope on equal or unready keys, re-reads on cleanup write, and stops on self-dispose
+- synchronous NotReadyException inside compute wraps into InvalidOperationException and throwing keyEqual preserves flight
+- task-wrapped NotReadyException in compute wraps into InvalidOperationException for downstream readers, and caught Phase 1 error rethrown in Phase 2 sets ErrorOrigin to self
+- Trace.reconcile holds across createAsyncOn and createAsyncWithOn lifecycles (traced only)
 
 </details>
 
@@ -2054,6 +2094,59 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 </details>
 
+## StreamSplit.fs
+
+<details><summary>6 passed in every build and delivery that runs them</summary>
+
+- equal key keeps open stream running without seed reset; signals read inside start are untracked
+- unequal key cancels previous stream token, resets to seed, and opens a new stream
+- stream items or completion arriving while Phase 1 is Pending or Failed fold in background and surface on recovery
+- synchronous NotReadyException inside start fails with InvalidOperationException and Phase 1/Phase 2 enforce ScopeMode.Pure
+- task-wrapped and fold NotReadyException wrap into InvalidOperationException for downstream readers, and caught Phase 1 error rethrown in Phase 2 sets ErrorOrigin to self
+- Trace.reconcile holds across createStreamOn and createStreamFoldOn lifecycles (traced only)
+
+</details>
+
+## ValueCombinators.fs
+
+<details><summary>10 passed in every build and delivery that runs them</summary>
+
+- map, map2, and zip across all 5 modules work without graph.Activate and close tracking in mapping
+- mapping enforces ScopeMode.Pure, wraps NotReadyException, and clears lastRaised before running
+- cross-graph validation on map2, zip, Signal.bind, and Memo.bind
+- map2 and zip enforce left-to-right Pending and Failed precedence and ErrorOrigin across all 3x3 Reading pairs
+- Signal.bind and Memo.bind split inner ticks from outer binder and preserve scope across transient outer Pending or Failed
+- Review Focus #1: Signal.bind and Memo.bind handle cleanup re-entry and self-disposal after Pending
+- AsyncMemo.bind, bindWithPolicy, AsyncSource.bind, StreamMemo.bind, and StreamMemo.bindFold
+- Review Focus #5: identical-source zip/map2 and shared-diamond map2 evaluate glitch-free and dispose cleanly
+- static combinators mark reader Check when upstream source remains stale after Refresh, and Signal.map2 deduplicates identical source slots
+- Trace.reconcile holds across map, map2, zip, and split bind lifecycles (traced only)
+
+</details>
+
+## MapFusion.fs
+
+<details><summary>16 passed in every build and delivery that runs them</summary>
+
+- 4-stage and 5-stage map chains update, cut off, and propagate Pending/Failed identically across root types
+- B18 clear_fused_ready: Ready x -> Pending/Failed -> Ready x recovers tail without false stage-1 cutoff
+- per-stage cutoff suppresses downstream stages and effects and preserves ReferenceEquals
+- per-stage ErrorOrigin attribution across stages 1..5, NotReadyException wrapping, and Pure violation
+- Review Focus #2: post-warmup lazy de-fusion on m1.Value, second Memo.map, and m1.Dispose preserves ReferenceEquals and 0 extra runs
+- cross-owner boundary does not fuse lifecycle across distinct owners
+- tail.Dispose preserves FreshDirty, Pending, and Failed state on live intermediates across 2..5 stage chains
+- mid-execution de-fusion inside stage callbacks preserves intermediate state without false cutoffs or StackOverflowException
+- EvalSignalLeaf commits Memo.value before settling owed flush, and custom comparer throw is unwrapped
+- 5-stage FusedChainMap refreshes root outside Pure, clears root lastRaised, and tracks stage-3 unready transitions
+- de-fusion inside upstream root refresh preserves intermediate state across 3-stage and 5-stage chains on Run 1 and Run 2
+- de-fusion inside intermediate custom equality comparer preserves values on both true and false comparisons
+- EvalSignalLeaf returns pre-flush snapshot when woken effect mutates root signal during owed flush
+- EvalSignalLeaf custom output comparer defers woken effects and preserves pre-flush snapshot
+- runWithOwner Memo.map attachment onto actively executing Run 1 fused chain avoids duplicate edges and mismatched Runs
+- Trace.reconcile holds across multi-stage Signal.map and Memo.map chains (traced only)
+
+</details>
+
 ## PreviousValues.fs
 
 | Excluded | Reason |
@@ -2281,11 +2374,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## NullChecks.fs
 
-<details><summary>3 passed in every build and delivery that runs them</summary>
+<details><summary>6 passed in every build and delivery that runs them</summary>
 
-- is true for null
-- is false for a value
-- is true for undefined, as isNull is
+- createMemoOn and its variants reject null read, compute, or comparer
+- createAsyncOn and createStreamOn families reject null read, compute, fold, or start
+- Signal, Memo, AsyncMemo, AsyncSource, and StreamMemo combinators reject null sources and callbacks
+- Platform.isNull / is true for null
+- Platform.isNull / is false for a value
+- Platform.isNull / is true for undefined, as isNull is
 
 </details>
 

@@ -381,6 +381,14 @@ module internal NodeFlags =
     /// <summary>Expected value under <c>FusedLeafDirtyMask</c>: FreshDirty ||| Published (Status=None, Active=0, live, unviolated).</summary>
     [<Literal>]
     let FusedLeafDirtyValue = 0x10008
+
+    /// <summary>Memo is claimed as an unread intermediate stage of a fused <c>Memo.map</c> chain.</summary>
+    [<Literal>]
+    let ClaimedFused = 0x00200000
+
+    /// <summary>Memo uses a <c>FusedRunner&lt;'T&gt;</c> (<c>computeKind &gt;= 6uy</c>).</summary>
+    [<Literal>]
+    let FusedMap = 0x00400000
 #endif
 
 /// <summary>
@@ -8624,7 +8632,10 @@ and [<Sealed; NoEquality; NoComparison>] internal MemoNode =
                     this.SetDisposed ()
                     Tracer.NodeDispose (g, this.NodeId)
 #if !RANVIER_TRACE
-                    if not (Platform.isNull this.OwnerMemo) then
+                    if
+                        (this.Flags &&& NodeFlags.FusedMap) <> 0
+                        && not (Platform.isNull this.OwnerMemo)
+                    then
                         (Platform.fastCast<IMemoHandle> this.OwnerMemo).OnOwnerDispose()
 #endif
                     this.SourcesField.Clear (this :> IComputation)
@@ -12159,11 +12170,22 @@ type internal IFusedChainNode =
 type internal FusedRunner<'U>() =
     inherit MemoOnRunner<'U>()
 
+    let mutable ownerNode: MemoNode = Unchecked.defaultof<MemoNode>
     let mutable fusedNext: IFusedChainNode = Platform.nil ()
+
+    member inline _.BindNode(n: MemoNode) =
+        ownerNode <- n
 
     member inline _.FusedNext
         with get () = fusedNext
-        and set (v: IFusedChainNode) = fusedNext <- v
+        and set (v: IFusedChainNode) =
+            fusedNext <- v
+
+            if not (obj.ReferenceEquals (ownerNode, null)) then
+                if Platform.isNull v then
+                    ownerNode.Flags <- ownerNode.Flags &&& ~~~NodeFlags.ClaimedFused
+                else
+                    ownerNode.Flags <- ownerNode.Flags ||| NodeFlags.ClaimedFused
 
     member inline _.IsClaimed = not (Platform.isNull fusedNext)
 
@@ -12611,6 +12633,11 @@ type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: '
         let n = MemoNode (graph, ScopeMode.Pure, Memo<'T>.MemoOnRunFn)
 #endif
 #endif
+#if !RANVIER_TRACE
+        if kind >= 6uy then
+            n.Flags <- n.Flags ||| NodeFlags.FusedMap
+            (Platform.fastCast<FusedRunner<'T>> runner).BindNode n
+#endif
         let memo = Memo<'T>(runner, kind, Unchecked.defaultof<'T>, eq, n)
         memo.Attach ()
         memo
@@ -12620,23 +12647,31 @@ type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: '
         computeObj <- newRunner
         computeKind <- newKind
 
+        if newKind >= 6uy then
+            node.Flags <-
+                (node.Flags &&& ~~~NodeFlags.ClaimedFused)
+                ||| NodeFlags.FusedMap
+
+            (Platform.fastCast<FusedRunner<'T>> newRunner).BindNode node
+        else
+            node.Flags <-
+                node.Flags
+                &&& ~~~(NodeFlags.ClaimedFused ||| NodeFlags.FusedMap)
+
     member inline internal _.SetMaterializedValue(v: 'T) =
         value <- v
 
     member internal this.PublishDeFusedMove(moved: bool) =
         this.FinishPublish (node, node.Graph, moved)
 
-    member inline internal _.IsClaimedFused =
-        computeKind >= 6uy
-        && (Platform.fastCast<FusedRunner<'T>> computeObj).IsClaimed
+    member inline internal _.IsClaimedFused = (node.Flags &&& NodeFlags.ClaimedFused) <> 0
 
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal this.EnsureMaterializedIfClaimed() =
-        if this.IsClaimedFused then
+    member inline internal this.EnsureMaterializedIfClaimed() =
+        if (node.Flags &&& NodeFlags.ClaimedFused) <> 0 then
             this.EnsureMaterializedSlow ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private this.EnsureMaterializedSlow() =
+    member internal this.EnsureMaterializedSlow() =
         node.Graph.Entered (
             "Reading a node",
             fun () ->
@@ -13588,11 +13623,22 @@ type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: '
         member _.MarkCheck() =
             NodeOps.MemoMarkCheck node
 
+#if FABLE_COMPILER
     member this.Status =
 #if !RANVIER_TRACE
         this.EnsureMaterializedIfClaimed ()
 #endif
         node.Status
+#else
+    member this.Status = this.GetStatusFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetStatusFast() =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
+        node.Status
+#endif
 
     member internal this.PendingSource =
 #if !RANVIER_TRACE
@@ -13609,11 +13655,22 @@ type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: '
         else
             [| node.PendingSourceField |] :> seq<INode>
 
+#if FABLE_COMPILER
     member this.Runs =
 #if !RANVIER_TRACE
         this.EnsureMaterializedIfClaimed ()
 #endif
         node.RunsField
+#else
+    member this.Runs = this.GetRunsFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetRunsFast() =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
+        node.RunsField
+#endif
 
     /// <summary>Transparent, tracked read. Suspends the caller if this memo is itself suspended.</summary>
 #if FABLE_COMPILER
@@ -13704,37 +13761,40 @@ type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: '
                 this.ReadUncachedTop n
             else
                 this.ReadSlowGeneral n
-        elif computeKind >= 6uy then
+        elif (n.Flags &&& NodeFlags.FusedMap) <> 0 then
+            this.ReadFusedSlow (n, g)
+        else
+            this.ReadSlowGeneral n
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadFusedSlow(n: MemoNode, g: Graph) : 'T =
+        if (n.Flags &&& NodeFlags.ClaimedFused) <> 0 then
+            this.EnsureMaterializedSlow ()
+            this.ReadSlowGeneral n
+        elif
+            computeKind = 6uy
+            && (n.Flags &&& NodeFlags.FusedLeafDirtyMask) = NodeFlags.FusedLeafDirtyValue
+            && n.ObserverCount = 0
+            && not g.QueuePending
+            && g.CanPullTopDirect ()
+        then
             let runner = Platform.fastCast<FusedRunner<'T>> computeObj
+            let mutable needsSettle = false
 
-            if runner.IsClaimed then
-                this.EnsureMaterializedSlow ()
-                this.ReadSlowGeneral n
-            elif
-                computeKind = 6uy
-                && (n.Flags &&& NodeFlags.FusedLeafDirtyMask) = NodeFlags.FusedLeafDirtyValue
-                && n.ObserverCount = 0
-                && not g.QueuePending
-                && g.CanPullTopDirect ()
-            then
-                let mutable needsSettle = false
+            try
+                needsSettle <- runner.EvalSignalLeaf (box this, n, g, SafeEquality.isSafe equal, equal, value)
+            with _ ->
+                g.CloseLeafPureBody ()
+                n.Flags <- n.Flags &&& ~~~NodeFlags.ActiveMask
+                g.ExitPullFastOnException ()
+                reraise ()
 
-                try
-                    needsSettle <- runner.EvalSignalLeaf (box this, n, g, SafeEquality.isSafe equal, equal, value)
-                with _ ->
-                    g.CloseLeafPureBody ()
-                    n.Flags <- n.Flags &&& ~~~NodeFlags.ActiveMask
-                    g.ExitPullFastOnException ()
-                    reraise ()
-
-                if needsSettle then
-                    this.SettlePullAndRead ()
-                elif (n.Flags &&& NodeFlags.StatusUnreadyMask) <> 0 then
-                    this.RaiseUnready n
-                else
-                    value
+            if needsSettle then
+                this.SettlePullAndRead ()
+            elif (n.Flags &&& NodeFlags.StatusUnreadyMask) <> 0 then
+                this.RaiseUnready n
             else
-                this.ReadSlowGeneral n
+                value
         else
             this.ReadSlowGeneral n
 
@@ -14005,11 +14065,22 @@ type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: '
             else
                 st
 
+#if FABLE_COMPILER
     member this.ErrorOrigin: INode =
 #if !RANVIER_TRACE
         this.EnsureMaterializedIfClaimed ()
 #endif
         Failure.OriginOf node.FailureField
+#else
+    member this.ErrorOrigin: INode = this.GetErrorOriginFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetErrorOriginFast() : INode =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
+        Failure.OriginOf node.FailureField
+#endif
 
     member internal this.Failure =
 #if !RANVIER_TRACE
@@ -14017,11 +14088,22 @@ type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: '
 #endif
         node.FailureField
 
+#if FABLE_COMPILER
     member this.Peek =
 #if !RANVIER_TRACE
         this.EnsureMaterializedIfClaimed ()
 #endif
         value
+#else
+    member this.Peek = this.GetPeekFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetPeekFast() : 'T =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
+        value
+#endif
 
     member internal _.Published =
 #if !RANVIER_TRACE
@@ -20639,6 +20721,12 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
     let eq1 = m1.EncodedEqual
     let eq2 = m2.EncodedEqual
     let eq3 = m3.EncodedEqual
+
+    let safeInterEq =
+        SafeEquality.isSafe eq1
+        && SafeEquality.isSafe eq2
+        && SafeEquality.isSafe eq3
+
     let mutable val1 = Unchecked.defaultof<'A>
     let mutable val2 = Unchecked.defaultof<'B>
     let mutable val3 = Unchecked.defaultof<'C>
@@ -20862,35 +20950,23 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
         let mutable thrownEx: exn = Platform.nil ()
 
         try
-            activeStep <- 1uy
-            runs1 <- runs1 + 1
+            if safeInterEq && prevMask = 7uy then
+                activeStep <- 1uy
+                runs1 <- runs1 + 1
 #if RANVIER_COUNTERS
-            Counters.MemoRecomputed ()
+                Counters.MemoRecomputed ()
 #endif
-            let v1 = f1 sig0.Peek
+                let v1 = f1 sig0.Peek
 
-            if (n.Flags &&& NodeFlags.Violated) <> 0 then
-                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
-
-            if activeStep = 255uy then
-                deFusedVal1 <- v1
-            else
-                let mutable same1 = false
-
-                if (prevMask &&& 1uy) <> 0uy then
-                    deFusedCmp <- 2y
-                    same1 <- ComparerSentinel.equals eq1 val1 v1
-                    deFusedCmp <- -1y
+                if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                    raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
 
                 if activeStep = 255uy then
                     deFusedVal1 <- v1
-                    deFusedCmp <- if same1 then 0y else 1y
-                elif same1 then
+                elif ComparerSentinel.equals null val1 v1 then
                     cutoff <- true
                 else
                     val1 <- v1
-                    readyMask <- readyMask ||| 1uy
-                    publishedMask <- publishedMask ||| 1uy
                     stepIdx <- 2
                     activeStep <- 2uy
                     runs2 <- runs2 + 1
@@ -20904,65 +20980,141 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
 
                     if activeStep = 255uy then
                         deFusedVal2 <- v2
+                    elif ComparerSentinel.equals null val2 v2 then
+                        cutoff <- true
                     else
-                        let mutable same2 = false
+                        val2 <- v2
+                        stepIdx <- 3
+                        activeStep <- 3uy
+                        runs3 <- runs3 + 1
+#if RANVIER_COUNTERS
+                        Counters.MemoRecomputed ()
+#endif
+                        let v3 = f3 v2
 
-                        if (prevMask &&& 2uy) <> 0uy then
-                            deFusedCmp <- 2y
-                            same2 <- ComparerSentinel.equals eq2 val2 v2
-                            deFusedCmp <- -1y
+                        if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                            raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
 
                         if activeStep = 255uy then
-                            deFusedVal2 <- v2
-                            deFusedCmp <- if same2 then 0y else 1y
-                        elif same2 then
+                            deFusedVal3 <- v3
+                        elif ComparerSentinel.equals null val3 v3 then
                             cutoff <- true
                         else
-                            val2 <- v2
-                            readyMask <- readyMask ||| 2uy
-                            publishedMask <- publishedMask ||| 2uy
-                            stepIdx <- 3
-                            activeStep <- 3uy
-                            runs3 <- runs3 + 1
+                            val3 <- v3
+                            stepIdx <- 4
+                            activeStep <- 4uy
+                            n.RunsField <- n.RunsField + 1
 #if RANVIER_COUNTERS
                             Counters.MemoRecomputed ()
 #endif
-                            let v3 = f3 v2
+                            let v4 = f4 v3
 
                             if (n.Flags &&& NodeFlags.Violated) <> 0 then
                                 raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
 
-                            if activeStep = 255uy then
-                                deFusedVal3 <- v3
-                            else
-                                let mutable same3 = false
+                            nextVal <- v4
+            else
+                activeStep <- 1uy
+                runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+                let v1 = f1 sig0.Peek
 
-                                if (prevMask &&& 4uy) <> 0uy then
-                                    deFusedCmp <- 2y
-                                    same3 <- ComparerSentinel.equals eq3 val3 v3
-                                    deFusedCmp <- -1y
+                if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                    raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                if activeStep = 255uy then
+                    deFusedVal1 <- v1
+                else
+                    let mutable same1 = false
+
+                    if (prevMask &&& 1uy) <> 0uy then
+                        deFusedCmp <- 2y
+                        same1 <- ComparerSentinel.equals eq1 val1 v1
+                        deFusedCmp <- -1y
+
+                    if activeStep = 255uy then
+                        deFusedVal1 <- v1
+                        deFusedCmp <- if same1 then 0y else 1y
+                    elif same1 then
+                        cutoff <- true
+                    else
+                        val1 <- v1
+                        readyMask <- readyMask ||| 1uy
+                        publishedMask <- publishedMask ||| 1uy
+                        stepIdx <- 2
+                        activeStep <- 2uy
+                        runs2 <- runs2 + 1
+#if RANVIER_COUNTERS
+                        Counters.MemoRecomputed ()
+#endif
+                        let v2 = f2 v1
+
+                        if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                            raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                        if activeStep = 255uy then
+                            deFusedVal2 <- v2
+                        else
+                            let mutable same2 = false
+
+                            if (prevMask &&& 2uy) <> 0uy then
+                                deFusedCmp <- 2y
+                                same2 <- ComparerSentinel.equals eq2 val2 v2
+                                deFusedCmp <- -1y
+
+                            if activeStep = 255uy then
+                                deFusedVal2 <- v2
+                                deFusedCmp <- if same2 then 0y else 1y
+                            elif same2 then
+                                cutoff <- true
+                            else
+                                val2 <- v2
+                                readyMask <- readyMask ||| 2uy
+                                publishedMask <- publishedMask ||| 2uy
+                                stepIdx <- 3
+                                activeStep <- 3uy
+                                runs3 <- runs3 + 1
+#if RANVIER_COUNTERS
+                                Counters.MemoRecomputed ()
+#endif
+                                let v3 = f3 v2
+
+                                if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                                    raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
 
                                 if activeStep = 255uy then
                                     deFusedVal3 <- v3
-                                    deFusedCmp <- if same3 then 0y else 1y
-                                elif same3 then
-                                    cutoff <- true
                                 else
-                                    val3 <- v3
-                                    readyMask <- readyMask ||| 4uy
-                                    publishedMask <- publishedMask ||| 4uy
-                                    stepIdx <- 4
-                                    activeStep <- 4uy
-                                    n.RunsField <- n.RunsField + 1
+                                    let mutable same3 = false
+
+                                    if (prevMask &&& 4uy) <> 0uy then
+                                        deFusedCmp <- 2y
+                                        same3 <- ComparerSentinel.equals eq3 val3 v3
+                                        deFusedCmp <- -1y
+
+                                    if activeStep = 255uy then
+                                        deFusedVal3 <- v3
+                                        deFusedCmp <- if same3 then 0y else 1y
+                                    elif same3 then
+                                        cutoff <- true
+                                    else
+                                        val3 <- v3
+                                        readyMask <- readyMask ||| 4uy
+                                        publishedMask <- publishedMask ||| 4uy
+                                        stepIdx <- 4
+                                        activeStep <- 4uy
+                                        n.RunsField <- n.RunsField + 1
 #if RANVIER_COUNTERS
-                                    Counters.MemoRecomputed ()
+                                        Counters.MemoRecomputed ()
 #endif
-                                    let v4 = f4 v3
+                                        let v4 = f4 v3
 
-                                    if (n.Flags &&& NodeFlags.Violated) <> 0 then
-                                        raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+                                        if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                                            raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
 
-                                    nextVal <- v4
+                                        nextVal <- v4
         with ex ->
 #if FABLE_COMPILER
             thrownEx <- Thrown.hold ex
