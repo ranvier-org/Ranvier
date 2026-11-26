@@ -57,6 +57,23 @@ the previous publication.
 A published state equal to the previous one, under the graph's equality policy, does not notify
 readers.
 
+## Keep a subscription while its key is unchanged
+
+`createStreamOn read start` tracks the pure `read` and calls `start key ct` untracked when a different key
+settles. `createStreamFoldOn seed fold read start` accumulates from `seed` for each subscription. Capture
+every reactive input needed to choose the stream in `read`. A pending read during synchronous `start` fails
+the node with `InvalidOperationException`.
+
+If `read` becomes pending or failed, readers see that state while the old subscription stays open. Items can
+continue arriving and folding. When `read` returns to the same key, readers see the retained state. A
+different settled key cancels the old token and starts a new subscription on demand.
+
+Use `StreamMemo.map f` to derive a synchronous memo from the published state. `StreamMemo.map2 f left right`
+combines streams on the same graph and `StreamMemo.zip left right` pairs their latest states.
+`StreamMemo.bind start` follows a stream selected by each unequal published key.
+`StreamMemo.bindFold seed fold start` folds its items and resets the accumulator on a switch. See the
+[`stream` builder](computation-expressions.md#async-memos-and-streams) for the corresponding F# syntax.
+
 ## Restarts
 
 A change to a value read by `start` cancels the stream's token, closes the stream and starts a new

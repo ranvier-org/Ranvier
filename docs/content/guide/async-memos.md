@@ -142,6 +142,35 @@ show refused.TryValue, show faulted.TryValue
 
 :::
 
+## Start a flight from a settled key
+
+```fsharp
+let search (http: System.Net.Http.HttpClient) (address: Signal<System.Uri>) =
+    createAsyncOn (fun () -> address.Value)
+        (fun uri _previous ct -> http.GetStringAsync(uri, ct))
+```
+
+The pure `read` tracks all inputs needed to identify the request. Only an unequal settled key goes to the
+flight policy. The flight's `compute key previous ct` runs untracked. A pending or failed key read surfaces on
+the node while preserving the previous key, its flight and its settled value. Recovery to the same key reveals
+its outcome. A synchronous pending read inside `compute` is a computation error.
+
+| Flight body | Graph policy | Per-node policy |
+| --- | --- | --- |
+| Pure | `createAsyncOn read compute` | `createAsyncOnWithPolicy policy read compute` |
+| Owns resources before the first suspending await | `createAsyncWithOn read compute` | `createOwningAsyncOnWithPolicy policy read compute` |
+
+The key check precedes **all** policies. An equal key neither cancels under `CancelPrevious` nor supersedes
+under `KeepLatest`. It adds no `Queue` entry and schedules no trailing `FinishCurrent` request. Under `Drop`
+and `DropWhilePending` it leaves the current admission and failure-retry state alone.
+
+Use `AsyncMemo.map f source` for a synchronous derived `Memo<_>`. `AsyncMemo.map2 f left right` combines two
+settled inputs on the same graph. `AsyncMemo.zip left right` pairs them. `AsyncMemo.bind start source` starts
+another `AsyncMemo<_>` with `start value ct` on each unequal settled value.
+`AsyncMemo.bindWithPolicy policy start source` chooses the overlap policy for that downstream flight. To
+express reactive reads and task awaits in the same block, see the
+[`asyncMemo` builder](computation-expressions.md#async-memos-and-streams).
+
 ### Flight policy
 
 Under Fable, `Queue` applies each outcome on a later microtask even when it and the flights before

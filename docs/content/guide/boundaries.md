@@ -5,6 +5,11 @@ title: Boundaries
 A boundary replaces a pending or failed body with a value your application can display.
 Its body re-runs from the start when a dependency changes.
 
+For explicit reactive inputs, the
+[`boundary` builder](computation-expressions.md#editable-values-drafts-and-boundaries) accepts `pending`,
+`failed` or both. Its `comparer` header selects output equality, as in `createSuspenseWithComparer`,
+`createErrorBoundaryWithComparer` and `createBoundaryWithComparer`.
+
 The examples use a manual dispatcher:
 
 ```fsharp

@@ -18,6 +18,9 @@ name.Reset ()
 
 `Value`, `IsEdited`, `Upstream`, `Peek`, and `Reset ()` behave as on [Editable values](editable.md), with the seed receiving its own previous value ([Memos](memos.md#the-previous-value)).
 
+The [`draft` builder](computation-expressions.md#editable-values-drafts-and-boundaries) accepts
+`draft.previous` and `draft.previousOr seed` for the previous seed, even while a local edit is visible.
+
 ## Pending and failed seeds
 
 An edited draft continues to display its edit when the seed is pending or failed. Without an

@@ -62,6 +62,22 @@ whileFailed, shown.TryValue, price.Status
 (Failed ..., Ready 12, None)
 ```
 
+## Derive work from a settlement
+
+`AsyncSource.map f source` returns a pure memo of the mapped value. `AsyncSource.map2 f left right` and
+`AsyncSource.zip left right` require sources on one graph. They read left to right and propagate a pending or
+failed input before invoking the mapper.
+
+`AsyncSource.bind start source` uses the settled value as the key of a downstream async memo. Repeatedly
+settling the source to the same key preserves the flight even though `Settle` wakes direct readers. For
+example, an external account-selection callback can publish an account ID while `start id ct` fetches its
+details.
+
+To choose a policy or own resources, use one of the
+[split async factories](async-memos.md#start-a-flight-from-a-settled-key) with `(fun () -> source.Value)`. The
+same key check applies to every flight policy. The
+[`asyncMemo` builder](computation-expressions.md#async-memos-and-streams) accepts an async source directly.
+
 ## Equality and check marks
 
 An async source has **no equality cutoff**. Every settlement marks direct readers dirty,

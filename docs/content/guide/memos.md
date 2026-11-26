@@ -332,6 +332,58 @@ Effects take `unit -> unit`. If an effect needs an accumulated value, keep it in
 that memo from the effect.
 :::
 
+## Compute from a settled key
+
+When a search box changes, whitespace edits may leave the query unchanged. Track the trimmed query and do the
+work only when that key changes.
+
+```fsharp
+let searchLabel (query: Signal<string>) =
+    createMemoOn (fun () -> query.Value.Trim()) (sprintf "Results for %s")
+```
+
+`read` runs with tracking open and must be pure. `compute` runs with tracking closed. Reads inside `compute`
+add no dependencies. A synchronously thrown `NotReadyException` there fails the memo with
+`InvalidOperationException`. If `read` goes pending or fails, the memo exposes that state and keeps the
+previous key and computation outcome. Recovery to an equal key reuses the outcome.
+
+| Computation | Graph output equality | Explicit output equality |
+| --- | --- | --- |
+| Pure | `createMemoOn read compute` | `createMemoOnWithComparer cmp read compute` |
+| Owns children and cleanups | `createMemoWithOn read compute` | `createOwningMemoOnWithComparer cmp read compute` |
+
+Input keys use the graph's equality policy in all four functions. An owning computation keeps its scope until
+an unequal key settles or the node is disposed, even when two successive outputs compare equal.
+
+## Compose existing nodes
+
+| Operation | Signal input | Memo input | Result |
+| --- | --- | --- | --- |
+| Transform a value | `Signal.map f s` | `Memo.map f m` | A pure memo with a closed mapping function |
+| Combine independent values | `Signal.map2 f a b` | `Memo.map2 f a b` | A pure memo of `f left right` |
+| Pair independent values | `Signal.zip a b` | `Memo.zip a b` | A memo of an F# tuple |
+| Follow a selected memo | `Signal.bind choose s` | `Memo.bind choose m` | A memo that follows the selected inner memo until the outer key changes |
+
+The operators use the input's graph. Paired sources and a selected inner memo must share that graph. Binary
+reads propagate pending and failure in left-to-right order. The bind callback runs untracked and can create
+children owned for the lifetime of the settled key. An inner update leaves that selection in place.
+
+```fsharp
+let total (price: Signal<decimal>) (quantity: Signal<int>) =
+    Signal.map2 (fun p q -> p * decimal q) price quantity
+    |> Memo.map (sprintf "Total %M")
+```
+
+A chain such as `s |> Signal.map normalize |> Memo.map format` can fuse when the intermediate is unread,
+unobserved and unclaimed, the owner is shared, and tracing and journaling are inactive. If `normalize`
+produces an equal value, `format` stays asleep. Inspecting or sharing the intermediate materializes its node.
+Pending state and the originating stage of a failure remain visible.
+
+For an optional lookup, `createOptionMemo select` keeps the same `Some` instance while its payload compares
+equal. See [selecting one element](collection-updates.fsx#selecting-one-element). The
+[`memo` computation expression](computation-expressions.md#memos-and-effects) expresses maps, independent
+inputs and switches with binds.
+
 ## Equality cutoff
 
 When a memo recomputes to a value equal to its cached result, downstream readers are not re-run

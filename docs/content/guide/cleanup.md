@@ -94,6 +94,10 @@ scope stores the error in its own `Errors`. An effect or memo's scope records it
 `graph.Root.Errors`.
 :::
 
+Use `owner.Attach disposable` to transfer a disposable to an owner. To inspect just the errors recorded during
+an operation, save `owner.ErrorCount` beforehand and call `owner.ErrorsFrom index` afterwards. The returned
+errors follow recording order.
+
 :::details Writes made during cleanup
 
 A write inside a cleanup is visible to the effect's next run and does not start another run ([`in_cleanup_ignores_marks`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Marking.html#in_cleanup_ignores_marks), [`flush_survives_cleanup`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_survives_cleanup)).
