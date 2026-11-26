@@ -41,6 +41,16 @@ controls [
 ]
 ```
 
+## Capture an owner for later work
+
+`getOwner ()` returns the scope new nodes and cleanups will join. Capture it before an await. On the graph
+thread, `runWithOwner owner body` attaches new resources there and preserves the caller's tracking state. A
+disposed owner immediately disposes a child attached to it.
+
+Use `tryGetOwner ()` when a helper can run in a pure computation. It returns `ValueNone` there. Calling
+`getOwner ()` there raises a scope violation and fails the computation even if the helper catches the
+exception. Both functions resolve the active graph.
+
 ## Disposal
 
 :::details Disposal order and nested roots

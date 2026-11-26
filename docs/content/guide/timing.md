@@ -54,6 +54,12 @@ the output becomes pending. Source or comparer failure publishes immediately and
 error origin. Recovery follows the selected timing rule. Dispose the node or its owner to cancel
 timing and detach dependencies. Reads after disposal retain the last published state.
 
+`TimedCombinators` exposes `debounceWith`, `throttleWith`, `throttleFirstWith` and `throttleLastWith` with
+arguments in the order `options duration read graph`. Use `TimedOptions.defaults` for the standard
+configuration. An injected clock supplies `NowMilliseconds` and `CreateTimer`. Each `TimedTimer` supports
+`Arm`, `Disarm` and `Dispose`. A [reactive CE](computation-expressions.md#choose-the-inputs) can bind a
+`Timed<_>` to consume its admitted value.
+
 Timer callbacks post a wake to the graph owner. A queued expiry respects batching and processes
 new source changes before admission. Native callbacks may be late; throttle anchors its next
 cooldown to actual admission time and avoids catch-up bursts. A console graph without a captured

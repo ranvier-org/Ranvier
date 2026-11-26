@@ -14,7 +14,7 @@
 > French anatomist Louis-Antoine Ranvier. A signal jumps from node to node and is regenerated at each
 > one, instead of flowing along every point of the fibre.
 
-> **Preview.** Ranvier is pre-release (`0.2.1` core packages, `0.1.0` DOM packages). Its APIs may change
+> **Preview.** Ranvier is pre-release (`0.2.3` core packages, `0.1.1` DOM packages). Its APIs may change
 > before 1.0. Install from NuGet as [`Ranvier`](https://www.nuget.org/packages/Ranvier), or
 > [`Ranvier.CSharp`](https://www.nuget.org/packages/Ranvier.CSharp) from C#.
 > [`Ranvier.Elmish`](https://www.nuget.org/packages/Ranvier.Elmish) adds an Elmish-style MVU bridge,

@@ -177,6 +177,7 @@ let tests =
                 let t = Signal (g, 10)
                 let seen = ResizeArray ()
 
+                // fsharpanalyzer: ignore-line-next RAN016
                 g.Run (fun () -> createEffectOn (fun () -> s.Value) (fun v -> seen.Add (v + t.Value)))
 
                 t.Value <- 20

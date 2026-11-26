@@ -297,6 +297,15 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
         value.Dispose ()
         stamped.Dispose ()
 
+    member internal _.Graph = graph
+    member internal _.ValueMemo = value
+
+    interface IReactive<'T> with
+        member _.Graph = graph
+
+        member this.ReadTracked() =
+            this.Value
+
 /// <summary>
 /// The functions most code should use. Every node type can be constructed
 /// directly against an explicit <c>Graph</c> — that is what the tests and the
@@ -1068,7 +1077,7 @@ module Api =
         Editable<'T>(Graph.Current, seed, true)
 
 [<Sealed>]
-type private StreamMemoAdapter<'T>(src: StreamMemo<'T>) =
+type internal StreamMemoAdapter<'T>(src: StreamMemo<'T>) =
     inherit CombinatorSource<'T>()
 
     override _.Graph = src.Graph

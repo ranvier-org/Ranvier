@@ -16,6 +16,10 @@ previous result, or use a boundary's fallback. This pending channel follows Soli
 independent of whether a value is out of date.
 :::
 
+For F# code that names its reactive inputs explicitly, start with
+[Reactive computation expressions](computation-expressions.md). For host integration, see
+[DOM contracts and host services](dom.md) and [JSON wire codecs](wire.md).
+
 ## Choose a starting point
 
 - **Setup & basics:** [Installation](installation.md) and [Getting started](getting-started.md) cover NuGet packages, target frameworks, and your first graph. [Examples](examples.md) and the [desktop comparison](../blog/desktop-adaptive.md) show full apps.

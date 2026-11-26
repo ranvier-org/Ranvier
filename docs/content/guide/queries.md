@@ -21,6 +21,13 @@ acquire once per page (`Acquire` and `AcquireOwned` call `Ensure()` synchronousl
 missing or stale loads; call `EnsureAsync()` when you need a `Task<T>` to await publication).
 Only acquired keys load. Same key, same accepted record/request. Reads never start IO.
 
+`Define(fetch)` creates a `QueryFamily<'Key,'T>` using `EqualityComparer<'Key>.Default`. Use
+`Define(keyComparer, fetch)` when distinct representations identify the same remote resource. A
+`QueryLease<'T>` exposes a `QuerySnapshot<'T>` through `State`. `FetchStatus.Fetching` can coexist with
+accepted `Data` during a refresh. `FetchStatus.Idle` means there is no active request. `RefreshAsync ()`
+completes after publication. Disposing the lease releases its interest in that key. See the
+[query API reference](/reference/ranvier-query/index.md).
+
 ## Loading without losing cached data
 
 **Play** the refresh sequence. These maps use existing signal-map primitives as
@@ -149,6 +156,8 @@ pages.InvalidateWhere(fun key -> key.SectionId = saved.SectionId)
 ```
 
 ## Outcomes and contracts
+
+Awaiting `Mutate` yields a `MutationOutcome<_>` with one of these cases.
 
 - `Applied saved`: accept the saved draft.
 - `RequestFailed error`: show the error; no reconciliation or automatic retry.

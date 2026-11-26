@@ -7373,6 +7373,166 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
         member this.Dispose() =
             this.Dispose ()
 
+/// <summary>Pointwise read descriptor for <c>projection.Get key</c>.</summary>
+#if FABLE_COMPILER
+[<Sealed; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type ProjectionAt<'K, 'V when 'K: equality>(key: 'K, projection: Projection<'K, 'V>) =
+    do
+        if isNull (box projection) then
+            nullArg (nameof projection)
+
+    interface IReactive<'V> with
+        member _.Graph = projection.Graph
+
+        member _.ReadTracked() =
+            projection.Get key
+
+/// <summary>Pointwise read descriptor for <c>projection.TryGet key</c>.</summary>
+[<Sealed; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type ProjectionTryAt<'K, 'V when 'K: equality>(key: 'K, projection: Projection<'K, 'V>) =
+    do
+        if isNull (box projection) then
+            nullArg (nameof projection)
+
+    interface IReactive<'V option> with
+        member _.Graph = projection.Graph
+
+        member _.ReadTracked() =
+            projection.TryGet key
+
+/// <summary>Tracked read descriptor for <c>projection.Keys</c>.</summary>
+[<Sealed; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type ProjectionKeys<'K, 'V when 'K: equality>(projection: Projection<'K, 'V>) =
+    do
+        if isNull (box projection) then
+            nullArg (nameof projection)
+
+    interface IReactive<'K[]> with
+        member _.Graph = projection.Graph
+
+        member _.ReadTracked() =
+            projection.Keys
+
+/// <summary>Pointwise read descriptor for <c>lookup.Get key</c>.</summary>
+[<Sealed; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type LookupAt<'K, 'V when 'K: equality>(key: 'K, lookup: Lookup<'K, 'V>) =
+    do
+        if isNull (box lookup) then
+            nullArg (nameof lookup)
+
+    interface IReactive<'V> with
+        member _.Graph = lookup.Graph
+
+        member _.ReadTracked() =
+            lookup.Get key
+
+/// <summary>Pointwise read descriptor for <c>lookup.TryGet key</c>.</summary>
+[<Sealed; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type LookupTryAt<'K, 'V when 'K: equality>(key: 'K, lookup: Lookup<'K, 'V>) =
+    do
+        if isNull (box lookup) then
+            nullArg (nameof lookup)
+
+    interface IReactive<'V option> with
+        member _.Graph = lookup.Graph
+
+        member _.ReadTracked() =
+            lookup.TryGet key
+#else
+[<Struct; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type ProjectionAt<'K, 'V when 'K: equality> =
+    val private key: 'K
+    val private projection: Projection<'K, 'V>
+
+    /// <summary>Creates a pointwise <c>Projection.Get</c> descriptor.</summary>
+    new(key: 'K, projection: Projection<'K, 'V>) =
+        if isNull (box projection) then
+            nullArg (nameof projection)
+
+        { key = key; projection = projection }
+
+    interface IReactive<'V> with
+        member this.Graph = this.projection.Graph
+
+        member this.ReadTracked() =
+            this.projection.Get this.key
+
+/// <summary>Pointwise read descriptor for <c>projection.TryGet key</c>.</summary>
+[<Struct; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type ProjectionTryAt<'K, 'V when 'K: equality> =
+    val private key: 'K
+    val private projection: Projection<'K, 'V>
+
+    /// <summary>Creates a pointwise <c>Projection.TryGet</c> descriptor.</summary>
+    new(key: 'K, projection: Projection<'K, 'V>) =
+        if isNull (box projection) then
+            nullArg (nameof projection)
+
+        { key = key; projection = projection }
+
+    interface IReactive<'V option> with
+        member this.Graph = this.projection.Graph
+
+        member this.ReadTracked() =
+            this.projection.TryGet this.key
+
+/// <summary>Tracked read descriptor for <c>projection.Keys</c>.</summary>
+[<Struct; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type ProjectionKeys<'K, 'V when 'K: equality> =
+    val private projection: Projection<'K, 'V>
+
+    /// <summary>Creates a tracked <c>Projection.Keys</c> descriptor.</summary>
+    new(projection: Projection<'K, 'V>) =
+        if isNull (box projection) then
+            nullArg (nameof projection)
+
+        { projection = projection }
+
+    interface IReactive<'K[]> with
+        member this.Graph = this.projection.Graph
+
+        member this.ReadTracked() =
+            this.projection.Keys
+
+/// <summary>Pointwise read descriptor for <c>lookup.Get key</c>.</summary>
+[<Struct; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type LookupAt<'K, 'V when 'K: equality> =
+    val private key: 'K
+    val private lookup: Lookup<'K, 'V>
+
+    /// <summary>Creates a pointwise <c>Lookup.Get</c> descriptor.</summary>
+    new(key: 'K, lookup: Lookup<'K, 'V>) =
+        if isNull (box lookup) then
+            nullArg (nameof lookup)
+
+        { key = key; lookup = lookup }
+
+    interface IReactive<'V> with
+        member this.Graph = this.lookup.Graph
+
+        member this.ReadTracked() =
+            this.lookup.Get this.key
+
+/// <summary>Pointwise read descriptor for <c>lookup.TryGet key</c>.</summary>
+[<Struct; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type LookupTryAt<'K, 'V when 'K: equality> =
+    val private key: 'K
+    val private lookup: Lookup<'K, 'V>
+
+    /// <summary>Creates a pointwise <c>Lookup.TryGet</c> descriptor.</summary>
+    new(key: 'K, lookup: Lookup<'K, 'V>) =
+        if isNull (box lookup) then
+            nullArg (nameof lookup)
+
+        { key = key; lookup = lookup }
+
+    interface IReactive<'V option> with
+        member this.Graph = this.lookup.Graph
+
+        member this.ReadTracked() =
+            this.lookup.TryGet this.key
+#endif
+
 /// <summary>Views over a <c>Projection</c> that re-run the user function only for keys whose upstream row changed.</summary>
 /// <remarks>
 /// A view is a <c>Projection</c> owned by the scope that creates it. A membership or order change costs O(N) per view, and O(window) for <c>take</c>, <c>skip</c> and <c>sub</c>.
@@ -8288,6 +8448,80 @@ module Projection =
 
         view.PendingExtra <- fun () -> view.HeldOut
         view :> Projection<'K, 'V>
+
+    /// <summary>Pointwise tracked read of <c>projection.Get key</c>, raising <c>KeyNotFoundException</c> while absent.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>projection</c> is null.</exception>
+    let inline at (key: 'K) (projection: Projection<'K, 'V>) : ProjectionAt<'K, 'V> =
+        if isNull (box projection) then
+            nullArg (nameof projection)
+
+        ProjectionAt<'K, 'V>(key, projection)
+
+    /// <summary>Pointwise tracked read of <c>projection.TryGet key</c>, returning <c>None</c> while absent.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>projection</c> is null.</exception>
+    let inline tryAt (key: 'K) (projection: Projection<'K, 'V>) : ProjectionTryAt<'K, 'V> =
+        if isNull (box projection) then
+            nullArg (nameof projection)
+
+        ProjectionTryAt<'K, 'V>(key, projection)
+
+    /// <summary>Tracked read of <c>projection.Keys</c>.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>projection</c> is null.</exception>
+    let inline keys (projection: Projection<'K, 'V>) : ProjectionKeys<'K, 'V> =
+        if isNull (box projection) then
+            nullArg (nameof projection)
+
+        ProjectionKeys<'K, 'V>(projection)
+
+/// <summary>Pointwise bindable read descriptors over a <c>Lookup</c>.</summary>
+[<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Lookup =
+    /// <summary>Pointwise tracked read of <c>lookup.Get key</c>, creating and tracking the cell on demand.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>lookup</c> is null.</exception>
+    let inline at (key: 'K) (lookup: Lookup<'K, 'V>) : LookupAt<'K, 'V> =
+        if isNull (box lookup) then
+            nullArg (nameof lookup)
+
+        LookupAt<'K, 'V>(key, lookup)
+
+    /// <summary>
+    /// Tracked read of <c>lookup.TryGet key</c> when the cell is live, or <c>None</c> untracked without creating a cell.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>lookup</c> is null.</exception>
+    let inline tryAt (key: 'K) (lookup: Lookup<'K, 'V>) : LookupTryAt<'K, 'V> =
+        if isNull (box lookup) then
+            nullArg (nameof lookup)
+
+        LookupTryAt<'K, 'V>(key, lookup)
+
+/// <summary>Pointwise bindable read descriptors over a <c>KeyedCollection</c>.</summary>
+[<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module KeyedCollection =
+    /// <summary>Pointwise tracked read of <c>collection.Rows.Get key</c>, raising <c>KeyNotFoundException</c> while absent.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>collection</c> is null.</exception>
+    let inline at (key: 'K) (collection: KeyedCollection<'K, 'V>) : ProjectionAt<'K, 'V> =
+        if isNull (box collection) then
+            nullArg (nameof collection)
+
+        ProjectionAt<'K, 'V>(key, collection.Rows)
+
+    /// <summary>Pointwise tracked read of <c>collection.Rows.TryGet key</c>, returning <c>None</c> while absent.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>collection</c> is null.</exception>
+    let inline tryAt (key: 'K) (collection: KeyedCollection<'K, 'V>) : ProjectionTryAt<'K, 'V> =
+        if isNull (box collection) then
+            nullArg (nameof collection)
+
+        ProjectionTryAt<'K, 'V>(key, collection.Rows)
+
+    /// <summary>Tracked read of <c>collection.Rows.Keys</c>.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>collection</c> is null.</exception>
+    let inline keys (collection: KeyedCollection<'K, 'V>) : ProjectionKeys<'K, 'V> =
+        if isNull (box collection) then
+            nullArg (nameof collection)
+
+        ProjectionKeys<'K, 'V>(collection.Rows)
 
 /// <summary>Operations over the groups of a <c>Grouping</c>.</summary>
 [<RequireQualifiedAccess>]

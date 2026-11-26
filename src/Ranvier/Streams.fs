@@ -1,6 +1,7 @@
 namespace Ranvier
 
 open System
+open System.Collections.Generic
 open System.Threading
 open System.Threading.Tasks
 
@@ -312,8 +313,8 @@ type internal StreamStarter<'S, 'T>(graph: Graph, seed: 'S, fold: FoldDelegate<'
             StreamRun<'S, 'T>(graph, seed, fold, requester, gen, source, token) :> IStreamRun<'S>
 
 [<Sealed>]
-type internal StreamKeyStarter<'K, 'S, 'T>(graph: Graph, seed: 'S, fold: FoldDelegate<'S, 'T>, read: unit -> 'K, start: StreamStartDelegate<'K, 'T>) =
-    let keyEqual = graph.EncodedComparer<'K>()
+type internal StreamKeyStarter<'K, 'S, 'T>
+    (graph: Graph, seed: 'S, fold: FoldDelegate<'S, 'T>, read: unit -> 'K, start: StreamStartDelegate<'K, 'T>, keyEqual: IEqualityComparer<'K>) =
     let mutable hasKey = false
     let mutable lastKey = Platform.zero<'K>()
     let mutable candidateKey = Platform.zero<'K>()
@@ -1216,18 +1217,29 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
         memo.Attach ()
         memo
 
-    static member internal CreateOn(graph: Graph, read: unit -> 'K, start: 'K -> CancellationToken -> StreamSource<'S>) : StreamMemo<'S> =
+    static member internal CreateOn
+        (graph: Graph, read: unit -> 'K, start: 'K -> CancellationToken -> StreamSource<'S>, ?keyComparer: IEqualityComparer<'K>)
+        : StreamMemo<'S> =
         if UntrackedPhase.isNullFn1 read then
             nullArg (nameof read)
 
         if UntrackedPhase.isNullFn2 start then
             nullArg (nameof start)
 
+        let keyEq =
+            match keyComparer with
+            | Some c ->
+                if Platform.isNull c then
+                    nullArg (nameof keyComparer)
+
+                ComparerSentinel.encode c
+            | None -> graph.EncodedComparer<'K>()
+
         let adaptedFold = FoldFn.adapt (fun (_: 'S) (item: 'S) -> item)
         let adaptedStart = FoldFn.adaptStart start
 
         let keyStarter =
-            StreamKeyStarter<'K, 'S, 'S>(graph, Platform.zero<'S>(), adaptedFold, read, adaptedStart) :> IStreamKeyStarter<'S>
+            StreamKeyStarter<'K, 'S, 'S>(graph, Platform.zero<'S>(), adaptedFold, read, adaptedStart, keyEq) :> IStreamKeyStarter<'S>
 
         let memo =
             new StreamMemo<'S> (graph, Platform.zero<'S>(), true, Platform.nil (), keyStarter)
@@ -1236,8 +1248,14 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
         memo
 
     static member internal CreateFoldOn
-        (graph: Graph, seed: 'S, fold: 'S -> 'T -> 'S, read: unit -> 'K, start: 'K -> CancellationToken -> StreamSource<'T>)
-        : StreamMemo<'S> =
+        (
+            graph: Graph,
+            seed: 'S,
+            fold: 'S -> 'T -> 'S,
+            read: unit -> 'K,
+            start: 'K -> CancellationToken -> StreamSource<'T>,
+            ?keyComparer: IEqualityComparer<'K>
+        ) : StreamMemo<'S> =
         if UntrackedPhase.isNullFn2 fold then
             nullArg (nameof fold)
 
@@ -1247,11 +1265,20 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
         if UntrackedPhase.isNullFn2 start then
             nullArg (nameof start)
 
+        let keyEq =
+            match keyComparer with
+            | Some c ->
+                if Platform.isNull c then
+                    nullArg (nameof keyComparer)
+
+                ComparerSentinel.encode c
+            | None -> graph.EncodedComparer<'K>()
+
         let adaptedFold = FoldFn.adapt fold
         let adaptedStart = FoldFn.adaptStart start
 
         let keyStarter =
-            StreamKeyStarter<'K, 'S, 'T>(graph, seed, adaptedFold, read, adaptedStart) :> IStreamKeyStarter<'S>
+            StreamKeyStarter<'K, 'S, 'T>(graph, seed, adaptedFold, read, adaptedStart, keyEq) :> IStreamKeyStarter<'S>
 
         let memo = new StreamMemo<'S> (graph, seed, false, Platform.nil (), keyStarter)
         memo.Attach ()
@@ -1261,6 +1288,12 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
     interface ITracedNode with
         member _.TraceGraph = box graph
 #endif
+
+    interface IReactive<'S> with
+        member _.Graph = graph
+
+        member this.ReadTracked() =
+            this.Value
 
     interface INode with
         member _.Id = id

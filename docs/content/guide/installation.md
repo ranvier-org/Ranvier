@@ -19,19 +19,19 @@ Applications on .NET 8 and .NET 9 use the `netstandard2.1` build, which omits
 
 ## From NuGet
 
-The guide describes the current source. Packable libraries here carry `0.2.1` (`Ranvier`,
-`Ranvier.CSharp`, `Ranvier.Elmish`, `Ranvier.Query`, `Ranvier.Wire`) or `0.1.0` (`Ranvier.Dom`,
+The guide describes the current source. Packable libraries here carry `0.2.3` (`Ranvier`,
+`Ranvier.CSharp`, `Ranvier.Elmish`, `Ranvier.Query`, `Ranvier.Wire`) or `0.1.1` (`Ranvier.Dom`,
 `Fable.Ranvier.Dom`), each with a `.Traced` variant (`Ranvier.Mcp` is source/tooling only).
 
 | Package | Version | Purpose | Guide |
 | --- | --- | --- | --- |
-| `Ranvier` | `0.2.1` | Core reactive graph, signals, memos, async, collections | [Getting started](getting-started.md) |
-| `Ranvier.CSharp` | `0.2.1` | C# delegates, LINQ collections, XAML bindings, commands | [C#](csharp.md) |
-| `Ranvier.Elmish` | `0.2.1` | MVU bridge (`Mvu`) | [Migrating from Elmish](elmish.md) |
-| `Ranvier.Query` | `0.2.1` | Typed reactive query cache, leases, mutations | [Queries](queries.md) |
-| `Ranvier.Wire` | `0.2.1` | Cross-target JSON wire codecs (.NET + Fable) | — |
-| `Ranvier.Dom` | `0.1.0` | Shared WebKit-derived DOM contracts (.NET host) | — |
-| `Fable.Ranvier.Dom` | `0.1.0` | Browser DOM contracts sharing `Ranvier.Dom` sources | [Fable](../fable/index.md) |
+| `Ranvier` | `0.2.3` | Core reactive graph, signals, memos, async, collections | [Getting started](getting-started.md) |
+| `Ranvier.CSharp` | `0.2.3` | C# delegates, LINQ collections, XAML bindings, commands | [C#](csharp.md) |
+| `Ranvier.Elmish` | `0.2.3` | MVU bridge (`Mvu`) | [Migrating from Elmish](elmish.md) |
+| `Ranvier.Query` | `0.2.3` | Typed reactive query cache, leases, mutations | [Queries](queries.md) |
+| `Ranvier.Wire` | `0.2.3` | Cross-target JSON wire codecs (.NET + Fable) | — |
+| `Ranvier.Dom` | `0.1.1` | Shared WebKit-derived DOM contracts (.NET host) | — |
+| `Fable.Ranvier.Dom` | `0.1.1` | Browser DOM contracts sharing `Ranvier.Dom` sources | [Fable](../fable/index.md) |
 
 ::::::tabs
 :::::tab Core
@@ -47,7 +47,7 @@ dotnet add package Ranvier
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier" Version="0.2.1" />
+<PackageReference Include="Ranvier" Version="0.2.3" />
 ```
 
 :::
@@ -67,7 +67,7 @@ dotnet add package Ranvier.CSharp
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier.CSharp" Version="0.2.1" />
+<PackageReference Include="Ranvier.CSharp" Version="0.2.3" />
 ```
 :::
 ::::
@@ -87,7 +87,7 @@ dotnet add package Ranvier.Elmish
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier.Elmish" Version="0.2.1" />
+<PackageReference Include="Ranvier.Elmish" Version="0.2.3" />
 ```
 
 :::

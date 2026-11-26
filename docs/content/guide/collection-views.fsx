@@ -163,6 +163,10 @@ labels.Get 3
 "3:2"
 ```
 
+When a mapped row reads another reactive input, return a
+[`row` reader](computation-expressions.md#pointwise-collection-reads) from the factory. Bind the item accessor
+and the other input with `and!`. The projection tracks both reads on that key's row memo.
+
 ### Group rows
 
 `Projection.groupBy` groups the keys by a group key. The groups follow the upstream position of each group's first

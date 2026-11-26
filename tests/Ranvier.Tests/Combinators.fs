@@ -3798,6 +3798,7 @@ let ownershipTests =
                 let source = createSignal (items [ 1, 1; 2, 2 ])
                 let up = rows source
                 up.Get 1 |> ignore
+                // fsharpanalyzer: ignore-line-next RAN010
                 let inner = createMemo (fun _ -> (up |> Projection.exists (fun n -> n > 1)).Value)
 
                 match inner.TryValue with

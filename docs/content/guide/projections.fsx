@@ -156,6 +156,41 @@ controls [
 ]
 ```
 
+`Projection.at key rows`, `Projection.tryAt key rows` and `Projection.keys rows` expose these reads as inputs
+to a reactive CE. An optional read handles missing keys while preserving pending and failure for live rows.
+For a projection factory, `row { ... }` returns the reader for each key. See
+[pointwise collection reads](computation-expressions.md#pointwise-collection-reads).
+
+*)
+open Ranvier.CE
+
+let titleCount = memo { let! keys = Projection.keys titles in return keys.Length }
+
+let focusTitle =
+    memo {
+        match! Projection.tryAt 99 titles with
+        | Some title -> return title
+        | None ->
+            let! firstTitle = Projection.at 1 titles
+            return firstTitle
+    }
+
+titleCount.Value, focusTitle.Value
+(**
+
+```text
+(3, "Write the guide")
+```
+
+Use `Projection.ensureUniqueKeys keyOf items` at an input boundary to check for duplicate keys before
+constructing rows. It uses the projection's key equality and raises on the first duplicate.
+
+*)
+
+Projection.ensureUniqueKeys (fun (todo: Todo) -> todo.Id) todos.Value
+
+(**
+
 ## Identity
 
 `keyOf` determines whether an edited item keeps its row:
@@ -330,6 +365,20 @@ inside the stored object.
 
 Without `CreateFirst`, a factory failure is stored on the row and its reads raise that failure.
 With `CreateFirst`, a factory failure fails and rolls back the pass.
+
+For example, store a title memo as the factory result. Consumers can keep its identity across
+edits, and reading the memo follows the latest item for that key.
+
+*)
+
+let titleHandles =
+    createProjectionOnce ProjectionOptions.None _.Id
+        (fun readTodo -> createMemoOn (fun () -> (readTodo ()).Title) String.length)
+        (fun () -> todos.Value)
+
+let titleLength id = (titleHandles.Get id).Value
+
+(**
 
 :::warning Choose the ordinary factory form for collection views and reactive aggregates
 `NewValueReader`, `AsObservableCollection`, all `Projection` view operators (`filter`, `choose`,
@@ -537,6 +586,11 @@ take precedence over `Changed` for the same key ([`key_changes_membership_preced
   `ObjectDisposedException`.
 
 :::
+
+A `ProjectionReader<_>` advances on each `Read ()`. The `ProjectionDelta<_>` it returns includes
+`PreviousKeys` and `Keys`. If `IsReset` is set, rebuild from `Keys`. Otherwise apply each
+`PositionalChange<_>` in `Positional` in sequence. `Move` inserts at its new index after removal. Two
+intervening reorders can cancel each other, leaving `OrderChanged` true and `Positional` empty.
 
 ### Changed key windows
 

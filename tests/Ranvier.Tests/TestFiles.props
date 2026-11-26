@@ -74,5 +74,6 @@
         <Compile Include="$(MSBuildThisFileDirectory)QueryErgonomics.fs" Link="QueryErgonomics.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)../../examples/Ranvier.Query.Dictionary/Navigation.fs" Link="QueryNavigation.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)QueryNavigationTests.fs" Link="QueryNavigationTests.fs" />
+        <Compile Include="$(MSBuildThisFileDirectory)Builders.fs" Link="Builders.fs" />
     </ItemGroup>
 </Project>

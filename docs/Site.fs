@@ -27,6 +27,7 @@ let apiOptions =
                         "Ranvier.Query"
                         "Ranvier.Wire"
                         "Ranvier.Dom"
+                        "Ranvier.Mcp"
                     ] -> FSharpApiSource.create (Path.Combine (beside, $"%s{name}.dll"))
             ]
     }
@@ -93,6 +94,7 @@ let theme =
                                 Menu.page "guide/graph.fsx"
                                 Menu.page "guide/signals.fsx"
                                 Menu.page "guide/memos.md"
+                                Menu.page "guide/computation-expressions.md"
                                 Menu.page "guide/timing.md"
                                 Menu.page "guide/effects.md"
                                 Menu.page "guide/bindings.md"
@@ -133,6 +135,8 @@ let theme =
                     [
                         Menu.section "Ranvier.Query" [ Menu.page "guide/queries.md"; Menu.page "guide/query-navigation.md" ]
                         Menu.section "Ranvier.Elmish" [ Menu.page "guide/elmish.md" ]
+                        Menu.section "Ranvier.Dom" [ Menu.page "guide/dom.md" ]
+                        Menu.section "Ranvier.Wire" [ Menu.page "guide/wire.md" ]
                         Menu.section "Ranvier.Mcp" [ Menu.page "guide/mcp.md" ]
                     ]
                 Menu.section

@@ -1,4 +1,4 @@
-﻿(**
+(**
 ---
 title: Graphs
 ---
@@ -52,8 +52,9 @@ assert (Graph.Current = graph)
 
 :::warning Standard API functions require an active graph
 
-Any call to an `Api`{fsharp} function without an active graph will throw
-`InvalidOperationException`{fsharp}.
+Factories such as `createSignal` and `createMemoOn` use `Graph.Current` and raise
+`InvalidOperationException` without an active graph. Source-based combinators such as
+`Signal.map` and `Memo.bind` use their input's graph. See [Memos](memos.md#compose-existing-nodes).
 ```fsharp
 let outsideMessage =
     try

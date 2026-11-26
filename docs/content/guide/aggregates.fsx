@@ -315,6 +315,24 @@ let highest = scoreRows |> Projection.tryMaxBy id
 (lowest.Value, highest.Value) // (Some 40, Some 75)
 
 (**
+## Follow one group's aggregate
+
+`Grouping.aggregate` receives each inner projection and builds its memo once in the group's scope. To show
+only the total for a selected group, bind `Projection.tryAt group totals` in a
+[reactive computation expression](computation-expressions.md#pointwise-collection-reads). An empty group
+disappears from the outer projection.
+
+*)
+
+let totalsByCompletion =
+    rows
+    |> Projection.groupBy _.Done
+    |> Grouping.aggregate (Projection.sumBy _.Estimate)
+
+totalsByCompletion.TryGet true
+
+(**
+
 ## Lifetime
 
 The aggregate belongs to the scope that created it. Disposing the aggregate, or that scope, disposes it with the views

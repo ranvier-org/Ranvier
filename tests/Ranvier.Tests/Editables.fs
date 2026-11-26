@@ -1065,7 +1065,7 @@ let tests =
                 createEffectOn (fun () -> total.Value) (fun n -> sum.Value <- sum.Value + n + row 7)
 
                 for k in 0..63 do
-                    createEffectOn (fun () -> row k) (fun p -> sum.Value <- sum.Value + p + total.Value)
+                    createEffectOn (fun () -> row k) (fun p -> sum.Value <- sum.Value + p + total.Peek)
 
                 // Each key is written twice in a row, away from its value and back, as the keys rotate.
                 let edit i =

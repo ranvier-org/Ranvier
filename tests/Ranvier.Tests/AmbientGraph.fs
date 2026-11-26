@@ -190,6 +190,7 @@ let tests =
                     if t > 0 then
                         use _ = other.Activate ()
                         beforeIsOther <- obj.ReferenceEquals (Graph.Current, other)
+                        // fsharpanalyzer: ignore-line-next RAN016
                         pulledValue <- m.Value
                         afterIsOther <- obj.ReferenceEquals (Graph.Current, other))
 
@@ -481,6 +482,7 @@ let tests =
 
                 createEffectOn (fun () -> tick.Value) (fun t ->
                     if t > 0 then
+                        // fsharpanalyzer: ignore-line-next RAN016
                         ignore m3.TryValue)
 
                 s.Value <- 1

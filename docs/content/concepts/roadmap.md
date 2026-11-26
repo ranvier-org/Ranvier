@@ -30,8 +30,8 @@ versions and builds. Exploratory items below have no delivery schedule.
   and failure provenance, with bounded-log checkpoints and export.
 - **C# integration:** delegate factories, XAML property/error bindings, commands and observable
   collections. See [C#](../guide/csharp.md).
-- **Wire codecs & DOM contracts:** `Ranvier.Wire` (`0.2.1`) shares depth/item-bounded JSON codecs across
-  .NET and Fable; `Ranvier.Dom` and `Fable.Ranvier.Dom` (`0.1.0`) share generated WebKit DOM
+- **Wire codecs & DOM contracts:** `Ranvier.Wire` (`0.2.3`) shares depth/item-bounded JSON codecs across
+  .NET and Fable; `Ranvier.Dom` and `Fable.Ranvier.Dom` (`0.1.1`) share generated WebKit DOM
   interfaces across native hosts and browsers.
 - **Formal verification:** `proofs/` verifies graph propagation, equality cutoffs, ownership,
   scheduler bounds, concurrency guards, and collection boundary refinements in Rocq and Iris; see

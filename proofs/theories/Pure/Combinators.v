@@ -3,12 +3,13 @@ From Ranvier.Base Require Import Prelude.
 
 Open Scope nat_scope.
 
-(**md # Closed-window `*On` primitives, reactive combinators, and unobserved `map`-chain fusion
+(**md # Closed-window `*On` primitives, reactive combinators, unobserved `map`-chain fusion, and CE step dispatch
 
-This module formalizes and verifies the pure state machines and algebraic refinements (`B16`–`B20`)
+This module formalizes and verifies the pure state machines and algebraic refinements (`B16`–`B21`)
 for Ranvier's closed-window `*On` split-phase computations (`createMemoOn*`, `createAsyncOn*`,
-`createStreamOn*`), static-source combinators (`map`, `map2`, `zip`, `bind`), and single-consumer
-unobserved `map`-chain fusion (`MapFusion`):
+`createStreamOn*`), static-source combinators (`map`, `map2`, `zip`, `bind`), single-consumer
+unobserved `map`-chain fusion (`MapFusion`), and the `Ranvier.CE` computation-expression steps that
+dispatch to them:
 
 1. **`B16` (`memo_on_cutoff_eq`)**: Two-phase `(read, compute)` surfaces Phase 1 `CPending`/`CFailed`
    readings while holding `(mo_has_key, mo_last_key, mo_phase2_out, mo_scope_gen)` intact, restores
@@ -41,7 +42,14 @@ unobserved `map`-chain fusion (`MapFusion`):
    outer scope if and only if outer settles to a new `eq_K`-unequal key, refreshes the bound inner
    source across arbitrary inner `U` transitions with `0` `binder` invocations and `0` scope
    discharges, and preserves the outer key, scope, and inner link across transient outer
-   `CPending`/`CFailed` excursions recovering to an `eq_K`-equal key. *)
+   `CPending`/`CFailed` excursions recovering to an `eq_K`-equal key.
+6. **`B21a` (`ce_dispatch_and_nested_eval_eq`)**: `with_eval_depth` and `with_suspended_run` return
+   `ce_depth` to its entry value on every `RVal`/`RThrow` outcome; `BindReturn` at depth `0`
+   constructs one static node and leaves its callbacks unevaluated, and at depth `S d` evaluates
+   inline with a tracked Phase 1 read, an untracked callback, and zero node allocations of its own.
+7. **`B21b` (`merge_sources_nary_precedence_eq`)**: Right-nested `MergeSources` over $n \ge 2$
+   sources matches the sequential `let!` chain with left-to-right `CPending`/`CFailed` precedence
+   and exact `origin`, and its nested struct-tuple key cuts off iff every component predicate holds. *)
 
 (**md Outcome of reading a reactive source or derived node, carrying the pending source id on
     suspension and both the exception id and `ErrorOrigin` node id on failure. *)
@@ -1760,4 +1768,353 @@ Proof.
     rewrite Hhk, Hlk, Hhas, Heq. simpl.
     rewrite Hbr, Hsg, Hdis, Hbnd, Hsid, Hb_out.
     destruct b_out as [t [id | ex]]; simpl; repeat split; reflexivity.
+Qed.
+
+(** ** B21. CE reentrant step dispatch and n-ary MergeSources precedence *)
+
+(** *** B21a. Reentrant evalDepth step dispatch *)
+
+(**md State of a CE step evaluation on one thread: `InternalCeState.evalDepth` (`ce_depth`), whether
+    reads register dependency edges on the running node (`ce_tracking`), and the number of nodes
+    constructed (`ce_nodes_created`). *)
+Record ce_eval_state := {
+  ce_depth : nat;
+  ce_tracking : bool;
+  ce_nodes_created : nat;
+}.
+
+Definition ce_set_depth (d : nat) (st : ce_eval_state) : ce_eval_state :=
+  {| ce_depth := d; ce_tracking := ce_tracking st; ce_nodes_created := ce_nodes_created st |}.
+
+Definition ce_set_tracking (t : bool) (st : ce_eval_state) : ce_eval_state :=
+  {| ce_depth := ce_depth st; ce_tracking := t; ce_nodes_created := ce_nodes_created st |}.
+
+Definition ce_alloc_node (st : ce_eval_state) : ce_eval_state :=
+  {| ce_depth := ce_depth st; ce_tracking := ce_tracking st;
+     ce_nodes_created := S (ce_nodes_created st) |}.
+
+(**md `finally (InternalCeState.ExitEval d)` (`CeRuntime.CreateDynamicMemo` / `CeRuntime.SuspendNested`):
+    sets `ce_depth := d` and returns the outcome unchanged, on the `RVal v` return and the
+    `RThrow ex` unwind alike. *)
+Definition ce_restore_depth {A : Type} (d : nat) (out : ce_eval_state * result A)
+    : ce_eval_state * result A :=
+  match out with
+  | (st', RVal v) => (ce_set_depth d st', RVal v)
+  | (st', RThrow ex) => (ce_set_depth d st', RThrow ex)
+  end.
+
+(**md `CeRuntime.CreateDynamicMemo` (backed by `MemoDynamic`) around a CE body: `body` runs at
+    depth `S d` for entry depth `d`, followed by `ce_restore_depth d`. *)
+Definition with_eval_depth {A : Type}
+    (body : ce_eval_state -> ce_eval_state * result A) (st : ce_eval_state)
+    : ce_eval_state * result A :=
+  let d := ce_depth st in
+  ce_restore_depth d (body (ce_set_depth (S d) st)).
+
+(**md `CeRuntime.SuspendNested` (`InternalCeState.SuspendForNestedRun`) around `MemoRunner.EvalBound`
+    or a nested `memo` block inside an `owning` Phase 2 callback: `body` runs at depth `0`,
+    followed by `ce_restore_depth d` for entry depth `d`. *)
+Definition with_suspended_run {A : Type}
+    (body : ce_eval_state -> ce_eval_state * result A) (st : ce_eval_state)
+    : ce_eval_state * result A :=
+  let d := ce_depth st in
+  ce_restore_depth d (body (ce_set_depth 0 st)).
+
+(**md `MemoStep<'Phase, 'Prev, 'U>`: `OfFactory n` corresponds to `MemoStatic` (static node `n`,
+    constructed by `MemoRunner.EvalBound`), and `OfInline r` corresponds to `MemoInline`
+    (reading `r`, computed inline on the enclosing node alongside `MemoDynamic`). *)
+Inductive ce_memo_step (U : Type) : Type :=
+  | OfFactory (node : nat)
+  | OfInline (r : comb_reading U).
+
+Arguments OfFactory {U} _.
+Arguments OfInline {U} _.
+
+(**md `UntrackedPhase.wrapPending` over the raw outcome of an untracked callback: a synchronous
+    `NotReadyException` on `src` becomes `RThrow (wrap_ex src)`, the `InvalidOperationException`
+    wrapping it, and any other throw keeps its exception id. *)
+Definition untracked_wrap {U : Type} (wrap_ex : nat -> nat) (raw : comb_reading U) : result U :=
+  match raw with
+  | CReady u => RVal u
+  | CPending src => RThrow (wrap_ex src)
+  | CFailed ex _ => RThrow ex
+  end.
+
+(**md `BindReturn(src, f)` of a CE step on node `self_id`. At depth `0` it constructs one static node
+    and leaves `read` and `f` unevaluated. At a nonzero depth it reads `src` with tracking on, runs
+    `f` with tracking off (`EnterUntrackedPure` / `RunUntracked`), and restores the entry tracking
+    flag. *)
+Definition ce_bind_return_eval {A U : Type}
+    (self_id : nat) (wrap_ex : nat -> nat)
+    (read : ce_eval_state -> comb_reading A)
+    (f : ce_eval_state -> A -> ce_eval_state * comb_reading U)
+    (st : ce_eval_state) : ce_eval_state * ce_memo_step U :=
+  if Nat.eqb (ce_depth st) 0 then
+    (ce_alloc_node st, OfFactory (ce_nodes_created st))
+  else
+    let '(st', out) :=
+      comb_bind (read (ce_set_tracking true st)) st (fun st1 x =>
+        let '(st_f, raw) := f (ce_set_tracking false st1) x in
+        (ce_set_tracking (ce_tracking st1) st_f,
+         result_to_reading self_id (untracked_wrap wrap_ex raw))) in
+    (st', OfInline out).
+
+Lemma ce_restore_depth_eq {A : Type} (d : nat) (st' : ce_eval_state) (res : result A) :
+  ce_restore_depth d (st', res) = (ce_set_depth d st', res).
+Proof. destruct res; reflexivity. Qed.
+
+Lemma ce_bind_return_eval_static {A U : Type}
+    (self_id : nat) (wrap_ex : nat -> nat)
+    (read : ce_eval_state -> comb_reading A)
+    (f : ce_eval_state -> A -> ce_eval_state * comb_reading U)
+    (st : ce_eval_state) :
+  ce_depth st = 0 ->
+  ce_bind_return_eval self_id wrap_ex read f st =
+    (ce_alloc_node st, OfFactory (ce_nodes_created st)).
+Proof. intros Hd. unfold ce_bind_return_eval. rewrite Hd. reflexivity. Qed.
+
+(**md
+**`with_eval_depth` and `with_suspended_run` return `ce_depth` to its entry value on every `RVal`/`RThrow` outcome, `MemoBuilder.BindReturn` at depth `0` constructs one static node (`MemoStatic`) and leaves `read` and `f` unevaluated, and at depth `S d` it evaluates inline (`MemoInline`) with a tracked Phase 1 read, an untracked `f`, and zero node allocations of its own.**
+
+Certifies the reentrant `evalDepth` dispatch of `Ranvier.CE` (`InternalCeState`, `MemoStep<'Phase, 'Prev, 'U>`, and `MemoRunner.EvalBound` / `CeRuntime.ProbeBound`):
+1. `with_eval_depth` (`CeRuntime.CreateDynamicMemo`) runs `body` at depth `S d` and `with_suspended_run` (`CeRuntime.SuspendNested` / `InternalCeState.SuspendForNestedRun`) runs it at depth `0`; both end at the entry depth `d` with the body's outcome `res`, tracking flag, and node count, for `RVal v` and `RThrow ex` alike via `InternalCeState.ExitEval`.
+2. After a dynamic evaluation entered at depth `0` ends with any outcome, including a Phase 1 `NotReadyException` or an exception thrown inside `match!`, the next top-level `MemoBuilder.BindReturn` dispatches statically.
+3. At depth `0`, `ce_bind_return_eval` returns `OfFactory n` (`MemoStatic`) for the fresh node `n = ce_nodes_created st` and increments the node count by one. The result is independent of `read` and `f`.
+4. At depth `S d`, `read` runs with `ce_tracking = true`. An unready Phase 1 reading ends the step with its exact `CPending src` or `CFailed ex orig` and the entry state, leaving `f` unevaluated. A ready reading runs `f` at depth `S d` with `ce_tracking = false` (`EnterUntrackedPure` / `RunUntrackedPureArg`) and the entry node count; the step then restores the entry tracking flag and takes its depth and node count from the result state of `f`.
+5. A synchronous `CPending src` raised by the untracked `f` surfaces as `CFailed (wrap_ex src) self_id`.
+6. `CeRuntime.SuspendNested` around `MemoRunner.EvalBound` (`with_suspended_run` around `ce_bind_return_eval`) constructs one node via `CeRuntime.ProbeBound` and returns to the entry depth, at the top level and for a nested `memo { ... }` inside an `owning` Phase 2 callback alike.
+
+- [A:] Phase 1 source value type.
+- [U:] output type of `f`.
+- [R:] outcome type of `body`.
+- [body:] CE body evaluated under `with_eval_depth` or `with_suspended_run`.
+- [self_id:] node id of the enclosing node, the `origin` of a failure raised by `f`.
+- [wrap_ex:] exception id of the `InvalidOperationException` wrapping a `NotReadyException` on a source.
+- [read:] Phase 1 tracked read of the bound source.
+- [f:] closed-window mapping callback of `return`.
+- [st:] CE state at entry.
+- [d:] the entry depth is `S d` in the inline-evaluation clauses.
+*)
+Theorem ce_dispatch_and_nested_eval_eq (A U R : Type)
+    (body : ce_eval_state -> ce_eval_state * result R)
+    (self_id : nat) (wrap_ex : nat -> nat)
+    (read : ce_eval_state -> comb_reading A)
+    (f : ce_eval_state -> A -> ce_eval_state * comb_reading U)
+    (st : ce_eval_state) (d : nat) :
+  (forall st' res,
+     body (ce_set_depth (S (ce_depth st)) st) = (st', res) ->
+     with_eval_depth body st = (ce_set_depth (ce_depth st) st', res)) /\
+  (forall st' res,
+     body (ce_set_depth 0 st) = (st', res) ->
+     with_suspended_run body st = (ce_set_depth (ce_depth st) st', res)) /\
+  (ce_depth st = 0 ->
+     let st1 := fst (with_eval_depth body st) in
+     ce_bind_return_eval self_id wrap_ex read f st1 =
+       (ce_alloc_node st1, OfFactory (ce_nodes_created st1))) /\
+  (ce_depth st = 0 ->
+     ce_bind_return_eval self_id wrap_ex read f st =
+       (ce_alloc_node st, OfFactory (ce_nodes_created st))) /\
+  (ce_depth st = S d ->
+     let st_read := {| ce_depth := S d; ce_tracking := true;
+                       ce_nodes_created := ce_nodes_created st |} in
+     let st_call := {| ce_depth := S d; ce_tracking := false;
+                       ce_nodes_created := ce_nodes_created st |} in
+     (forall src, read st_read = CPending src ->
+        ce_bind_return_eval self_id wrap_ex read f st = (st, OfInline (CPending src))) /\
+     (forall ex orig, read st_read = CFailed ex orig ->
+        ce_bind_return_eval self_id wrap_ex read f st = (st, OfInline (CFailed ex orig))) /\
+     (forall x st_f raw, read st_read = CReady x -> f st_call x = (st_f, raw) ->
+        ce_bind_return_eval self_id wrap_ex read f st =
+          ({| ce_depth := ce_depth st_f; ce_tracking := ce_tracking st;
+              ce_nodes_created := ce_nodes_created st_f |},
+           OfInline (result_to_reading self_id (untracked_wrap wrap_ex raw)))) /\
+     (forall x st_f src, read st_read = CReady x -> f st_call x = (st_f, CPending src) ->
+        snd (ce_bind_return_eval self_id wrap_ex read f st) =
+          OfInline (CFailed (wrap_ex src) self_id))) /\
+  with_suspended_run
+    (fun s => let '(s', step) := ce_bind_return_eval self_id wrap_ex read f s in (s', RVal step)) st =
+    (ce_alloc_node st, RVal (OfFactory (ce_nodes_created st))).
+Proof.
+  split_and!.
+  - intros st' res Hbody. unfold with_eval_depth. cbv zeta.
+    rewrite Hbody. apply ce_restore_depth_eq.
+  - intros st' res Hbody. unfold with_suspended_run. cbv zeta.
+    rewrite Hbody. apply ce_restore_depth_eq.
+  - intros Hd0. cbv zeta. apply ce_bind_return_eval_static.
+    unfold with_eval_depth. cbv zeta.
+    destruct (body (ce_set_depth (S (ce_depth st)) st)) as [st' res].
+    rewrite ce_restore_depth_eq. simpl. exact Hd0.
+  - apply ce_bind_return_eval_static.
+  - intros Hd. cbv zeta.
+    assert (Hread : ce_set_tracking true st =
+              {| ce_depth := S d; ce_tracking := true; ce_nodes_created := ce_nodes_created st |})
+      by (unfold ce_set_tracking; rewrite Hd; reflexivity).
+    assert (Hcall : ce_set_tracking false st =
+              {| ce_depth := S d; ce_tracking := false; ce_nodes_created := ce_nodes_created st |})
+      by (unfold ce_set_tracking; rewrite Hd; reflexivity).
+    rewrite <- Hread, <- Hcall.
+    assert (Hinline : forall x st_f raw,
+              read (ce_set_tracking true st) = CReady x ->
+              f (ce_set_tracking false st) x = (st_f, raw) ->
+              ce_bind_return_eval self_id wrap_ex read f st =
+                ({| ce_depth := ce_depth st_f; ce_tracking := ce_tracking st;
+                    ce_nodes_created := ce_nodes_created st_f |},
+                 OfInline (result_to_reading self_id (untracked_wrap wrap_ex raw)))).
+    { intros x st_f raw Hr Hf. unfold ce_bind_return_eval. rewrite Hd. cbn [Nat.eqb].
+      rewrite Hr. cbn [comb_bind]. rewrite Hf. reflexivity. }
+    split_and!.
+    + intros src Hr. unfold ce_bind_return_eval. rewrite Hd. cbn [Nat.eqb].
+      rewrite Hr. reflexivity.
+    + intros ex orig Hr. unfold ce_bind_return_eval. rewrite Hd. cbn [Nat.eqb].
+      rewrite Hr. reflexivity.
+    + exact Hinline.
+    + intros x st_f src Hr Hf. rewrite (Hinline x st_f (CPending src) Hr Hf). reflexivity.
+  - unfold with_suspended_run. cbv beta zeta.
+    rewrite ce_bind_return_eval_static by reflexivity.
+    reflexivity.
+Qed.
+
+(** *** B21b. n-ary right-nested MergeSources precedence *)
+
+(**md Right-nested `MergeSources(r_1, MergeSources(r_2, ...))` over $n \ge 2$ source readings:
+    `SLast2 r1 r2` is the innermost pair and `SCons r rest` prepends source `r`. *)
+Inductive source_chain : Type -> Type :=
+  | SLast2 : forall {A B : Type}, comb_reading A -> comb_reading B -> source_chain (A * B)
+  | SCons : forall {A B : Type}, comb_reading A -> source_chain B -> source_chain (A * B).
+
+Arguments SLast2 {A B} _ _.
+Arguments SCons {A B} _ _.
+
+(**md Reading of `MergeSources(r1, r2)` (`MergedSignals`, `MergedMemos`, `MergedReactive`): the pair
+    of both values when both are ready, otherwise the leftmost unready reading. *)
+Definition merge_readings {A B : Type} (r1 : comb_reading A) (r2 : comb_reading B)
+    : comb_reading (A * B) :=
+  match r1, r2 with
+  | CReady a, CReady b => CReady (a, b)
+  | CPending src, _ => CPending src
+  | CFailed ex orig, _ => CFailed ex orig
+  | CReady _, CPending src => CPending src
+  | CReady _, CFailed ex orig => CFailed ex orig
+  end.
+
+(**md Reading of the nested struct tuple of a merged source chain. *)
+Fixpoint eval_merged_chain {T : Type} (sc : source_chain T) : comb_reading T :=
+  match sc in source_chain T0 return comb_reading T0 with
+  | SLast2 r1 r2 => merge_readings r1 r2
+  | SCons r1 rest => merge_readings r1 (eval_merged_chain rest)
+  end.
+
+(**md `comb_bind` on a reading alone, threading state `unit`. *)
+Definition reading_bind {A B : Type} (r : comb_reading A) (k : A -> comb_reading B)
+    : comb_reading B :=
+  snd (comb_bind r tt (fun _ a => (tt, k a))).
+
+(**md Sequential `let! x_1 = r_1 in ... let! x_n = r_n in k (x_1, (..., x_n))` over a source chain. *)
+Fixpoint eval_seq_chain_k {T R : Type} (sc : source_chain T)
+    : (T -> comb_reading R) -> comb_reading R :=
+  match sc in source_chain T0 return (T0 -> comb_reading R) -> comb_reading R with
+  | SLast2 r1 r2 => fun k => reading_bind r1 (fun a => reading_bind r2 (fun b => k (a, b)))
+  | SCons r1 rest => fun k => reading_bind r1 (fun a => eval_seq_chain_k rest (fun t => k (a, t)))
+  end.
+
+(**md Reference sequential body `let! x_1 = r_1 in ... let! x_n = r_n in return (x_1, (..., x_n))`. *)
+Definition eval_seq_chain {T : Type} (sc : source_chain T) : comb_reading T :=
+  eval_seq_chain_k sc CReady.
+
+(**md Component equality predicates of a right-nested struct tuple. *)
+Inductive eq_spec : Type -> Type :=
+  | EqLast2 : forall {A B : Type}, (A -> A -> bool) -> (B -> B -> bool) -> eq_spec (A * B)
+  | EqCons : forall {A B : Type}, (A -> A -> bool) -> eq_spec B -> eq_spec (A * B).
+
+Arguments EqLast2 {A B} _ _.
+Arguments EqCons {A B} _ _.
+
+(**md Settled-key cutoff on a nested struct tuple: the left-to-right `&&` of its component predicates. *)
+Fixpoint eq_chain {T : Type} (eqs : eq_spec T) : T -> T -> bool :=
+  match eqs in eq_spec T0 return T0 -> T0 -> bool with
+  | EqLast2 eq_a eq_b => fun k1 k2 => eq_a (fst k1) (fst k2) && eq_b (snd k1) (snd k2)
+  | EqCons eq_a rest => fun k1 k2 => eq_a (fst k1) (fst k2) && eq_chain rest (snd k1) (snd k2)
+  end.
+
+(**md Each component predicate's result on two nested struct tuples, in component order. *)
+Fixpoint eq_checks {T : Type} (eqs : eq_spec T) : T -> T -> list bool :=
+  match eqs in eq_spec T0 return T0 -> T0 -> list bool with
+  | EqLast2 eq_a eq_b => fun k1 k2 => [eq_a (fst k1) (fst k2); eq_b (snd k1) (snd k2)]
+  | EqCons eq_a rest => fun k1 k2 => eq_a (fst k1) (fst k2) :: eq_checks rest (snd k1) (snd k2)
+  end.
+
+Lemma reading_bind_ready {A : Type} (r : comb_reading A) :
+  reading_bind r CReady = r.
+Proof. destruct r; reflexivity. Qed.
+
+Lemma eval_seq_chain_k_merged {T R : Type} (sc : source_chain T) (k : T -> comb_reading R) :
+  eval_seq_chain_k sc k = reading_bind (eval_merged_chain sc) k.
+Proof.
+  revert R k.
+  induction sc as [A B r1 r2 | A B r1 rest IH]; intros R k; simpl.
+  - destruct r1 as [a | s1 | e1 o1], r2 as [b | s2 | e2 o2]; reflexivity.
+  - destruct r1 as [a | s1 | e1 o1]; [| reflexivity | reflexivity].
+    cbn [reading_bind comb_bind snd merge_readings].
+    rewrite IH. destruct (eval_merged_chain rest) as [t | s | e o]; reflexivity.
+Qed.
+
+Lemma eq_chain_iff_checks {T : Type} (eqs : eq_spec T) (k1 k2 : T) :
+  eq_chain eqs k1 k2 = true <-> Forall (fun b => b = true) (eq_checks eqs k1 k2).
+Proof.
+  revert k1 k2.
+  induction eqs as [A B eq_a eq_b | A B eq_a rest IH]; intros k1 k2; simpl.
+  - rewrite andb_true_iff. split.
+    + intros [Ha Hb]. repeat constructor; assumption.
+    + intros Hall. inversion Hall as [|? ? Ha Hrest]; subst.
+      inversion Hrest as [|? ? Hb _]; subst. split; assumption.
+  - rewrite andb_true_iff, IH. split.
+    + intros [Ha Hrest]. constructor; assumption.
+    + intros Hall. inversion Hall as [|? ? Ha Hrest]; subst. split; assumption.
+Qed.
+
+(**md
+**Right-nested `MergeSources` over $n \ge 2$ sources reads as the sequential `let!` chain, with left-to-right `CPending`/`CFailed` precedence and exact `origin`, and its nested struct-tuple key cuts off iff every component predicate holds.**
+
+Certifies `let! ... and! ...` over $n \ge 2$ sources in `Ranvier.CE` (`MergeSources` returning `MergedSignals`, `MergedMemos`, or `MergedReactive`, nested to the right), generalizing the two-source precedence of `B19`:
+1. `eval_merged_chain sc = eval_seq_chain sc`: the merged reading is the nested tuple of all $n$ ready values, or else the exact `CPending src` or `CFailed ex origin` of the leftmost unready source.
+2. `eq_chain eqs k1 k2 = true` iff every entry of `eq_checks eqs k1 k2` is `true`.
+3. On a `Memo.CreateOn` node (`memo_on_step`, `B16`) under `eq_chain eqs` with no settled key, a run that settles `sc` to `CReady k1` followed by a run that settles `sc'` to `CReady k2` keeps `mo_compute_runs` unchanged on the second run iff `eq_chain eqs k1 k2 = true`.
+
+- [T:] nested struct-tuple type of the merged sources.
+- [U:] Phase 2 output type.
+- [sc:] merged source chain of the first run.
+- [sc':] merged source chain of the second run.
+- [eqs:] component equality predicates.
+- [self_id:] node id of the `Memo.CreateOn` node.
+- [compute:] closed-window Phase 2 body.
+- [st:] node state before the first run.
+- [k1:] settled key of the first run.
+- [k2:] settled key of the second run.
+*)
+Theorem merge_sources_nary_precedence_eq (T U : Type)
+    (sc sc' : source_chain T) (eqs : eq_spec T)
+    (self_id : nat) (compute : T -> result U) (st : memo_on_state T U) (k1 k2 : T) :
+  eval_merged_chain sc = eval_seq_chain sc /\
+  (eq_chain eqs k1 k2 = true <-> Forall (fun b => b = true) (eq_checks eqs k1 k2)) /\
+  (mo_has_key st = false ->
+     eval_merged_chain sc = CReady k1 -> eval_merged_chain sc' = CReady k2 ->
+     let st1 := memo_on_step self_id (eq_chain eqs) compute (eval_merged_chain sc) st in
+     let st2 := memo_on_step self_id (eq_chain eqs) compute (eval_merged_chain sc') st1 in
+     mo_compute_runs st2 = mo_compute_runs st1 <-> eq_chain eqs k1 k2 = true).
+Proof.
+  split_and!.
+  - unfold eval_seq_chain. rewrite eval_seq_chain_k_merged. symmetry. apply reading_bind_ready.
+  - apply eq_chain_iff_checks.
+  - intros Hno H1 H2. cbv zeta. rewrite H1, H2.
+    assert (Hst1 : memo_on_step self_id (eq_chain eqs) compute (CReady k1) st =
+      {| mo_has_key := true;
+         mo_last_key := k1;
+         mo_phase2_out := result_to_reading self_id (compute k1);
+         mo_visible := result_to_reading self_id (compute k1);
+         mo_scope_gen := S (mo_scope_gen st);
+         mo_compute_runs := S (mo_compute_runs st) |})
+      by (unfold memo_on_step; rewrite Hno; reflexivity).
+    rewrite Hst1. unfold memo_on_step. cbn [mo_has_key mo_last_key mo_compute_runs andb].
+    destruct (eq_chain eqs k1 k2); cbn [mo_compute_runs];
+      split; intros Hc; [reflexivity | reflexivity | lia | discriminate].
 Qed.

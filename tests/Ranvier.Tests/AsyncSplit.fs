@@ -69,6 +69,7 @@ let tests =
                 let a =
                     g.Run (fun () ->
                         createAsyncOn (fun () -> List.length items.Value) (fun len _ token ->
+                            // fsharpanalyzer: ignore-line-next RAN016
                             let currentTheme = theme.Value
                             keys.Add len
                             tokens.Add token
@@ -128,6 +129,7 @@ let tests =
                     g.Run (fun () ->
                         createAsyncOn (fun () -> sSync.Value % 10) (fun k _ _ ->
                             syncRuns.Value <- syncRuns.Value + 1
+                            // fsharpanalyzer: ignore-line-next RAN016
                             completed (k + untrackedExtra.Value)))
 
                 aSync.TryValue |> ignore
@@ -723,6 +725,7 @@ let tests =
 
                 let a =
                     createAsyncOn (fun () -> s.Value) (fun x _ _ ->
+                        // fsharpanalyzer: ignore-line-next RAN016
                         let y = pending.Value
                         completed (x + y))
 
@@ -772,6 +775,7 @@ let tests =
                     g.Run (fun () ->
                         createAsyncOn (fun () -> s.Value) (fun x _ _ ->
                             task {
+                                // fsharpanalyzer: ignore-line-next RAN016
                                 let y = pending.Value
                                 return x + y
                             }))

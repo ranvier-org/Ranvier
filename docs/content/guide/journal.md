@@ -172,6 +172,13 @@ traced build `Journal.key` also labels an unlabelled node with the key.
 The settles of an async memo are not recorded: an async memo's flight is a computation over its
 inputs. Route an external result through a keyed `AsyncSource` to journal it.
 
+`JournalEntryKind` identifies a write, settle, failure, message, flush or setup. `JournalPayload`
+distinguishes an encoded value, an empty entry and a non-replayable input. `JournalOrigin` distinguishes an
+external input from one produced by the application's work. `Journal.work` captures a `JournalWork` when that
+work starts. A `JournalSite<_>` from `Journal.messages` identifies the receiving loop.
+
+For a codec shared by .NET and Fable, see [JSON wire codecs](wire.md).
+
 ## MVU messages
 
 `Mvu.journal` registers an MVU loop's messages:

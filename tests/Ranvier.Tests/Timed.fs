@@ -307,6 +307,7 @@ let edgeTests =
                         TimeSpan.Zero
                         (fun () ->
                             try
+                                // fsharpanalyzer: ignore-line-next RAN010
                                 createMemo (fun _ -> 1) |> ignore
                             with _ ->
                                 ()

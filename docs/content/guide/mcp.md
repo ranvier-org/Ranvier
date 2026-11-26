@@ -91,6 +91,10 @@ reads every value. The effect publishes a `Snapshot { Version; Values }`:
 
 `exposure.Snapshot` is safe to read from any thread and does not enter the graph.
 
+The `Expose` functions wrap the corresponding `Exposure.Value`, `Messages`, `MessageShapes` and `Node`
+registrations. After setup, `Shapes` returns the descriptions supplied for message arguments. For overloads
+and adapter options, see the [MCP API reference](/reference/ranvier-mcp/index.md).
+
 ### Reading and dispatching in process
 
 Application code and tests can call the same operations through `Exposure`:
@@ -231,8 +235,7 @@ while the server runs. `tools/mcp-supervise.fsx` serves the application from a c
 On each `tools/call`, when the output's assembly is newer than the running copy, the supervisor starts the new build,
 repeats the client's `initialize`, and dispatches again every message accepted so far, as one `dispatch {messages}`.
 The tool result that follows a reload starts with a line naming the reload and the replay's final state. Resource
-subscriptions end at a reload. A reload waits until the assembly has kept its timestamp for half a second, which costs
-nothing when the build finished earlier; it then takes about 0.35 seconds for the cart sample.
+subscriptions end at a reload. The supervisor waits for the assembly timestamp to stabilize before starting the new build.
 
 ## Calling the tools from the shell
 
@@ -242,13 +245,13 @@ nothing when the build finished earlier; it then takes about 0.35 seconds for th
 dotnet fsi --quiet tools/mcp-call.fsx examples/Ranvier.Mcp.Sample/bin/Debug/net10.0/Ranvier.Mcp.Sample.dll explain '{"node": "total", "messages": [{"message": "add_item", "args": {"sku": "a", "unitPrice": 250, "quantity": 2}}]}'
 ```
 
-Each call starts the application, runs the handshake, makes the call and stops the application, in about 1.7 seconds
-for the samples. Two calls share no state, so `explain {node, messages}` and `dispatch {messages}` carry the whole
-sequence; a rebuild needs no supervisor. `--list` prints the server's instructions and each tool's description and
+Each call starts the application, runs the handshake, makes the call and stops the application.
+Two calls share no state, so `explain {node, messages}` and `dispatch {messages}` carry the whole
+sequence. A rebuild needs no supervisor. `--list` prints the server's instructions and each tool's description and
 argument names. The exit code is 1 for a tool error.
 
 An agent reaches the tools through its shell, described in the project's `CLAUDE.md` or `AGENTS.md`, with no MCP
 server configured. The tool search before the first call goes, and a check after a fix runs in the same command as the
-build: `dotnet build ... && dotnet fsi --quiet tools/mcp-call.fsx ... dispatch '...'`. On the nine-file store task
-this took half the requests of the baseline without tools, and 0.60× its tokens; see
+build: `dotnet build ... && dotnet fsi --quiet tools/mcp-call.fsx ... dispatch '...'`. For request and token
+counts from the store experiment, see
 [Research on agents and the MCP tools](https://github.com/ranvier-org/Ranvier/blob/master/docs/research/2026-10-26-mcp-agent-experiments.md).

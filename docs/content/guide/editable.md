@@ -36,6 +36,10 @@ graph.Run (fun () ->
 
 `seed` is a pure derivation, like a `createMemo` body, and receives the seed's own last value.
 
+The [`editable` builder](computation-expressions.md#editable-values-drafts-and-boundaries) binds the seed's
+inputs explicitly. Use `editable.previous` or `editable.previousOr seed` to keep part of the previous upstream
+value.
+
 ### When an edit is dropped
 
 `createEditable` drops its edit when the seed publishes a different value under the graph's
