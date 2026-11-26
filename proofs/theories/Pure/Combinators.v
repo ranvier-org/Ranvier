@@ -1793,8 +1793,9 @@ Definition ce_alloc_node (st : ce_eval_state) : ce_eval_state :=
   {| ce_depth := ce_depth st; ce_tracking := ce_tracking st;
      ce_nodes_created := S (ce_nodes_created st) |}.
 
-(**md `finally (exitEval d)`: sets `ce_depth := d` and returns the outcome unchanged, on the `RVal v`
-    return and the `RThrow ex` unwind alike. *)
+(**md `finally (InternalCeState.ExitEval d)` (`CeRuntime.CreateDynamicMemo` / `CeRuntime.SuspendNested`):
+    sets `ce_depth := d` and returns the outcome unchanged, on the `RVal v` return and the
+    `RThrow ex` unwind alike. *)
 Definition ce_restore_depth {A : Type} (d : nat) (out : ce_eval_state * result A)
     : ce_eval_state * result A :=
   match out with
@@ -1802,24 +1803,26 @@ Definition ce_restore_depth {A : Type} (d : nat) (out : ce_eval_state * result A
   | (st', RThrow ex) => (ce_set_depth d st', RThrow ex)
   end.
 
-(**md `DynamicMemoFactory` around a CE body: `body` runs at depth `S d` for entry depth `d`, followed
-    by `ce_restore_depth d`. *)
+(**md `CeRuntime.CreateDynamicMemo` (backed by `MemoDynamic`) around a CE body: `body` runs at
+    depth `S d` for entry depth `d`, followed by `ce_restore_depth d`. *)
 Definition with_eval_depth {A : Type}
     (body : ce_eval_state -> ce_eval_state * result A) (st : ce_eval_state)
     : ce_eval_state * result A :=
   let d := ce_depth st in
   ce_restore_depth d (body (ce_set_depth (S d) st)).
 
-(**md `suspendForNestedRun` around a nested `memo.Run` inside an `owning` Phase 2 callback: `body`
-    runs at depth `0`, followed by `ce_restore_depth d` for entry depth `d`. *)
+(**md `CeRuntime.SuspendNested` (`InternalCeState.SuspendForNestedRun`) around `MemoRunner.EvalBound`
+    or a nested `memo` block inside an `owning` Phase 2 callback: `body` runs at depth `0`,
+    followed by `ce_restore_depth d` for entry depth `d`. *)
 Definition with_suspended_run {A : Type}
     (body : ce_eval_state -> ce_eval_state * result A) (st : ce_eval_state)
     : ce_eval_state * result A :=
   let d := ce_depth st in
   ce_restore_depth d (body (ce_set_depth 0 st)).
 
-(**md `MemoStep<BoundPhase, 'U>`: `OfFactory n` is static node `n`, constructed by `Run`, and
-    `OfInline r` is reading `r`, computed inline on the enclosing node. *)
+(**md `MemoStep<'Phase, 'Prev, 'U>`: `OfFactory n` corresponds to `MemoStatic` (static node `n`,
+    constructed by `MemoRunner.EvalBound`), and `OfInline r` corresponds to `MemoInline`
+    (reading `r`, computed inline on the enclosing node alongside `MemoDynamic`). *)
 Inductive ce_memo_step (U : Type) : Type :=
   | OfFactory (node : nat)
   | OfInline (r : comb_reading U).
@@ -1871,15 +1874,15 @@ Lemma ce_bind_return_eval_static {A U : Type}
 Proof. intros Hd. unfold ce_bind_return_eval. rewrite Hd. reflexivity. Qed.
 
 (**md
-**`with_eval_depth` and `with_suspended_run` return `ce_depth` to its entry value on every `RVal`/`RThrow` outcome, `BindReturn` at depth `0` constructs exactly one static node and leaves `read` and `f` unevaluated, and at depth `S d` it evaluates inline with a tracked Phase 1 read, an untracked `f`, and zero node allocations of its own.**
+**`with_eval_depth` and `with_suspended_run` return `ce_depth` to its entry value on every `RVal`/`RThrow` outcome, `MemoBuilder.BindReturn` at depth `0` constructs one static node (`MemoStatic`) and leaves `read` and `f` unevaluated, and at depth `S d` it evaluates inline (`MemoInline`) with a tracked Phase 1 read, an untracked `f`, and zero node allocations of its own.**
 
-Certifies the reentrant `evalDepth` dispatch of `Ranvier.CE` (`InternalCeState`, `MemoStep<'Phase, 'U>`, and the `BoundPhase` `Run`):
-1. `with_eval_depth` runs `body` at depth `S d` and `with_suspended_run` runs it at depth `0`; both end at the entry depth `d` with the body's outcome `res`, tracking flag, and node count, for `RVal v` and `RThrow ex` alike.
-2. After a dynamic evaluation entered at depth `0` ends with any outcome, including a Phase 1 `NotReadyException` or an exception thrown inside `match!`, the next top-level `BindReturn` dispatches statically.
-3. At depth `0`, `ce_bind_return_eval` returns `OfFactory n` for the fresh node `n = ce_nodes_created st` and increments the node count by one. The result is independent of `read` and `f`.
-4. At depth `S d`, `read` runs with `ce_tracking = true`. An unready Phase 1 reading ends the step with its exact `CPending src` or `CFailed ex orig` and the entry state, leaving `f` unevaluated. A ready reading runs `f` at depth `S d` with `ce_tracking = false` and the entry node count; the step then restores the entry tracking flag and takes its depth and node count from the result state of `f`.
+Certifies the reentrant `evalDepth` dispatch of `Ranvier.CE` (`InternalCeState`, `MemoStep<'Phase, 'Prev, 'U>`, and `MemoRunner.EvalBound` / `CeRuntime.ProbeBound`):
+1. `with_eval_depth` (`CeRuntime.CreateDynamicMemo`) runs `body` at depth `S d` and `with_suspended_run` (`CeRuntime.SuspendNested` / `InternalCeState.SuspendForNestedRun`) runs it at depth `0`; both end at the entry depth `d` with the body's outcome `res`, tracking flag, and node count, for `RVal v` and `RThrow ex` alike via `InternalCeState.ExitEval`.
+2. After a dynamic evaluation entered at depth `0` ends with any outcome, including a Phase 1 `NotReadyException` or an exception thrown inside `match!`, the next top-level `MemoBuilder.BindReturn` dispatches statically.
+3. At depth `0`, `ce_bind_return_eval` returns `OfFactory n` (`MemoStatic`) for the fresh node `n = ce_nodes_created st` and increments the node count by one. The result is independent of `read` and `f`.
+4. At depth `S d`, `read` runs with `ce_tracking = true`. An unready Phase 1 reading ends the step with its exact `CPending src` or `CFailed ex orig` and the entry state, leaving `f` unevaluated. A ready reading runs `f` at depth `S d` with `ce_tracking = false` (`EnterUntrackedPure` / `RunUntrackedPureArg`) and the entry node count; the step then restores the entry tracking flag and takes its depth and node count from the result state of `f`.
 5. A synchronous `CPending src` raised by the untracked `f` surfaces as `CFailed (wrap_ex src) self_id`.
-6. The `BoundPhase` `Run`, `with_suspended_run` around `ce_bind_return_eval`, constructs one node and returns to the entry depth, at the top level and for a nested `memo { ... }` inside an `owning` Phase 2 callback alike.
+6. `CeRuntime.SuspendNested` around `MemoRunner.EvalBound` (`with_suspended_run` around `ce_bind_return_eval`) constructs one node via `CeRuntime.ProbeBound` and returns to the entry depth, at the top level and for a nested `memo { ... }` inside an `owning` Phase 2 callback alike.
 
 - [A:] Phase 1 source value type.
 - [U:] output type of `f`.

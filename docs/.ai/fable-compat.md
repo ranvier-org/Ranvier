@@ -83,7 +83,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| Builders.fs | 28 | 28 | 28 | 28 | 28 | 28 | 0 | 3 |
+| Builders.fs | 29 | 29 | 29 | 29 | 29 | 29 | 0 | 3 |
 | VendoredThoth.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | WireDecoding.fs | 31 | 31 | 31 | 31 | 31 | 31 | 2 | 0 |
 | NumericDecoding.fs | 66 | 66 | 66 | 66 | 66 | 66 | 1 | 0 |
@@ -92,7 +92,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1877 | 1863 | 1860 | 2105 | 2087 | 2084 | 161 | 4 |
+| **Total** | 1878 | 1864 | 1861 | 2106 | 2088 | 2085 | 161 | 4 |
 
 ## Tests.fs
 
@@ -2575,7 +2575,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | part of: Review Focus #2 & #5: asyncMemo keyComparer, match!, Phase-2 pending, use across await | ValueTask is a .NET BCL struct. |
 | part of: Task 4 Fix Round 1: ColdPhase closed/B17, token+static CreateOn+withComparer, and control flow | IValueTaskSource and ValueTask are .NET BCL types. |
 
-<details><summary>28 passed in every build and delivery that runs them</summary>
+<details><summary>29 passed in every build and delivery that runs them</summary>
 
 - IReactive<'T> resolves Graph without Activate and ReadTracked delegates across all 8 reactive node types
 - BoundaryAdapter, TimedAdapter, and StreamMemoAdapter work via CombinatorMemos.createSourceMap
@@ -2605,6 +2605,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - stream builder: latest & fold, withComparer, throwing keyComparer, reset, ct, and ColdPhase
 - Task 4 Fix Round 1: ColdPhase closed/B17, token+static CreateOn+withComparer, and control flow
 - Task 4 Fix Round 2: WithContext SuspendNested reentrancy inside dynamic memo and boundary
+- Final review fixes: withComparer propagated across and!-merged keys and RowBuilder cross-graph MergeSources
 
 </details>
 

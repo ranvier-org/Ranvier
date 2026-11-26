@@ -430,10 +430,122 @@ type InternalCeState =
         prev
 #endif
 
+#if FABLE_COMPILER
+/// <summary>Non-generic base class exposing custom Phase-1 key comparers without Fable interface/generic type tests.</summary>
+[<AbstractClass; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type CustomKeyReactiveBase() =
+    abstract CustomKeyComparerObj: obj
+    abstract BuildComponentComparerObj: unit -> obj
+#else
+/// <summary>Non-generic bridge exposing custom Phase-1 key comparers without Fable generic type tests.</summary>
+type internal ICustomKeyReactive =
+    abstract CustomKeyComparerObj: obj
+    abstract BuildComponentComparerObj: unit -> obj
+#endif
+
+/// <summary>Composite Phase-1 key comparer for <c>and!</c>-merged struct tuples where at least one arm carries <c>withComparer</c>.</summary>
+[<Sealed; NoEquality; NoComparison>]
+type internal PairKeyComparer<'A, 'B>(eqA: IEqualityComparer<'A>, eqB: IEqualityComparer<'B>) =
+    static member inline private HashEncoded<'X>(eq: IEqualityComparer<'X>, x: 'X) : int =
+#if FABLE_COMPILER
+        if Platform.isNull (box eq) then
+            LanguagePrimitives.PhysicalHash (box x)
+        elif Platform.isNull (box x) then
+            0
+        else
+            eq.GetHashCode x
+#else
+        if typeof<'X>.IsValueType then
+            if obj.ReferenceEquals (eq, null) then
+                EqualityComparer<'X>.Default.GetHashCode x
+            else
+                eq.GetHashCode x
+        elif obj.ReferenceEquals (eq, null) then
+            LanguagePrimitives.PhysicalHash (box x)
+        elif obj.ReferenceEquals (box x, null) then
+            0
+        else
+            eq.GetHashCode x
+#endif
+
+    interface IEqualityComparer<struct ('A * 'B)> with
+        member _.Equals(struct (a1, b1), struct (a2, b2)) =
+            ComparerSentinel.equals eqA a1 a2
+            && ComparerSentinel.equals eqB b1 b2
+
+        member _.GetHashCode(struct (a, b)) =
+            let ha = PairKeyComparer<'A, 'B>.HashEncoded(eqA, a)
+            let hb = PairKeyComparer<'A, 'B>.HashEncoded(eqB, b)
+            (ha * 397) ^^^ hb
+
+module private CustomKeyMerge =
+    let private tryCustomObj (source: obj) : obj =
+#if FABLE_COMPILER
+        match source with
+        | :? CustomKeyReactiveBase as custom -> custom.CustomKeyComparerObj
+        | _ -> null
+#else
+        match source with
+        | :? ICustomKeyReactive as custom -> custom.CustomKeyComparerObj
+        | _ -> null
+#endif
+
+    let tryCustomComparer<'K> (source: IReactive<'K>) : IEqualityComparer<'K> voption =
+        let cmpObj = tryCustomObj (box source)
+
+        if Platform.isNull cmpObj then
+            ValueNone
+        else
+            ValueSome (unbox<IEqualityComparer<'K>> cmpObj)
+
+    let private encodeComponent<'T> (graph: Graph) (source: IReactive<'T>) (customObj: obj) : IEqualityComparer<'T> =
+        if not (Platform.isNull customObj) then
+            ComparerSentinel.encode (unbox<IEqualityComparer<'T>> customObj)
+        else
+#if FABLE_COMPILER
+            match box source with
+            | :? CustomKeyReactiveBase as custom ->
+                let compObj = custom.BuildComponentComparerObj ()
+
+                if not (Platform.isNull compObj) then
+                    ComparerSentinel.encode (unbox<IEqualityComparer<'T>> compObj)
+                else
+                    graph.EncodedComparer<'T>()
+            | _ -> graph.EncodedComparer<'T>()
+#else
+            match box source with
+            | :? ICustomKeyReactive as custom ->
+                let compObj = custom.BuildComponentComparerObj ()
+
+                if not (Platform.isNull compObj) then
+                    ComparerSentinel.encode (unbox<IEqualityComparer<'T>> compObj)
+                else
+                    graph.EncodedComparer<'T>()
+            | _ -> graph.EncodedComparer<'T>()
+#endif
+
+    let tryMergePair<'A, 'B> (source1: IReactive<'A>) (source2: IReactive<'B>) : IEqualityComparer<struct ('A * 'B)> =
+        let customA = tryCustomObj (box source1)
+        let customB = tryCustomObj (box source2)
+
+        if Platform.isNull customA && Platform.isNull customB then
+            Unchecked.defaultof<IEqualityComparer<struct ('A * 'B)>>
+        else
+            let g = source1.Graph
+            PairKeyComparer<'A, 'B>(encodeComponent g source1 customA, encodeComponent g source2 customB) :> IEqualityComparer<struct ('A * 'B)>
+
+    let buildPair<'A, 'B> (source1: IReactive<'A>) (source2: IReactive<'B>) : IEqualityComparer<struct ('A * 'B)> =
+        let g = source1.Graph
+        let eqA = encodeComponent g source1 (tryCustomObj (box source1))
+        let eqB = encodeComponent g source2 (tryCustomObj (box source2))
+        PairKeyComparer<'A, 'B>(eqA, eqB) :> IEqualityComparer<struct ('A * 'B)>
+
 /// <summary>Pairs a reactive source with an explicit Phase-1 key equality comparer.</summary>
 #if FABLE_COMPILER
 [<Sealed; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
 type ComparedReactive<'K>(source: IReactive<'K>, comparer: IEqualityComparer<'K>) =
+    inherit CustomKeyReactiveBase()
+
     do
         if isNull (box source) then
             nullArg (nameof source)
@@ -445,6 +557,11 @@ type ComparedReactive<'K>(source: IReactive<'K>, comparer: IEqualityComparer<'K>
     member _.Source = source
     /// <summary>The custom Phase-1 key comparer.</summary>
     member _.Comparer = comparer
+
+    override _.CustomKeyComparerObj = box comparer
+
+    override _.BuildComponentComparerObj() =
+        box comparer
 
     interface IReactive<'K> with
         member _.Graph = source.Graph
@@ -472,6 +589,12 @@ type ComparedReactive<'K> =
     /// <summary>The custom Phase-1 key comparer.</summary>
     member this.Comparer = this.comparer
 
+    interface ICustomKeyReactive with
+        member this.CustomKeyComparerObj = box this.comparer
+
+        member this.BuildComponentComparerObj() =
+            box this.comparer
+
     interface IReactive<'K> with
         member this.Graph = this.source.Graph
 
@@ -483,6 +606,8 @@ type ComparedReactive<'K> =
 #if FABLE_COMPILER
 [<Sealed; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
 type MergedSignals<'A, 'B>(source1: Signal<'A>, source2: Signal<'B>) =
+    inherit CustomKeyReactiveBase()
+
     do
         if isNull (box source1) then
             nullArg (nameof source1)
@@ -497,6 +622,13 @@ type MergedSignals<'A, 'B>(source1: Signal<'A>, source2: Signal<'B>) =
     member _.Source1 = source1
     /// <summary>The right signal.</summary>
     member _.Source2 = source2
+
+    override _.CustomKeyComparerObj = null
+
+    override _.BuildComponentComparerObj() =
+        let g = source1.Graph
+
+        box (PairKeyComparer<'A, 'B>(g.EncodedComparer<'A>(), g.EncodedComparer<'B>()) :> IEqualityComparer<struct ('A * 'B)>)
 
     interface IReactive<struct ('A * 'B)> with
         member _.Graph = source1.Graph
@@ -529,6 +661,14 @@ type MergedSignals<'A, 'B> =
     /// <summary>The right signal.</summary>
     member this.Source2 = this.source2
 
+    interface ICustomKeyReactive with
+        member _.CustomKeyComparerObj = null
+
+        member this.BuildComponentComparerObj() =
+            let g = this.source1.Graph
+
+            box (PairKeyComparer<'A, 'B>(g.EncodedComparer<'A>(), g.EncodedComparer<'B>()) :> IEqualityComparer<struct ('A * 'B)>)
+
     interface IReactive<struct ('A * 'B)> with
         member this.Graph = this.source1.Graph
 
@@ -542,6 +682,8 @@ type MergedSignals<'A, 'B> =
 #if FABLE_COMPILER
 [<Sealed; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
 type MergedMemos<'A, 'B>(source1: Memo<'A>, source2: Memo<'B>) =
+    inherit CustomKeyReactiveBase()
+
     do
         if isNull (box source1) then
             nullArg (nameof source1)
@@ -556,6 +698,13 @@ type MergedMemos<'A, 'B>(source1: Memo<'A>, source2: Memo<'B>) =
     member _.Source1 = source1
     /// <summary>The right memo.</summary>
     member _.Source2 = source2
+
+    override _.CustomKeyComparerObj = null
+
+    override _.BuildComponentComparerObj() =
+        let g = source1.Graph
+
+        box (PairKeyComparer<'A, 'B>(g.EncodedComparer<'A>(), g.EncodedComparer<'B>()) :> IEqualityComparer<struct ('A * 'B)>)
 
     interface IReactive<struct ('A * 'B)> with
         member _.Graph = source1.Graph
@@ -588,6 +737,14 @@ type MergedMemos<'A, 'B> =
     /// <summary>The right memo.</summary>
     member this.Source2 = this.source2
 
+    interface ICustomKeyReactive with
+        member _.CustomKeyComparerObj = null
+
+        member this.BuildComponentComparerObj() =
+            let g = this.source1.Graph
+
+            box (PairKeyComparer<'A, 'B>(g.EncodedComparer<'A>(), g.EncodedComparer<'B>()) :> IEqualityComparer<struct ('A * 'B)>)
+
     interface IReactive<struct ('A * 'B)> with
         member this.Graph = this.source1.Graph
 
@@ -601,6 +758,8 @@ type MergedMemos<'A, 'B> =
 #if FABLE_COMPILER
 [<Sealed; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
 type MergedReactive<'A, 'B>(source1: IReactive<'A>, source2: IReactive<'B>) =
+    inherit CustomKeyReactiveBase()
+
     do
         if isNull (box source1) then
             nullArg (nameof source1)
@@ -611,10 +770,20 @@ type MergedReactive<'A, 'B>(source1: IReactive<'A>, source2: IReactive<'B>) =
         if not (obj.ReferenceEquals (source1.Graph, source2.Graph)) then
             raise (InvalidOperationException UntrackedPhase.crossGraphNodes)
 
+    let keyComparer = CustomKeyMerge.tryMergePair source1 source2
+
     /// <summary>The left reactive source.</summary>
     member _.Source1 = source1
     /// <summary>The right reactive source.</summary>
     member _.Source2 = source2
+
+    override _.CustomKeyComparerObj = box keyComparer
+
+    override _.BuildComponentComparerObj() =
+        if not (Platform.isNull (box keyComparer)) then
+            box keyComparer
+        else
+            box (CustomKeyMerge.buildPair source1 source2)
 
     interface IReactive<struct ('A * 'B)> with
         member _.Graph = source1.Graph
@@ -628,6 +797,7 @@ type MergedReactive<'A, 'B>(source1: IReactive<'A>, source2: IReactive<'B>) =
 type MergedReactive<'A, 'B> =
     val private source1: IReactive<'A>
     val private source2: IReactive<'B>
+    val private keyComparer: IEqualityComparer<struct ('A * 'B)>
 
     /// <summary>Creates a paired reactive descriptor belonging to one graph.</summary>
     new(source1: IReactive<'A>, source2: IReactive<'B>) =
@@ -640,12 +810,25 @@ type MergedReactive<'A, 'B> =
         if not (obj.ReferenceEquals (source1.Graph, source2.Graph)) then
             raise (InvalidOperationException UntrackedPhase.crossGraphNodes)
 
-        { source1 = source1; source2 = source2 }
+        {
+            source1 = source1
+            source2 = source2
+            keyComparer = CustomKeyMerge.tryMergePair source1 source2
+        }
 
     /// <summary>The left reactive source.</summary>
     member this.Source1 = this.source1
     /// <summary>The right reactive source.</summary>
     member this.Source2 = this.source2
+
+    interface ICustomKeyReactive with
+        member this.CustomKeyComparerObj = box this.keyComparer
+
+        member this.BuildComponentComparerObj() =
+            if not (Platform.isNull (box this.keyComparer)) then
+                box this.keyComparer
+            else
+                box (CustomKeyMerge.buildPair this.source1 this.source2)
 
     interface IReactive<struct ('A * 'B)> with
         member this.Graph = this.source1.Graph
@@ -660,7 +843,8 @@ type MergedReactive<'A, 'B> =
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
 type RowInput<'T> =
     val ReadFn: unit -> 'T
-    new(readFn: unit -> 'T) = { ReadFn = readFn }
+    val Graph: Graph
+    new(readFn: unit -> 'T, graph: Graph) = { ReadFn = readFn; Graph = graph }
 
 /// <summary>Pure <c>IScopeHost</c> raising the supplied violation message if an owned node is created.</summary>
 [<Sealed; NoEquality; NoComparison>]
@@ -964,6 +1148,49 @@ type CeRuntime =
         else
             readFn ()
 
+    static member ReadRowInputTracked<'T>(explicitGraph: Graph, readFn: unit -> 'T) : 'T =
+        let g = CeRuntime.TryGetAmbientGraph ()
+
+        if not (Platform.isNull (box g)) then
+            CeRuntime.ReadTrackedOn (g, readFn)
+        elif not (Platform.isNull (box explicitGraph)) then
+            CeRuntime.ReadTrackedOn (explicitGraph, readFn)
+        else
+            readFn ()
+
+    static member RequireSameGraph(g1: Graph, g2: Graph) : unit =
+        if not (obj.ReferenceEquals (g1, g2)) then
+            raise (InvalidOperationException UntrackedPhase.crossGraphNodes)
+
+    static member CombineGraphs(g1: Graph, g2: Graph) : Graph =
+        if Platform.isNull (box g1) then
+            g2
+        elif Platform.isNull (box g2) then
+            g1
+        elif obj.ReferenceEquals (g1, g2) then
+            g1
+        else
+            raise (InvalidOperationException UntrackedPhase.crossGraphNodes)
+
+    static member RowSourceGraph<'T>(source: IReactive<'T>) : Graph =
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        source.Graph
+
+    static member RowSameReactiveGraph<'A, 'B>(source1: IReactive<'A>, source2: IReactive<'B>) : Graph =
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        CeRuntime.RequireSameGraph (source1.Graph, source2.Graph)
+        source1.Graph
+
+    static member TryCustomKeyComparer<'K>(source: IReactive<'K>) : IEqualityComparer<'K> voption =
+        CustomKeyMerge.tryCustomComparer source
+
     static member private RunUntrackedContinuationCore<'K, 'T>
         (pureKind: int, owning: bool, pendingMessage: string, g: Graph, key: 'K, cont: 'K -> 'T)
         : 'T =
@@ -1091,9 +1318,9 @@ type CeRuntime =
                     | ValueSome p -> p
                     | ValueNone -> g.Options.FlightPolicy
 
-                match source with
-                | :? ComparedReactive<'K> as cr -> AsyncMemo<'U>.CreateOn(g, cr.Source.ReadTracked, build, mode, pol, keyComparer = cr.Comparer)
-                | _ -> AsyncMemo<'U>.CreateOn(g, source.ReadTracked, build, mode, pol)
+                match CeRuntime.TryCustomKeyComparer source with
+                | ValueSome kc -> AsyncMemo<'U>.CreateOn(g, source.ReadTracked, build, mode, pol, keyComparer = kc)
+                | ValueNone -> AsyncMemo<'U>.CreateOn(g, source.ReadTracked, build, mode, pol)
         )
 
     static member TryAsMemo<'T>(source: IReactive<'T>) : Memo<'T> voption =
@@ -1132,8 +1359,14 @@ type CeRuntime =
         (source: IReactive<'K>, mapping: 'K -> 'U, owning: bool, cmp: IEqualityComparer<'U> voption, dedupObj: obj)
         : Memo<'U> =
         let g = source.Graph
+        let keyCmp = CeRuntime.TryCustomKeyComparer source
 
-        if not owning && cmp.IsNone && isNull dedupObj then
+        if
+            not owning
+            && cmp.IsNone
+            && isNull dedupObj
+            && keyCmp.IsNone
+        then
             match source with
             | :? Signal<'K> as s -> CombinatorMemos.createSignalMap mapping s
             | :? Memo<'K> as m -> CombinatorMemos.createMemoMap mapping m
@@ -1143,34 +1376,31 @@ type CeRuntime =
             | :? StreamMemo<'K> as sm -> CombinatorMemos.createSourceMap mapping (StreamMemoAdapter<'K> sm)
             | :? Boundary<'K> as bnd -> CombinatorMemos.createSourceMap mapping (BoundaryAdapter<'K> bnd)
             | :? Timed<'K> as t -> CombinatorMemos.createSourceMap mapping (TimedAdapter<'K> t)
-            | :? ComparedReactive<'K> as cr ->
-                g.Entered (
-                    "Creating a node",
-                    fun () -> Memo<'U>.CreateOn(g, cr.Source.ReadTracked, mapping, ScopeMode.Pure, ValueNone, ?keyComparer = Some cr.Comparer)
-                )
             | _ -> g.Entered ("Creating a node", fun () -> Memo<'U>.CreateOn(g, source.ReadTracked, mapping, ScopeMode.Pure, ValueNone))
         else
-            match source with
-            | :? ComparedReactive<'K> as cr ->
-                CeRuntime.CreateStaticMemo (g, cr.Source.ReadTracked, mapping, owning, cmp, ValueSome cr.Comparer, dedupObj)
-            | _ -> CeRuntime.CreateStaticMemo (g, source.ReadTracked, mapping, owning, cmp, ValueNone, dedupObj)
+            CeRuntime.CreateStaticMemo (g, source.ReadTracked, mapping, owning, cmp, keyCmp, dedupObj)
 
     static member CreateMemoFromMergedReactive<'A, 'B, 'U>
         (merged: MergedReactive<'A, 'B>, mapping: struct ('A * 'B) -> 'U, owning: bool, cmp: IEqualityComparer<'U> voption, dedupObj: obj)
         : Memo<'U> =
-        if not owning && cmp.IsNone && isNull dedupObj then
+        let reactive = merged :> IReactive<struct ('A * 'B)>
+        let keyCmp = CeRuntime.TryCustomKeyComparer reactive
+
+        if
+            not owning
+            && cmp.IsNone
+            && isNull dedupObj
+            && keyCmp.IsNone
+        then
             match CeRuntime.TryAsMemo merged.Source1, CeRuntime.TryAsMemo merged.Source2 with
             | ValueSome m1, ValueSome m2 -> CombinatorMemos.createMemoMap2 (fun a b -> mapping (struct (a, b))) m1 m2
             | _ ->
-                let g = (merged :> IReactive<struct ('A * 'B)>).Graph
+                let g = reactive.Graph
 
-                g.Entered (
-                    "Creating a node",
-                    fun () -> Memo<'U>.CreateOn(g, (merged :> IReactive<struct ('A * 'B)>).ReadTracked, mapping, ScopeMode.Pure, ValueNone)
-                )
+                g.Entered ("Creating a node", fun () -> Memo<'U>.CreateOn(g, reactive.ReadTracked, mapping, ScopeMode.Pure, ValueNone))
         else
-            let g = (merged :> IReactive<struct ('A * 'B)>).Graph
-            CeRuntime.CreateStaticMemo (g, (merged :> IReactive<struct ('A * 'B)>).ReadTracked, mapping, owning, cmp, ValueNone, dedupObj)
+            let g = reactive.Graph
+            CeRuntime.CreateStaticMemo (g, reactive.ReadTracked, mapping, owning, cmp, keyCmp, dedupObj)
 
     static member CreateDynamicMemo<'U>(graph: Graph, eval: unit -> 'U, owning: bool, cmp: IEqualityComparer<'U> voption) : Memo<'U> =
         let mode = if owning then ScopeMode.Owning else ScopeMode.Pure
@@ -1244,18 +1474,16 @@ type CeRuntime =
 
     static member CreateStaticTail<'K, 'U>(source: IReactive<'K>, binder: 'K -> Memo<'U>, cmp: IEqualityComparer<'U> voption) : Memo<'U> =
         let g = source.Graph
+        let keyCmp = CeRuntime.TryCustomKeyComparer source
 
-        if cmp.IsNone then
+        if cmp.IsNone && keyCmp.IsNone then
             match source with
             | :? Signal<'K> as s -> CombinatorMemos.createSignalBind binder s
             | :? Memo<'K> as m -> CombinatorMemos.createMemoBind binder m
             | :? Editable<'K> as e -> CombinatorMemos.createMemoBind binder e.ValueMemo
-            | :? ComparedReactive<'K> as cr -> CombinatorMemos.createReactiveBind (g, cr.Source.ReadTracked, binder, ValueSome cr.Comparer, ValueNone)
             | _ -> CombinatorMemos.createReactiveBind (g, source.ReadTracked, binder, ValueNone, ValueNone)
         else
-            match source with
-            | :? ComparedReactive<'K> as cr -> CombinatorMemos.createReactiveBind (g, cr.Source.ReadTracked, binder, ValueSome cr.Comparer, cmp)
-            | _ -> CombinatorMemos.createReactiveBind (g, source.ReadTracked, binder, ValueNone, cmp)
+            CombinatorMemos.createReactiveBind (g, source.ReadTracked, binder, keyCmp, cmp)
 
     static member ReadEffectTracked<'K>(source: IReactive<'K>) : 'K =
         CeRuntime.ReadCeTracked source
@@ -1285,9 +1513,9 @@ type CeRuntime =
             g.Entered (
                 "Creating a node",
                 fun () ->
-                    match source with
-                    | :? ComparedReactive<'K> as cr -> EffectOn<'K>.CreateWithComparer(g, cr.Source.ReadTracked, act, cr.Comparer) :> INode
-                    | _ -> EffectOn<'K>.Create(g, source.ReadTracked, act) :> INode
+                    match CeRuntime.TryCustomKeyComparer source with
+                    | ValueSome kc -> EffectOn<'K>.CreateWithComparer(g, source.ReadTracked, act, kc) :> INode
+                    | ValueNone -> EffectOn<'K>.Create(g, source.ReadTracked, act) :> INode
             )
 
         if asNode then node else Unchecked.defaultof<INode>
@@ -2647,9 +2875,9 @@ type StreamOnFactory<'K, 'T>(source: IReactive<'K>, build: 'K -> CancellationTok
             g.Entered (
                 "Creating a node",
                 fun () ->
-                    match source with
-                    | :? ComparedReactive<'K> as cr -> StreamMemo<'T>.CreateOn(g, cr.Source.ReadTracked, build, keyComparer = cr.Comparer)
-                    | _ -> StreamMemo<'T>.CreateOn(g, source.ReadTracked, build)
+                    match CeRuntime.TryCustomKeyComparer source with
+                    | ValueSome kc -> StreamMemo<'T>.CreateOn(g, source.ReadTracked, build, keyComparer = kc)
+                    | ValueNone -> StreamMemo<'T>.CreateOn(g, source.ReadTracked, build)
             )
 
         member _.CreateFold<'S>(seed: 'S, folder: 'S -> 'T -> 'S) =
@@ -2658,10 +2886,9 @@ type StreamOnFactory<'K, 'T>(source: IReactive<'K>, build: 'K -> CancellationTok
             g.Entered (
                 "Creating a node",
                 fun () ->
-                    match source with
-                    | :? ComparedReactive<'K> as cr ->
-                        StreamMemo<'S>.CreateFoldOn(g, seed, folder, cr.Source.ReadTracked, build, keyComparer = cr.Comparer)
-                    | _ -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, source.ReadTracked, build)
+                    match CeRuntime.TryCustomKeyComparer source with
+                    | ValueSome kc -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, source.ReadTracked, build, keyComparer = kc)
+                    | ValueNone -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, source.ReadTracked, build)
             )
 
         member _.WithContext(extract) =
@@ -3634,66 +3861,105 @@ type RowBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: unit -> 'A, source2: unit -> 'B) : RowInput<struct ('A * 'B)> =
-        RowInput<struct ('A * 'B)>(fun () ->
-            let a = source1 ()
-            let b = source2 ()
-            struct (a, b))
+        RowInput<struct ('A * 'B)>(
+            (fun () ->
+                let a = source1 ()
+                let b = source2 ()
+                struct (a, b)),
+            Unchecked.defaultof<Graph>
+        )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: unit -> 'A, source2: IReactive<'B>) : RowInput<struct ('A * 'B)> =
-        RowInput<struct ('A * 'B)>(fun () ->
-            let a = source1 ()
-            let b = source2.ReadTracked ()
-            struct (a, b))
+        let g = CeRuntime.RowSourceGraph source2
+
+        RowInput<struct ('A * 'B)>(
+            (fun () ->
+                let a = source1 ()
+                let b = source2.ReadTracked ()
+                struct (a, b)),
+            g
+        )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: IReactive<'A>, source2: unit -> 'B) : RowInput<struct ('A * 'B)> =
-        RowInput<struct ('A * 'B)>(fun () ->
-            let a = source1.ReadTracked ()
-            let b = source2 ()
-            struct (a, b))
+        let g = CeRuntime.RowSourceGraph source1
+
+        RowInput<struct ('A * 'B)>(
+            (fun () ->
+                let a = source1.ReadTracked ()
+                let b = source2 ()
+                struct (a, b)),
+            g
+        )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: IReactive<'A>, source2: IReactive<'B>) : RowInput<struct ('A * 'B)> =
-        RowInput<struct ('A * 'B)>(fun () ->
-            let a = source1.ReadTracked ()
-            let b = source2.ReadTracked ()
-            struct (a, b))
+        let g = CeRuntime.RowSameReactiveGraph (source1, source2)
+
+        RowInput<struct ('A * 'B)>(
+            (fun () ->
+                let a = source1.ReadTracked ()
+                let b = source2.ReadTracked ()
+                struct (a, b)),
+            g
+        )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: unit -> 'A, source2: RowInput<'B>) : RowInput<struct ('A * 'B)> =
-        RowInput<struct ('A * 'B)>(fun () ->
-            let a = source1 ()
-            let b = source2.ReadFn ()
-            struct (a, b))
+        RowInput<struct ('A * 'B)>(
+            (fun () ->
+                let a = source1 ()
+                let b = source2.ReadFn ()
+                struct (a, b)),
+            source2.Graph
+        )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: IReactive<'A>, source2: RowInput<'B>) : RowInput<struct ('A * 'B)> =
-        RowInput<struct ('A * 'B)>(fun () ->
-            let a = source1.ReadTracked ()
-            let b = source2.ReadFn ()
-            struct (a, b))
+        let g = CeRuntime.CombineGraphs (CeRuntime.RowSourceGraph source1, source2.Graph)
+
+        RowInput<struct ('A * 'B)>(
+            (fun () ->
+                let a = source1.ReadTracked ()
+                let b = source2.ReadFn ()
+                struct (a, b)),
+            g
+        )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: RowInput<'A>, source2: unit -> 'B) : RowInput<struct ('A * 'B)> =
-        RowInput<struct ('A * 'B)>(fun () ->
-            let a = source1.ReadFn ()
-            let b = source2 ()
-            struct (a, b))
+        RowInput<struct ('A * 'B)>(
+            (fun () ->
+                let a = source1.ReadFn ()
+                let b = source2 ()
+                struct (a, b)),
+            source1.Graph
+        )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: RowInput<'A>, source2: IReactive<'B>) : RowInput<struct ('A * 'B)> =
-        RowInput<struct ('A * 'B)>(fun () ->
-            let a = source1.ReadFn ()
-            let b = source2.ReadTracked ()
-            struct (a, b))
+        let g = CeRuntime.CombineGraphs (source1.Graph, CeRuntime.RowSourceGraph source2)
+
+        RowInput<struct ('A * 'B)>(
+            (fun () ->
+                let a = source1.ReadFn ()
+                let b = source2.ReadTracked ()
+                struct (a, b)),
+            g
+        )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: RowInput<'A>, source2: RowInput<'B>) : RowInput<struct ('A * 'B)> =
-        RowInput<struct ('A * 'B)>(fun () ->
-            let a = source1.ReadFn ()
-            let b = source2.ReadFn ()
-            struct (a, b))
+        let g = CeRuntime.CombineGraphs (source1.Graph, source2.Graph)
+
+        RowInput<struct ('A * 'B)>(
+            (fun () ->
+                let a = source1.ReadFn ()
+                let b = source2.ReadFn ()
+                struct (a, b)),
+            g
+        )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.BindReturn(source: unit -> 'A, f: 'A -> 'V) : RowStep<BoundPhase, 'V> =
@@ -3707,8 +3973,8 @@ type RowBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.BindReturn(source: RowInput<'A>, f: 'A -> 'V) : RowStep<BoundPhase, 'V> =
-        let v = CeRuntime.ReadRowFnTracked source.ReadFn
-        RowReadyVal (CeRuntime.RunUntrackedRowArg (Unchecked.defaultof<Graph>, f, v))
+        let v = CeRuntime.ReadRowInputTracked (source.Graph, source.ReadFn)
+        RowReadyVal (CeRuntime.RunUntrackedRowArg (source.Graph, f, v))
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.Bind(source: unit -> 'A, continuation: 'A -> RowStep<'Phase, 'V>) : RowStep<BoundPhase, 'V> =
@@ -3722,8 +3988,8 @@ type RowBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.Bind(source: RowInput<'A>, continuation: 'A -> RowStep<'Phase, 'V>) : RowStep<BoundPhase, 'V> =
-        let v = CeRuntime.ReadRowFnTracked source.ReadFn
-        RowReadyVal (CeRuntime.RunRowContinuation (Unchecked.defaultof<Graph>, v, fun k -> (continuation k).EvalValue()))
+        let v = CeRuntime.ReadRowInputTracked (source.Graph, source.ReadFn)
+        RowReadyVal (CeRuntime.RunRowContinuation (source.Graph, v, fun k -> (continuation k).EvalValue()))
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.Run(d: unit -> RowStep<ColdPhase, 'V>) : unit -> 'V =

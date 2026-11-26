@@ -5150,4 +5150,321 @@ let tests =
                 Expect.equal outerBoundary.Value 222 "outerBoundary refreshed (0 + 200 + 22)"
                 Expect.equal tokKey.ObserverCount 4 "tokKey observer count stays 4 after unequal key refresh"
             }
+
+            testCaseAsync "Final review fixes: withComparer propagated across and!-merged keys and RowBuilder cross-graph MergeSources"
+            <| async {
+                use g = new Graph ()
+                let mod10 = comparer (fun (a: int) b -> a % 10 = b % 10)
+                let parity = comparer (fun (a: int) b -> (a &&& 1) = (b &&& 1))
+
+                // 1. 2-way memo (Signal & Memo), 3-way memo, and multi-comparer and! preserve Phase-1 key cutoff
+                let sA = Signal (g, 1)
+                let sB = Signal (g, 10)
+                let sC = Signal (g, 100)
+                let mA = Make.Memo (g, (fun _ -> sA.Value))
+                let mB = Make.Memo (g, (fun _ -> sB.Value))
+
+                let twoWaySigRuns = ref 0
+
+                let mTwoSig =
+                    memo {
+                        let! a = sA |> withComparer mod10
+                        and! b = sB
+                        twoWaySigRuns.Value <- twoWaySigRuns.Value + 1
+                        return a + b
+                    }
+
+                let twoWayMemoRuns = ref 0
+
+                let mTwoMemo =
+                    memo {
+                        let! a = mA |> withComparer mod10
+                        and! b = mB
+                        twoWayMemoRuns.Value <- twoWayMemoRuns.Value + 1
+                        return a + b
+                    }
+
+                let threeWayRuns = ref 0
+
+                let mThreeWay =
+                    memo {
+                        let! a = sA
+                        and! b = sB |> withComparer mod10
+                        and! c = sC
+                        threeWayRuns.Value <- threeWayRuns.Value + 1
+                        return a + b + c
+                    }
+
+                let bothCmpRuns = ref 0
+
+                let mBothCmp =
+                    memo {
+                        let! a = sA |> withComparer mod10
+                        and! b = sB |> withComparer parity
+                        bothCmpRuns.Value <- bothCmpRuns.Value + 1
+                        return a + b
+                    }
+
+                Expect.equal mTwoSig.Value 11 "2-way sig+withComparer initial"
+                Expect.equal mTwoMemo.Value 11 "2-way memo+withComparer initial"
+                Expect.equal mThreeWay.Value 111 "3-way middle withComparer initial"
+                Expect.equal mBothCmp.Value 11 "2-way both-arms withComparer initial"
+
+                // Equal mod10 key on sA (1 -> 11) cuts off mTwoSig, mTwoMemo, and mBothCmp, while waking mThreeWay (sA has no mod10)
+                sA.Value <- 11
+                Expect.equal mTwoSig.Value 11 "mTwoSig cuts off on equal mod10 arm"
+                Expect.equal twoWaySigRuns.Value 1 "mTwoSig did not recompute on equal mod10"
+                Expect.equal mTwoMemo.Value 11 "mTwoMemo cuts off instead of bypassing via createMemoMap2"
+                Expect.equal twoWayMemoRuns.Value 1 "mTwoMemo did not recompute on equal mod10"
+                Expect.equal mBothCmp.Value 11 "mBothCmp cuts off on equal mod10"
+                Expect.equal bothCmpRuns.Value 1 "mBothCmp did not recompute"
+                Expect.equal mThreeWay.Value 121 "mThreeWay wakes when uncustomized sA changes"
+                Expect.equal threeWayRuns.Value 2 "mThreeWay ran twice"
+
+                // Equal mod10 on middle sB (10 -> 20) cuts off mThreeWay AND parity-equal on mBothCmp, while waking mTwoSig/mTwoMemo
+                sB.Value <- 20
+                Expect.equal mThreeWay.Value 121 "mThreeWay cuts off when middle withComparer mod10 arm is equal (10 -> 20)"
+                Expect.equal threeWayRuns.Value 2 "mThreeWay still ran twice"
+                Expect.equal mBothCmp.Value 11 "mBothCmp cuts off on parity-equal right arm (10 -> 20)"
+                Expect.equal bothCmpRuns.Value 1 "mBothCmp still ran once"
+                Expect.equal mTwoSig.Value 31 "mTwoSig wakes when uncustomized sB changes"
+                Expect.equal mTwoMemo.Value 31 "mTwoMemo wakes when uncustomized mB changes"
+
+                // Non-custom arm honors graph EqualityPolicy (Reference vs Structural)
+                let boxA = BoxPayload (1, "v1")
+                let boxA2 = BoxPayload (1, "v2")
+                let boxSigRef = Signal (g, boxA)
+                let boxKeyRef = Signal (g, 1)
+                let refBoxRuns = ref 0
+
+                let mRefPolicy =
+                    memo {
+                        let! k = boxKeyRef |> withComparer mod10
+                        and! payload = boxSigRef
+                        refBoxRuns.Value <- refBoxRuns.Value + 1
+                        return $"{k}:{payload.Label}"
+                    }
+
+                Expect.equal mRefPolicy.Value "1:v1" "ref policy initial"
+                boxKeyRef.Value <- 11
+                boxSigRef.Value <- boxA2
+                Expect.equal mRefPolicy.Value "11:v2" "default Reference/JsIdentity policy wakes on distinct BoxPayload ref"
+                Expect.equal refBoxRuns.Value 2 "ref policy recomputed"
+
+                use gStruct = new Graph (GraphOptions.Default.WithEquality (StructuralPolicy ()))
+                let boxKeyStruct = Signal (gStruct, 1)
+                let boxSigStruct = Signal (gStruct, boxA)
+                let structBoxRuns = ref 0
+
+                let mStructPolicy =
+                    memo {
+                        let! k = boxKeyStruct |> withComparer mod10
+                        and! payload = boxSigStruct
+                        structBoxRuns.Value <- structBoxRuns.Value + 1
+                        return $"{k}:{payload.Label}"
+                    }
+
+                Expect.equal mStructPolicy.Value "1:v1" "structural policy initial"
+                boxKeyStruct.Value <- 11
+                boxSigStruct.Value <- boxA2
+                Expect.equal mStructPolicy.Value "1:v1" "StructuralPolicy cuts off equal BoxPayload on uncustomized arm"
+                Expect.equal structBoxRuns.Value 1 "structural policy skipped recompute"
+
+                // 2. memo return! (SplitBind) with withComparer in and!
+                let splitA = Signal (g, 1)
+                let splitB = Signal (g, 10)
+                let inner10 = Signal (g, 100)
+                let inner20 = Signal (g, 200)
+                let mInner10 = Make.Memo (g, (fun _ -> inner10.Value))
+                let mInner20 = Make.Memo (g, (fun _ -> inner20.Value))
+                let splitCleanups = ResizeArray<int>()
+                let splitBinders = ref 0
+
+                let mTailMerged =
+                    memo {
+                        let! a = splitA |> withComparer mod10
+                        and! b = splitB
+                        splitBinders.Value <- splitBinders.Value + 1
+                        onCleanup (fun () -> splitCleanups.Add (a + b))
+                        if b = 10 then return! mInner10 else return! mInner20
+                    }
+
+                Expect.equal mTailMerged.Value 100 "memo return! and!+withComparer initial"
+                splitA.Value <- 11
+                Expect.equal mTailMerged.Value 100 "equal mod10 arm keeps return! binder and inner link"
+                Expect.equal splitBinders.Value 1 "binder ran once on equal mod10"
+                Expect.isEmpty splitCleanups "no cleanup discharged on equal mod10"
+                splitB.Value <- 20
+                Expect.equal mTailMerged.Value 200 "uncustomized and! arm switches return! branch"
+                Expect.sequenceEqual splitCleanups [ 11 ] "previous binder scope discharged on unequal b"
+
+                // 3. effect with withComparer in and!
+                let effA = Signal (g, 1)
+                let effB = Signal (g, 10)
+                let effLog = ResizeArray<int>()
+
+                let _effMerged =
+                    effect {
+                        node
+                        let! a = effA |> withComparer mod10
+                        and! b = effB
+                        effLog.Add (a + b)
+                    }
+
+                Expect.sequenceEqual effLog [ 11 ] "effect and!+withComparer initial"
+                effA.Value <- 11
+                Expect.sequenceEqual effLog [ 11 ] "effect cuts off on equal mod10 arm"
+                effB.Value <- 20
+                Expect.sequenceEqual effLog [ 11; 31 ] "effect wakes on uncustomized arm change"
+
+                // 4. asyncMemo with withComparer in and! + cancellationToken + previous
+                let amA = Signal (g, 1)
+                let amB = Signal (g, 10)
+                let amFlights = ResizeArray<Flight<int>>()
+                let amTokens = ResizeArray<CancellationToken>()
+
+                let amMerged =
+                    asyncMemo {
+                        policy FlightPolicy.CancelPrevious
+                        let! ct = asyncMemo.cancellationToken
+                        let! prev = asyncMemo.previous
+                        let! a = amA |> withComparer mod10
+                        and! b = amB
+                        amTokens.Add ct
+                        let f = Flight<int>()
+                        amFlights.Add f
+                        let! res = f.Task
+                        let! pSettled = prev.Settled
+                        return a + b + res + ValueOption.defaultValue 0 pSettled
+                    }
+
+                Expect.equal amMerged.TryValue Pending "asyncMemo and!+withComparer starts flight 0"
+                amA.Value <- 11
+                Expect.equal amMerged.TryValue Pending "equal mod10 keeps active flight 0"
+                Expect.equal amFlights.Count 1 "no second flight on equal mod10"
+                Expect.isFalse amTokens[0].IsCancellationRequested "flight 0 token uncancelled on equal mod10"
+                amFlights[0].Settle 100
+                do! drained ()
+                Expect.equal amMerged.Value 111 "flight 0 settled (1 + 10 + 100 + 0)"
+
+                amA.Value <- 21
+                Expect.equal amMerged.Value 111 "equal settled key keeps settled result without refetch"
+                Expect.equal amFlights.Count 1 "still 1 flight on equal settled key"
+
+                amB.Value <- 20
+                Expect.equal amMerged.TryValue Pending "uncustomized arm launches flight 1"
+                Expect.equal amFlights.Count 2 "second flight launched"
+                amFlights[1].Settle 200
+                do! drained ()
+                Expect.equal amMerged.Value 352 "flight 1 settled with previous 111 (21 + 20 + 200 + 111)"
+
+                // 5. stream (latest + fold) with withComparer in and! + stream.cancellationToken
+                let stA = Signal (g, 1)
+                let stB = Signal (g, 10)
+                let stLatestFeed = ManualStream<int>()
+                let stFoldFeed = ManualStream<int>()
+                let stLatestTokens = ResizeArray<CancellationToken>()
+                let stFoldTokens = ResizeArray<CancellationToken>()
+
+                let stLatestMerged =
+                    stream {
+                        let! ct = stream.cancellationToken
+                        let! a = stA |> withComparer mod10
+                        and! b = stB
+                        stLatestTokens.Add ct
+                        ignore (a, b)
+                        return stLatestFeed.Source
+                    }
+
+                let stFoldMerged =
+                    stream {
+                        fold 1000 (+)
+                        let! ct = stream.cancellationToken
+                        let! a = stA |> withComparer mod10
+                        and! b = stB
+                        stFoldTokens.Add ct
+                        ignore (a, b)
+                        return stFoldFeed.Source
+                    }
+
+                Expect.equal stLatestMerged.TryValue Pending "stream latest and!+withComparer starts Pending"
+                Expect.equal stFoldMerged.TryValue Pending "stream fold and!+withComparer starts Pending"
+                stLatestFeed.Push 5
+                stFoldFeed.Push 7
+                Expect.equal stLatestMerged.Value 5 "stream latest initial"
+                Expect.equal stFoldMerged.Value 1007 "stream fold initial"
+
+                stA.Value <- 11
+                Expect.isFalse stLatestTokens[0].IsCancellationRequested "stream latest equal mod10 keeps token"
+                Expect.isFalse stFoldTokens[0].IsCancellationRequested "stream fold equal mod10 keeps token"
+                Expect.equal stLatestFeed.Starts 1 "stream latest stays open on equal mod10"
+                Expect.equal stFoldFeed.Starts 1 "stream fold stays open on equal mod10"
+
+                stB.Value <- 20
+                Expect.equal stLatestMerged.TryValue Pending "stream latest resets Pending"
+                Expect.equal stFoldMerged.TryValue Pending "stream fold resets Pending"
+                Expect.isTrue stLatestTokens[0].IsCancellationRequested "stream latest cancels token on uncustomized arm"
+                Expect.isTrue stFoldTokens[0].IsCancellationRequested "stream fold cancels token on uncustomized arm"
+                stLatestFeed.Push 9
+                stFoldFeed.Push 8
+                Expect.equal stLatestMerged.Value 9 "stream latest reopened value"
+                Expect.equal stFoldMerged.Value 1008 "stream fold reset seed 1000 + 8"
+
+                // 6. RowBuilder cross-graph MergeSources and RowInput graph propagation
+                use gRowOther = new Graph ()
+                let sRowOther = Signal (gRowOther, 99)
+
+                let rowCross2 =
+                    Expect.throwsC
+                        (fun () ->
+                            (row {
+                                let! a = sA
+                                and! b = sRowOther
+                                return a + b
+                            }) ()
+                            |> ignore)
+                        id
+
+                Expect.isTrue (isInvalidOperation rowCross2) "row 2-way cross-graph and! throws InvalidOperationException"
+
+                let rowCross3 =
+                    Expect.throwsC
+                        (fun () ->
+                            (row {
+                                let! a = sA
+                                and! b = (fun () -> 5)
+                                and! c = sRowOther
+                                return a + b + c
+                            }) ()
+                            |> ignore)
+                        id
+
+                Expect.isTrue (isInvalidOperation rowCross3) "row 3-way mixed cross-graph and! throws InvalidOperationException"
+
+                let rowStray = Signal (g, 500)
+
+                let rowAndOutside =
+                    row {
+                        let! a = sA
+                        and! b = sB
+                        // fsharpanalyzer: ignore-line-next RAN016
+                        return a + b + rowStray.Value
+                    }
+
+                let rowBadOutside =
+                    row {
+                        let! a = sA
+                        and! b = sB
+                        // fsharpanalyzer: ignore-line-next RAN010
+                        createEffect ignore
+                        return a + b
+                    }
+
+                Expect.equal (rowAndOutside ()) 531 "row and! works outside g.Run and reads rowStray closed (11 + 20 + 500)"
+                rowStray.Value <- 600
+                Expect.equal rowStray.ObserverCount 0 "row and! outside g.Run keeps rowStray untracked"
+                let rowBadEx = Expect.throwsC (fun () -> rowBadOutside () |> ignore) id
+                Expect.isTrue (isInvalidOperation rowBadEx) "row and! outside g.Run enforces factoryRow scope"
+                Expect.stringContains rowBadEx.Message "factory body" "error cites factoryRow instead of missing ambient graph"
+            }
         ]

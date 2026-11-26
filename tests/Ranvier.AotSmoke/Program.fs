@@ -564,6 +564,63 @@ module private CeSmoke =
         let rowV2 = rowProj.Get 1
         let rowV3 = rowProj.Get 2
 
+        // 12. withComparer across and!-merged keys (2-way & 3-way memo + effect)
+        let mergeSig1 = Signal (g, 1)
+        let mergeSig2 = Signal (g, 10)
+        let mergeSig3 = Signal (g, 100)
+        let mergeMemoRuns = ref 0
+
+        let mergeMemo3 =
+            memo {
+                let! a = mergeSig1
+                and! b = mergeSig2 |> withComparer mod10Comparer
+                and! c = mergeSig3
+                mergeMemoRuns.Value <- mergeMemoRuns.Value + 1
+                return a + b + c
+            }
+
+        let mergeEffLog = ResizeArray<int>()
+
+        let _mergeEff2 =
+            effect {
+                node
+                let! a = mergeSig1 |> withComparer mod10Comparer
+                and! b = mergeSig2
+                mergeEffLog.Add (a + b)
+            }
+
+        let m3Init = mergeMemo3.Value
+        let effInit = mergeEffLog.Count = 1 && mergeEffLog[0] = 11
+        mergeSig2.Value <- 20
+
+        let m3CutOff =
+            mergeMemo3.Value = 111
+            && mergeMemoRuns.Value = 1
+            && mergeEffLog.Count = 2
+            && mergeEffLog[1] = 21
+
+        mergeSig1.Value <- 11
+
+        let m3Woke =
+            mergeMemo3.Value = 131
+            && mergeMemoRuns.Value = 2
+            && mergeEffLog.Count = 2
+
+        mergeSig3.Value <- 200
+
+        let m3ThirdWoke =
+            mergeMemo3.Value = 231
+            && mergeMemoRuns.Value = 3
+            && mergeEffLog.Count = 2
+
+        mergeSig2.Value <- 25
+
+        let m3AndEffWoke =
+            mergeEffLog.Count = 3
+            && mergeEffLog[2] = 36
+            && mergeMemo3.Value = 236
+            && mergeMemoRuns.Value = 4
+
         [
             "CE memo 4-stage fused chain",
             fusedInit = 70
@@ -758,6 +815,24 @@ module private CeSmoke =
             + string rowV2
             + ":"
             + string rowV3
+            "CE withComparer across and!-merged keys",
+            m3Init = 111
+            && effInit
+            && m3CutOff
+            && m3Woke
+            && m3ThirdWoke
+            && m3AndEffWoke,
+            string m3Init
+            + ":"
+            + string effInit
+            + ":"
+            + string m3CutOff
+            + ":"
+            + string m3Woke
+            + ":"
+            + string m3ThirdWoke
+            + ":"
+            + string m3AndEffWoke
         ]
 
 [<EntryPoint>]

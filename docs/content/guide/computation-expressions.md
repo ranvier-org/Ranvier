@@ -83,9 +83,21 @@ let reportSelection (name: Signal<string>) =
     }
 ```
 
-`source |> withComparer cmp` sets equality for the **input key** in a split `memo`, `effect`, `asyncMemo` or
-`stream`. The comparer can also apply to a merged input key. An equal key preserves the work attached to it.
-The memo or boundary header `comparer cmp` compares
+`Ranvier.CE.withComparer cmp source` (`source |> withComparer cmp`) sets equality for the **input key** in a
+split `memo`, `effect`, `asyncMemo` or `stream` — either on a single source (`let! x = src |> withComparer cmp`)
+or on individual arms combined with `and!`:
+
+```fsharp
+let subscribePair (channel: Signal<string>) (page: Signal<int>) =
+    effect {
+        let! name = channel |> withComparer System.StringComparer.OrdinalIgnoreCase
+        and! number = page
+        printfn "Subscribed %s #%d" name number
+    }
+```
+
+An equal key preserves the work attached to it (on `and!`, each customized arm uses its comparer while any
+remaining arms keep the graph's equality policy). The memo or boundary header `comparer cmp` compares
 **published outputs**. For example, ignoring case on a subscription name can keep the subscription alive
 across spelling changes. Ignoring case on its output can suppress a downstream notification after the
 computation has run.
