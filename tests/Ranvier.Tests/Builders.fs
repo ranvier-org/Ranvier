@@ -2756,10 +2756,23 @@ let tests =
                 let rFalse = rBranch false
                 let _effNodeFalse = effBranch false
 
-                // Before any Memo/Editable/Draft/Boundary/Row is read, only eager Effect logged.
-                Expect.sequenceEqual log [ "eff1:20"; "disp:eff" ] "mixed effect branch runs on construction while lazy branches defer"
+                // Probe-time Using handles dispose immediately without executing lazy bodies; Effect also runs Run #1 eagerly.
+                Expect.sequenceEqual
+                    log
+                    [
+                        "disp:m"
+                        "disp:mown"
+                        "disp:mopt"
+                        "disp:edit"
+                        "disp:draft"
+                        "disp:bnd"
+                        "disp:eff"
+                        "eff1:20"
+                        "disp:eff"
+                    ]
+                    "mixed effect branch runs on construction while probe-time Using handles dispose without executing lazy bodies"
 
-                // Evaluate Run #1 and verify single disposal (no EvalBound double-call leak of _d on Run #1)
+                // Evaluate Run #1 and verify clean execution and single disposal
                 Expect.equal mTrue.Value 11 "memo if direct let! branch"
                 Expect.equal mFalse.Value 22 "memo else use+let! branch"
                 Expect.equal mOwn1.Value 120 "owning memo match use+let! branch"
@@ -2773,6 +2786,13 @@ let tests =
                 Expect.sequenceEqual
                     log
                     [
+                        "disp:m"
+                        "disp:mown"
+                        "disp:mopt"
+                        "disp:edit"
+                        "disp:draft"
+                        "disp:bnd"
+                        "disp:eff"
                         "eff1:20"
                         "disp:eff"
                         "disp:m"
@@ -2784,7 +2804,7 @@ let tests =
                         "disp:bnd"
                         "disp:row"
                     ]
-                    "all 6 mixed-branch use+let! runs execute and dispose exactly once on first evaluation"
+                    "all 6 mixed-branch use+let! runs execute and dispose cleanly on first evaluation"
 
                 log.Clear ()
 
@@ -2960,5 +2980,386 @@ let tests =
                 Expect.equal bTryPending.Value 11 "bTryPending wakes to 11 after settle"
                 Expect.equal mHostingRow.Value 11 "mHostingRow wakes to 11 after settle"
                 Expect.equal bHostingRow.Value 11 "bHostingRow wakes to 11 after settle"
+            }
+
+            test "Fix Round 3 Important #1: top-level effect control flow defers acquisition in Batch and unread mixed Using leaks zero disposables" {
+                use g = new Graph ()
+                let s1 = Signal (g, 10)
+                let s2 = Signal (g, 20)
+                let log = ResizeArray<string>()
+
+                let track (tag: string) (created: int ref) (disposed: int ref) =
+                    created.Value <- created.Value + 1
+
+                    { new IDisposable with
+                        member _.Dispose() =
+                            disposed.Value <- disposed.Value + 1
+                            log.Add ("disp:" + tag)
+                    }
+
+                // 1a. Top-level effect { use _d = ...; let! a = s1; ... } inside g.Batch:
+                //     unit & node flush cases construct 0 times before Batch exit and 1 acquire+dispose on flush;
+                //     disposed-before-flush constructs 0 times total.
+                let effCreated = ref 0
+                let effDisposed = ref 0
+                let dropEffCreated = ref 0
+                let dropEffDisposed = ref 0
+                let mutable insideBatchCreated = -1
+                let mutable dropInsideCreated = -1
+
+                g.Run (fun () ->
+                    g.Batch (fun () ->
+                        effect {
+                            use _d = track "top-eff-unit" effCreated effDisposed
+                            let! a = s1
+                            log.Add $"top-eff-unit:{a}"
+                        }
+
+                        let mutable dropRoot = Unchecked.defaultof<Owner>
+
+                        let dropEff =
+                            g.RunRoot (fun root ->
+                                dropRoot <- root
+
+                                effect {
+                                    node
+                                    use _d = track "top-eff-drop" dropEffCreated dropEffDisposed
+                                    let! a = s1
+                                    log.Add $"top-eff-drop:{a}"
+                                })
+
+                        ignore dropEff
+                        insideBatchCreated <- effCreated.Value
+                        dropInsideCreated <- dropEffCreated.Value
+                        dropRoot.Dispose ()))
+
+                Expect.equal insideBatchCreated 0 "top-level effect use+let! does not acquire _d before Batch flush"
+                Expect.equal dropInsideCreated 0 "top-level node effect use+let! does not acquire _d before Batch flush"
+                Expect.equal effCreated.Value 1 "top-level effect acquires once on Batch flush"
+                Expect.equal effDisposed.Value 1 "top-level effect disposes once on Batch flush"
+                Expect.equal dropEffCreated.Value 0 "top-level effect disposed before Batch flush never constructs _d"
+                Expect.equal dropEffDisposed.Value 0 "top-level effect disposed before Batch flush never disposes _d"
+
+                // 1b. Top-level memo / owning / option / editable / draft / boundary with `use _d = ...; let! a = s1`
+                //     disposed unread constructs 0 times.
+                let topLazyCreated = ref 0
+                let topLazyDisposed = ref 0
+                let mutable topLazyBodies = 0
+
+                let mTopUnread, mOwnTopUnread, mOptTopUnread, eTopUnread, dTopUnread, bTopUnread =
+                    g.Run (fun () ->
+                        let mTop =
+                            memo {
+                                use _d = track "top-m" topLazyCreated topLazyDisposed
+                                let! a = s1
+                                topLazyBodies <- topLazyBodies + 1
+                                return a
+                            }
+
+                        let mOwnTop =
+                            memo {
+                                owning
+                                use _d = track "top-mown" topLazyCreated topLazyDisposed
+                                let! a = s1
+                                topLazyBodies <- topLazyBodies + 1
+                                return a
+                            }
+
+                        let mOptTop =
+                            memo {
+                                option
+                                use _d = track "top-mopt" topLazyCreated topLazyDisposed
+                                let! a = s1
+                                topLazyBodies <- topLazyBodies + 1
+                                return Some a
+                            }
+
+                        let eTop =
+                            editable {
+                                use _d = track "top-edit" topLazyCreated topLazyDisposed
+                                let! a = s1
+                                topLazyBodies <- topLazyBodies + 1
+                                return a
+                            }
+
+                        let dTop =
+                            draft {
+                                use _d = track "top-draft" topLazyCreated topLazyDisposed
+                                let! a = s1
+                                topLazyBodies <- topLazyBodies + 1
+                                return a
+                            }
+
+                        let bTop =
+                            boundary {
+                                pending (fun _ -> -1)
+                                use _d = track "top-bnd" topLazyCreated topLazyDisposed
+                                let! a = s1
+                                topLazyBodies <- topLazyBodies + 1
+                                return a
+                            }
+
+                        mTop, mOwnTop, mOptTop, eTop, dTop, bTop)
+
+                mTopUnread.Dispose ()
+                mOwnTopUnread.Dispose ()
+                mOptTopUnread.Dispose ()
+                eTopUnread.Dispose ()
+                dTopUnread.Dispose ()
+                bTopUnread.Dispose ()
+
+                Expect.equal topLazyCreated.Value 0 "top-level lazy use+let! disposed unread constructs 0 times"
+                Expect.equal topLazyDisposed.Value 0 "top-level lazy use+let! disposed unread disposes 0 times"
+                Expect.equal topLazyBodies 0 "top-level lazy use+let! disposed unread never runs body"
+
+                // 2a. Mixed `if false then (let! a = s1; ...) else (use _d = ...; let! b = s2; ...)`
+                //     disposed unread (and inside g.Batch before flush for effect) leaves 0 leaked IDisposables (`created = disposed`).
+                let mixedUnreadCreated = ref 0
+                let mixedUnreadDisposed = ref 0
+                let mutable mixedUnreadBodies = 0
+
+                let mMixU, mOwnMixU, mOptMixU, eMixU, dMixU, bMixU =
+                    g.Run (fun () ->
+                        let mMix =
+                            memo {
+                                if false then
+                                    let! a = s1
+                                    return a
+                                else
+                                    use _d = track "mix-u-m" mixedUnreadCreated mixedUnreadDisposed
+                                    let! b = s2
+                                    mixedUnreadBodies <- mixedUnreadBodies + 1
+                                    return b
+                            }
+
+                        let mOwnMix =
+                            memo {
+                                owning
+
+                                if false then
+                                    let! a = s1
+                                    return a
+                                else
+                                    use _d = track "mix-u-mown" mixedUnreadCreated mixedUnreadDisposed
+                                    let! b = s2
+                                    mixedUnreadBodies <- mixedUnreadBodies + 1
+                                    return b
+                            }
+
+                        let mOptMix =
+                            memo {
+                                option
+
+                                if false then
+                                    let! a = s1
+                                    return Some a
+                                else
+                                    use _d = track "mix-u-mopt" mixedUnreadCreated mixedUnreadDisposed
+                                    let! b = s2
+                                    mixedUnreadBodies <- mixedUnreadBodies + 1
+                                    return Some b
+                            }
+
+                        let eMix =
+                            editable {
+                                if false then
+                                    let! a = s1
+                                    return a
+                                else
+                                    use _d = track "mix-u-edit" mixedUnreadCreated mixedUnreadDisposed
+                                    let! b = s2
+                                    mixedUnreadBodies <- mixedUnreadBodies + 1
+                                    return b
+                            }
+
+                        let dMix =
+                            draft {
+                                if false then
+                                    let! a = s1
+                                    return a
+                                else
+                                    use _d = track "mix-u-draft" mixedUnreadCreated mixedUnreadDisposed
+                                    let! b = s2
+                                    mixedUnreadBodies <- mixedUnreadBodies + 1
+                                    return b
+                            }
+
+                        let bMix =
+                            boundary {
+                                pending (fun _ -> -1)
+
+                                if false then
+                                    let! a = s1
+                                    return a
+                                else
+                                    use _d = track "mix-u-bnd" mixedUnreadCreated mixedUnreadDisposed
+                                    let! b = s2
+                                    mixedUnreadBodies <- mixedUnreadBodies + 1
+                                    return b
+                            }
+
+                        mMix, mOwnMix, mOptMix, eMix, dMix, bMix)
+
+                mMixU.Dispose ()
+                mOwnMixU.Dispose ()
+                mOptMixU.Dispose ()
+                eMixU.Dispose ()
+                dMixU.Dispose ()
+                bMixU.Dispose ()
+
+                g.Run (fun () ->
+                    g.Batch (fun () ->
+                        let mutable mixRoot = Unchecked.defaultof<Owner>
+
+                        let effMixDrop =
+                            g.RunRoot (fun root ->
+                                mixRoot <- root
+
+                                effect {
+                                    node
+
+                                    if false then
+                                        let! a = s1
+                                        log.Add $"mix-u-eff-a:{a}"
+                                    else
+                                        use _d = track "mix-u-eff" mixedUnreadCreated mixedUnreadDisposed
+                                        let! b = s2
+                                        mixedUnreadBodies <- mixedUnreadBodies + 1
+                                        log.Add $"mix-u-eff-b:{b}"
+                                })
+
+                        ignore effMixDrop
+                        Expect.equal mixedUnreadCreated.Value mixedUnreadDisposed.Value "mixed effect queued before Batch flush leaks 0 handles"
+                        mixRoot.Dispose ()))
+
+                Expect.equal
+                    mixedUnreadDisposed.Value
+                    mixedUnreadCreated.Value
+                    "all unread/batched-disposed mixed Using handles disposed (created = disposed)"
+
+                Expect.equal mixedUnreadBodies 0 "unread/batched-disposed mixed Using bodies never executed"
+
+                // 2b. Same mixed `if false` evaluated on Run #1 + reactive Run #2 acquires & disposes cleanly.
+                let mixedReadCreated = ref 0
+                let mixedReadDisposed = ref 0
+                let mutable mixedReadBodies = 0
+
+                let mMixR, eMixR, dMixR, bMixR =
+                    g.Run (fun () ->
+                        let mMix =
+                            memo {
+                                if false then
+                                    let! a = s1
+                                    return a
+                                else
+                                    use _d = track "mix-r-m" mixedReadCreated mixedReadDisposed
+                                    let! b = s2
+                                    mixedReadBodies <- mixedReadBodies + 1
+                                    return b + 1
+                            }
+
+                        let eMix =
+                            editable {
+                                if false then
+                                    let! a = s1
+                                    return a
+                                else
+                                    use _d = track "mix-r-edit" mixedReadCreated mixedReadDisposed
+                                    let! b = s2
+                                    mixedReadBodies <- mixedReadBodies + 1
+                                    return b + 2
+                            }
+
+                        let dMix =
+                            draft {
+                                if false then
+                                    let! a = s1
+                                    return a
+                                else
+                                    use _d = track "mix-r-draft" mixedReadCreated mixedReadDisposed
+                                    let! b = s2
+                                    mixedReadBodies <- mixedReadBodies + 1
+                                    return b + 3
+                            }
+
+                        let bMix =
+                            boundary {
+                                pending (fun _ -> -1)
+
+                                if false then
+                                    let! a = s1
+                                    return a
+                                else
+                                    use _d = track "mix-r-bnd" mixedReadCreated mixedReadDisposed
+                                    let! b = s2
+                                    mixedReadBodies <- mixedReadBodies + 1
+                                    return b + 4
+                            }
+
+                        mMix, eMix, dMix, bMix)
+
+                Expect.equal mixedReadDisposed.Value mixedReadCreated.Value "before Run #1 reads, mixed Using handles leak 0 disposables"
+                Expect.equal mixedReadBodies 0 "before Run #1 reads, mixed Using bodies do not execute"
+
+                Expect.equal mMixR.Value 21 "mixed memo Run #1 evaluates else branch"
+                Expect.equal eMixR.Value 22 "mixed editable Run #1 evaluates else branch"
+                Expect.equal dMixR.Value 23 "mixed draft Run #1 evaluates else branch"
+                Expect.equal bMixR.Value 24 "mixed boundary Run #1 evaluates else branch"
+                Expect.equal mixedReadBodies 4 "all 4 mixed Run #1 bodies executed once"
+                Expect.equal mixedReadDisposed.Value mixedReadCreated.Value "after Run #1 reads, created = disposed"
+
+                let effMixFlushLog = ResizeArray<string>()
+
+                g.Run (fun () ->
+                    g.Batch (fun () ->
+                        effect {
+                            if false then
+                                let! a = s1
+                                effMixFlushLog.Add $"a:{a}"
+                            else
+                                use _d = track "mix-r-eff" mixedReadCreated mixedReadDisposed
+                                let! b = s2
+                                effMixFlushLog.Add $"b:{b}"
+                        }
+
+                        Expect.equal mixedReadDisposed.Value mixedReadCreated.Value "batched mixed effect pre-flush leaves created = disposed"))
+
+                Expect.sequenceEqual effMixFlushLog [ "b:20" ] "batched mixed effect Run #1 fires on flush"
+                Expect.equal mixedReadDisposed.Value mixedReadCreated.Value "batched mixed effect created = disposed after flush"
+
+                s2.Value <- 30
+                Expect.equal mMixR.Value 31 "mixed memo Run #2 updates on s2"
+                Expect.equal eMixR.Value 32 "mixed editable Run #2 updates on s2"
+                Expect.equal dMixR.Value 33 "mixed draft Run #2 updates on s2"
+                Expect.equal bMixR.Value 34 "mixed boundary Run #2 updates on s2"
+                Expect.sequenceEqual effMixFlushLog [ "b:20"; "b:30" ] "batched mixed effect Run #2 fires on s2 write"
+                Expect.equal mixedReadDisposed.Value mixedReadCreated.Value "after Run #2 reads, created = disposed"
+
+                // 3. Reentrancy guard: reading a nested lazy memo using `use` during outer EvalBound ProbeBound executes normally.
+                let nestedCreated = ref 0
+                let nestedDisposed = ref 0
+
+                let innerMemo =
+                    g.Run (fun () ->
+                        memo {
+                            use _d = track "inner-nested" nestedCreated nestedDisposed
+                            let! x = s1
+                            return x + 1
+                        })
+
+                let outerMemo =
+                    g.Run (fun () ->
+                        memo {
+                            if innerMemo.Value < 0 then
+                                let! a = s1
+                                return a
+                            else
+                                use _d = track "outer-nested" nestedCreated nestedDisposed
+                                let! b = s2
+                                return innerMemo.Value + b
+                        })
+
+                Expect.equal outerMemo.Value 41 "nested memo evaluated during outer ProbeBound does not trigger probe disposal error"
+                Expect.equal nestedDisposed.Value nestedCreated.Value "nested ProbeBound reentrancy leaves created = disposed"
             }
         ]
