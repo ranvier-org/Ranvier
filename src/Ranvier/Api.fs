@@ -406,6 +406,62 @@ module Api =
         requireComparer comparer
         Memo.CreateWithComparer (Graph.Current, compute, ScopeMode.Owning, comparer)
 
+    let private requireRead (read: unit -> 'T) =
+        if Platform.isNull (box read) then
+            nullArg "read"
+
+    let private requireCompute (compute: 'T -> 'U) =
+        if Platform.isNull (box compute) then
+            nullArg "compute"
+
+    /// <summary>
+    /// A derived value split into a tracked pure <c>read</c> and an untracked pure <c>compute</c> invoked when
+    /// <c>read</c> settles on an unequal key.
+    /// </summary>
+    /// <remarks>
+    /// A pending or failed <c>read</c> surfaces on the memo while preserving the last settled key and cached
+    /// <c>compute</c> outcome; reading a pending source inside <c>compute</c> fails the memo with
+    /// <c>InvalidOperationException</c>.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createMemoOn (read: unit -> 'T) (compute: 'T -> 'U) : Memo<'U> =
+        requireRead read
+        requireCompute compute
+        Memo.CreateOn (Graph.Current, read, compute, ScopeMode.Pure, ValueNone)
+
+    /// <summary>A split pure memo whose output cutoff uses <c>comparer</c> instead of the graph's equality policy.</summary>
+    /// <remarks>Input keys from <c>read</c> compare under the graph's equality policy; pending and failed transitions still propagate.</remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>comparer</c>, <c>read</c>, or <c>compute</c> is null.</exception>
+    let createMemoOnWithComparer (comparer: IEqualityComparer<'U>) (read: unit -> 'T) (compute: 'T -> 'U) : Memo<'U> =
+        requireComparer comparer
+        requireRead read
+        requireCompute compute
+        Memo.CreateOn (Graph.Current, read, compute, ScopeMode.Pure, ValueSome comparer)
+
+    /// <summary>
+    /// A split memo whose <c>compute</c> owns the nodes and cleanups it creates, discharged before the next
+    /// <c>compute</c> on an unequal settled key and at disposal.
+    /// </summary>
+    /// <remarks>
+    /// <c>read</c> remains pure and tracked. A pending, failed, or equal <c>read</c> keeps the active <c>compute</c>
+    /// scope and outcome intact; reading a pending source inside <c>compute</c> fails the memo with
+    /// <c>InvalidOperationException</c>.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createMemoWithOn (read: unit -> 'T) (compute: 'T -> 'U) : Memo<'U> =
+        requireRead read
+        requireCompute compute
+        Memo.CreateOn (Graph.Current, read, compute, ScopeMode.Owning, ValueNone)
+
+    /// <summary>An owning split memo whose output cutoff uses <c>comparer</c> instead of the graph's equality policy.</summary>
+    /// <remarks>An unequal settled key from <c>read</c> discharges the previous <c>compute</c> scope even when outputs compare equal.</remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>comparer</c>, <c>read</c>, or <c>compute</c> is null.</exception>
+    let createOwningMemoOnWithComparer (comparer: IEqualityComparer<'U>) (read: unit -> 'T) (compute: 'T -> 'U) : Memo<'U> =
+        requireComparer comparer
+        requireRead read
+        requireCompute compute
+        Memo.CreateOn (Graph.Current, read, compute, ScopeMode.Owning, ValueSome comparer)
+
     /// <summary>
     /// A side effect, run once now and again whenever something it read changes. Disposed with the enclosing scope.
     /// </summary>
@@ -519,11 +575,75 @@ module Api =
     let createOwningAsyncWithPolicy (policy: FlightPolicy) (compute: Previous<'T> -> CancellationToken -> Task<'T>) =
         AsyncMemo<'T>.Create(Graph.Current, compute, ScopeMode.Owning, policy)
 
+    let private requireAsyncCompute (compute: 'T -> Previous<'U> -> CancellationToken -> Task<'U>) =
+        if UntrackedPhase.isNullFn3 compute then
+            nullArg "compute"
+
+    /// <summary>
+    /// An async value split into a tracked pure <c>read</c> and an untracked pure <c>compute</c> launched when
+    /// <c>read</c> settles on an unequal key.
+    /// </summary>
+    /// <remarks>
+    /// A pending, failed, or equal <c>read</c> preserves any active flight and settled value for the last key;
+    /// reading a pending source synchronously inside <c>compute</c> fails the run with <c>InvalidOperationException</c>.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createAsyncOn (read: unit -> 'T) (compute: 'T -> Previous<'U> -> CancellationToken -> Task<'U>) : AsyncMemo<'U> =
+        requireRead read
+        requireAsyncCompute compute
+        let graph = Graph.Current
+        AsyncMemo.CreateOn (graph, read, compute, ScopeMode.PureAsync, graph.Options.FlightPolicy)
+
+    /// <summary>
+    /// A split async value whose <c>compute</c> owns the nodes and cleanups created synchronously before its first
+    /// suspending <c>await</c>, discharged before the next flight on an unequal settled key and at disposal.
+    /// </summary>
+    /// <remarks>
+    /// <c>read</c> remains pure and tracked. A pending, failed, or equal <c>read</c> preserves the active flight,
+    /// its owned scope, and its settled value.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createAsyncWithOn (read: unit -> 'T) (compute: 'T -> Previous<'U> -> CancellationToken -> Task<'U>) : AsyncMemo<'U> =
+        requireRead read
+        requireAsyncCompute compute
+        let graph = Graph.Current
+        AsyncMemo.CreateOn (graph, read, compute, ScopeMode.Owning, graph.Options.FlightPolicy)
+
+    /// <summary>
+    /// <c>createAsyncOn</c>, with flights under <c>policy</c> instead of the graph's <c>GraphOptions.FlightPolicy</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createAsyncOnWithPolicy
+        (policy: FlightPolicy)
+        (read: unit -> 'T)
+        (compute: 'T -> Previous<'U> -> CancellationToken -> Task<'U>)
+        : AsyncMemo<'U> =
+        requireRead read
+        requireAsyncCompute compute
+        AsyncMemo.CreateOn (Graph.Current, read, compute, ScopeMode.PureAsync, policy)
+
+    /// <summary>
+    /// <c>createAsyncWithOn</c>, with flights under <c>policy</c> instead of the graph's <c>GraphOptions.FlightPolicy</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createOwningAsyncOnWithPolicy
+        (policy: FlightPolicy)
+        (read: unit -> 'T)
+        (compute: 'T -> Previous<'U> -> CancellationToken -> Task<'U>)
+        : AsyncMemo<'U> =
+        requireRead read
+        requireAsyncCompute compute
+        AsyncMemo.CreateOn (Graph.Current, read, compute, ScopeMode.Owning, policy)
+
     /// <summary>
     /// A source whose value arrives later, settled by hand rather than computed.
     /// </summary>
     let createAsyncSource<'T> () =
         AsyncSource<'T>(Graph.Current)
+
+    let private requireStreamStart (start: 'K -> CancellationToken -> StreamSource<'T>) =
+        if UntrackedPhase.isNullFn2 start then
+            nullArg "start"
 
     /// <summary>
     /// The latest item of the stream <c>start</c> returns. Pending until the first item; a change to a value read by
@@ -544,6 +664,42 @@ module Api =
     /// </remarks>
     let createStreamFold (seed: 'S) (fold: 'S -> 'T -> 'S) (start: CancellationToken -> StreamSource<'T>) =
         StreamMemo<'S>.Create(Graph.Current, seed, fold, start, false)
+
+    /// <summary>
+    /// The latest item of a stream split into a tracked pure <c>read</c> and an untracked pure <c>start</c> invoked
+    /// when <c>read</c> settles on an unequal key.
+    /// </summary>
+    /// <remarks>
+    /// A pending, failed, or equal <c>read</c> leaves the current stream running; reading a pending source inside
+    /// <c>start</c> fails the node with <c>InvalidOperationException</c>.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>start</c> is null.</exception>
+    let createStreamOn (read: unit -> 'K) (start: 'K -> CancellationToken -> StreamSource<'T>) : StreamMemo<'T> =
+        requireRead read
+        requireStreamStart start
+        StreamMemo.CreateOn (Graph.Current, read, start)
+
+    /// <summary>
+    /// The fold of a split stream's items into <c>seed</c>, restarting from <c>seed</c> when <c>read</c> settles on
+    /// an unequal key.
+    /// </summary>
+    /// <remarks>
+    /// Items arriving while <c>read</c> is pending or failed continue folding into the current key's state and
+    /// surface once <c>read</c> recovers to an equal key.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>fold</c>, <c>read</c>, or <c>start</c> is null.</exception>
+    let createStreamFoldOn
+        (seed: 'S)
+        (fold: 'S -> 'T -> 'S)
+        (read: unit -> 'K)
+        (start: 'K -> CancellationToken -> StreamSource<'T>)
+        : StreamMemo<'S> =
+        if UntrackedPhase.isNullFn2 fold then
+            nullArg "fold"
+
+        requireRead read
+        requireStreamStart start
+        StreamMemo.CreateFoldOn (Graph.Current, seed, fold, read, start)
 
     /// <summary>
     /// Substitutes <c>fallback</c> for as long as <c>body</c> is suspended, so the suspension stops here instead of
@@ -911,7 +1067,29 @@ module Api =
     let createDraft (seed: 'T voption -> 'T) : Editable<'T> =
         Editable<'T>(Graph.Current, seed, true)
 
-/// <summary>Writes to a <c>Signal</c> computed from its current value.</summary>
+[<Sealed>]
+type private StreamMemoAdapter<'T>(src: StreamMemo<'T>) =
+    inherit CombinatorSource<'T>()
+
+    override _.Graph = src.Graph
+    override _.Source = src :> ISource
+    override _.Node = src :> INode
+
+    override _.RefreshAndCheckStale(n: MemoNode) =
+        (src :> ISource).UpdateIfNecessary()
+
+        if not n.IsDisposed && (src :> ISource).IsStale then
+            CombinatorHelpers.markStaleAfterRefresh (n, src.IsSplit)
+
+    override _.MarkStaleAfterPreRefresh(n: MemoNode) =
+        if not n.IsDisposed && (src :> ISource).IsStale then
+            CombinatorHelpers.markStaleAfterRefresh (n, src.IsSplit)
+
+    override _.Status = src.Status
+    override _.Peek = src.Peek
+    override _.Failure = src.Failure
+
+/// <summary>Updates and derived combinators over <see cref="T:Ranvier.Signal`1"/>.</summary>
 [<RequireQualifiedAccess>]
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Signal =
@@ -928,6 +1106,371 @@ module Signal =
     /// </example>
     let update (signal: Signal<'S>) (f: 'S -> 'S) : unit =
         signal.Value <- f signal.Peek
+
+    /// <summary>
+    /// A pure <c>Memo&lt;'U&gt;</c> computing <c>mapping source.Value</c> with dependency tracking closed inside
+    /// <c>mapping</c>.
+    /// </summary>
+    /// <remarks>
+    /// Resolves <c>source</c>'s graph directly without requiring <c>graph.Activate ()</c>. Reading a pending source inside
+    /// <c>mapping</c> fails the memo with <c>InvalidOperationException</c>.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>mapping</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let map (mapping: 'T -> 'U) (source: Signal<'T>) : Memo<'U> =
+        CombinatorMemos.createSignalMap mapping source
+
+    /// <summary>
+    /// A pure <c>Memo&lt;'C&gt;</c> computing <c>mapping source1.Value source2.Value</c> with dependency tracking closed
+    /// inside <c>mapping</c>.
+    /// </summary>
+    /// <remarks>Resolves <c>source1</c>'s graph directly without requiring <c>graph.Activate ()</c>.</remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>mapping</c>, <c>source1</c>, or <c>source2</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.
+    /// </exception>
+    let map2 (mapping: 'A -> 'B -> 'C) (source1: Signal<'A>) (source2: Signal<'B>) : Memo<'C> =
+        CombinatorMemos.createSignalMap2 mapping source1 source2
+
+    /// <summary>A pure <c>Memo&lt;'A * 'B&gt;</c> pairing <c>source1.Value</c> and <c>source2.Value</c>.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>source1</c> or <c>source2</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.
+    /// </exception>
+    let zip (source1: Signal<'A>) (source2: Signal<'B>) : Memo<'A * 'B> =
+        CombinatorMemos.createSignalZip source1 source2
+
+    /// <summary>
+    /// Switches dynamically onto the inner <c>Memo&lt;'U&gt;</c> returned by <c>binder source.Value</c> whenever
+    /// <c>source</c> changes to an unequal value.
+    /// </summary>
+    /// <remarks>
+    /// Inner <c>Memo&lt;'U&gt;</c> updates refresh the result without re-running <c>binder</c> or discharging nodes and
+    /// cleanups owned by <c>binder</c>. Returning a pre-existing <c>Memo&lt;'U&gt;</c> allocates no child scope.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>binder</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let bind (binder: 'T -> Memo<'U>) (source: Signal<'T>) : Memo<'U> =
+        CombinatorMemos.createSignalBind binder source
+
+/// <summary>Derived combinators over <see cref="T:Ranvier.Memo`1"/>.</summary>
+[<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Memo =
+    /// <summary>
+    /// A pure <c>Memo&lt;'U&gt;</c> computing <c>mapping source.Value</c> once <c>source</c> is ready, with dependency
+    /// tracking closed inside <c>mapping</c>.
+    /// </summary>
+    /// <remarks>
+    /// Propagates <c>source</c>'s <c>Pending</c> and <c>Failed</c> states (preserving <c>ErrorOrigin</c>) without running
+    /// <c>mapping</c>. Unobserved linear chains sharing an <c>Owner</c> fuse in untraced unjournaled builds.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>mapping</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let map (mapping: 'T -> 'U) (source: Memo<'T>) : Memo<'U> =
+        CombinatorMemos.createMemoMap mapping source
+
+    /// <summary>
+    /// A pure <c>Memo&lt;'C&gt;</c> computing <c>mapping source1.Value source2.Value</c> with left-to-right
+    /// <c>Pending</c>/<c>Failed</c> precedence and tracking closed inside <c>mapping</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>mapping</c>, <c>source1</c>, or <c>source2</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.
+    /// </exception>
+    let map2 (mapping: 'A -> 'B -> 'C) (source1: Memo<'A>) (source2: Memo<'B>) : Memo<'C> =
+        CombinatorMemos.createMemoMap2 mapping source1 source2
+
+    /// <summary>
+    /// A pure <c>Memo&lt;'A * 'B&gt;</c> pairing <c>source1.Value</c> and <c>source2.Value</c> with left-to-right
+    /// <c>Pending</c>/<c>Failed</c> precedence.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>source1</c> or <c>source2</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.
+    /// </exception>
+    let zip (source1: Memo<'A>) (source2: Memo<'B>) : Memo<'A * 'B> =
+        CombinatorMemos.createMemoZip source1 source2
+
+    /// <summary>
+    /// Switches dynamically onto the inner <c>Memo&lt;'U&gt;</c> returned by <c>binder source.Value</c> whenever
+    /// <c>source</c> settles on an unequal value.
+    /// </summary>
+    /// <remarks>
+    /// Transient <c>Pending</c> or <c>Failed</c> states on <c>source</c> surface immediately while keeping the current
+    /// <c>binder</c> scope and inner <c>Memo&lt;'U&gt;</c> intact for recovery to an equal outer value.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>binder</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let bind (binder: 'T -> Memo<'U>) (source: Memo<'T>) : Memo<'U> =
+        CombinatorMemos.createMemoBind binder source
+
+/// <summary>Derived combinators and chained flights over <see cref="T:Ranvier.AsyncMemo`1"/>.</summary>
+[<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module AsyncMemo =
+    /// <summary>
+    /// A pure <c>Memo&lt;'U&gt;</c> computing <c>mapping source.Value</c> once <c>source</c> settles, with dependency
+    /// tracking closed inside <c>mapping</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>mapping</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let map (mapping: 'T -> 'U) (source: AsyncMemo<'T>) : Memo<'U> =
+        if UntrackedPhase.isNullFn1 mapping then
+            nullArg (nameof mapping)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        CombinatorMemos.createSourceMap mapping (AsyncMemoAdapter<'T>(source))
+
+    /// <summary>
+    /// A pure <c>Memo&lt;'C&gt;</c> computing <c>mapping source1.Value source2.Value</c> with left-to-right
+    /// <c>Pending</c>/<c>Failed</c> precedence and tracking closed inside <c>mapping</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>mapping</c>, <c>source1</c>, or <c>source2</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.
+    /// </exception>
+    let map2 (mapping: 'A -> 'B -> 'C) (source1: AsyncMemo<'A>) (source2: AsyncMemo<'B>) : Memo<'C> =
+        if UntrackedPhase.isNullFn2 mapping then
+            nullArg (nameof mapping)
+
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        CombinatorMemos.createSourceMap2 mapping (AsyncMemoAdapter<'A>(source1)) (AsyncMemoAdapter<'B>(source2))
+
+    /// <summary>
+    /// A pure <c>Memo&lt;'A * 'B&gt;</c> pairing <c>source1.Value</c> and <c>source2.Value</c> with left-to-right
+    /// <c>Pending</c>/<c>Failed</c> precedence.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>source1</c> or <c>source2</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.
+    /// </exception>
+    let zip (source1: AsyncMemo<'A>) (source2: AsyncMemo<'B>) : Memo<'A * 'B> =
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        CombinatorMemos.createSourceZip (AsyncMemoAdapter<'A>(source1)) (AsyncMemoAdapter<'B>(source2))
+
+    /// <summary>
+    /// Starts an untracked flight <c>binder x ct</c> whenever <c>source</c> settles on an unequal value <c>x</c>, using
+    /// the graph's <c>FlightPolicy</c>.
+    /// </summary>
+    /// <remarks>
+    /// Upstream <c>Pending</c> and <c>Failed</c> states propagate while keeping any active flight and settled value for
+    /// recovery to an equal input.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>binder</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let bind (binder: 'T -> CancellationToken -> Task<'U>) (source: AsyncMemo<'T>) : AsyncMemo<'U> =
+        if UntrackedPhase.isNullFn2 binder then
+            nullArg (nameof binder)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        let g = source.Graph
+
+        g.Entered (
+            "Creating a node",
+            fun () -> AsyncMemo<'U>.CreateOn(g, (fun () -> source.Value), (fun x _ ct -> binder x ct), ScopeMode.PureAsync, g.Options.FlightPolicy)
+        )
+
+    /// <summary>
+    /// <c>AsyncMemo.bind</c>, managing overlapping flights under <c>policy</c> instead of the graph's default
+    /// <c>FlightPolicy</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>binder</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let bindWithPolicy (policy: FlightPolicy) (binder: 'T -> CancellationToken -> Task<'U>) (source: AsyncMemo<'T>) : AsyncMemo<'U> =
+        if UntrackedPhase.isNullFn2 binder then
+            nullArg (nameof binder)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        let g = source.Graph
+
+        g.Entered (
+            "Creating a node",
+            fun () -> AsyncMemo<'U>.CreateOn(g, (fun () -> source.Value), (fun x _ ct -> binder x ct), ScopeMode.PureAsync, policy)
+        )
+
+/// <summary>Derived combinators and chained flights over <see cref="T:Ranvier.AsyncSource`1"/>.</summary>
+[<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module AsyncSource =
+    /// <summary>
+    /// A pure <c>Memo&lt;'U&gt;</c> computing <c>mapping source.Value</c> once <c>source</c> settles, with dependency
+    /// tracking closed inside <c>mapping</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>mapping</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let map (mapping: 'T -> 'U) (source: AsyncSource<'T>) : Memo<'U> =
+        if UntrackedPhase.isNullFn1 mapping then
+            nullArg (nameof mapping)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        CombinatorMemos.createSourceMap mapping (AsyncSourceAdapter<'T>(source))
+
+    /// <summary>
+    /// A pure <c>Memo&lt;'C&gt;</c> computing <c>mapping source1.Value source2.Value</c> with left-to-right
+    /// <c>Pending</c>/<c>Failed</c> precedence and tracking closed inside <c>mapping</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>mapping</c>, <c>source1</c>, or <c>source2</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.
+    /// </exception>
+    let map2 (mapping: 'A -> 'B -> 'C) (source1: AsyncSource<'A>) (source2: AsyncSource<'B>) : Memo<'C> =
+        if UntrackedPhase.isNullFn2 mapping then
+            nullArg (nameof mapping)
+
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        CombinatorMemos.createSourceMap2 mapping (AsyncSourceAdapter<'A>(source1)) (AsyncSourceAdapter<'B>(source2))
+
+    /// <summary>
+    /// A pure <c>Memo&lt;'A * 'B&gt;</c> pairing <c>source1.Value</c> and <c>source2.Value</c> with left-to-right
+    /// <c>Pending</c>/<c>Failed</c> precedence.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>source1</c> or <c>source2</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.
+    /// </exception>
+    let zip (source1: AsyncSource<'A>) (source2: AsyncSource<'B>) : Memo<'A * 'B> =
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        CombinatorMemos.createSourceZip (AsyncSourceAdapter<'A>(source1)) (AsyncSourceAdapter<'B>(source2))
+
+    /// <summary>
+    /// Starts an untracked flight <c>binder x ct</c> whenever <c>source</c> settles on an unequal value <c>x</c>, using
+    /// the graph's <c>FlightPolicy</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>binder</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let bind (binder: 'T -> CancellationToken -> Task<'U>) (source: AsyncSource<'T>) : AsyncMemo<'U> =
+        if UntrackedPhase.isNullFn2 binder then
+            nullArg (nameof binder)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        let g = source.Graph
+
+        g.Entered (
+            "Creating a node",
+            fun () -> AsyncMemo<'U>.CreateOn(g, (fun () -> source.Value), (fun x _ ct -> binder x ct), ScopeMode.PureAsync, g.Options.FlightPolicy)
+        )
+
+/// <summary>Derived combinators and chained streams over <see cref="T:Ranvier.StreamMemo`1"/>.</summary>
+[<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module StreamMemo =
+    /// <summary>
+    /// A pure <c>Memo&lt;'U&gt;</c> computing <c>mapping source.Value</c> once <c>source</c> publishes, with dependency
+    /// tracking closed inside <c>mapping</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>mapping</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let map (mapping: 'T -> 'U) (source: StreamMemo<'T>) : Memo<'U> =
+        if UntrackedPhase.isNullFn1 mapping then
+            nullArg (nameof mapping)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        CombinatorMemos.createSourceMap mapping (StreamMemoAdapter<'T>(source))
+
+    /// <summary>
+    /// A pure <c>Memo&lt;'C&gt;</c> computing <c>mapping source1.Value source2.Value</c> with left-to-right
+    /// <c>Pending</c>/<c>Failed</c> precedence and tracking closed inside <c>mapping</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>mapping</c>, <c>source1</c>, or <c>source2</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.
+    /// </exception>
+    let map2 (mapping: 'A -> 'B -> 'C) (source1: StreamMemo<'A>) (source2: StreamMemo<'B>) : Memo<'C> =
+        if UntrackedPhase.isNullFn2 mapping then
+            nullArg (nameof mapping)
+
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        CombinatorMemos.createSourceMap2 mapping (StreamMemoAdapter<'A>(source1)) (StreamMemoAdapter<'B>(source2))
+
+    /// <summary>
+    /// A pure <c>Memo&lt;'A * 'B&gt;</c> pairing <c>source1.Value</c> and <c>source2.Value</c> with left-to-right
+    /// <c>Pending</c>/<c>Failed</c> precedence.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>source1</c> or <c>source2</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.
+    /// </exception>
+    let zip (source1: StreamMemo<'A>) (source2: StreamMemo<'B>) : Memo<'A * 'B> =
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        CombinatorMemos.createSourceZip (StreamMemoAdapter<'A>(source1)) (StreamMemoAdapter<'B>(source2))
+
+    /// <summary>
+    /// Connects to the <c>StreamSource&lt;'T&gt;</c> returned by <c>binder k ct</c> whenever <c>source</c> publishes an
+    /// unequal key <c>k</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>binder</c> or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let bind (binder: 'K -> CancellationToken -> StreamSource<'T>) (source: StreamMemo<'K>) : StreamMemo<'T> =
+        if UntrackedPhase.isNullFn2 binder then
+            nullArg (nameof binder)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        let g = source.Graph
+        g.Entered ("Creating a node", fun () -> StreamMemo<'T>.CreateOn(g, (fun () -> source.Value), binder))
+
+    /// <summary>
+    /// Folds items from <c>binder k ct</c> into <c>seed</c>, restarting from <c>seed</c> whenever <c>source</c> publishes
+    /// an unequal key <c>k</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>fold</c>, <c>binder</c>, or <c>source</c> is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Called inside a pure body or off the graph's thread.</exception>
+    let bindFold (seed: 'S) (fold: 'S -> 'T -> 'S) (binder: 'K -> CancellationToken -> StreamSource<'T>) (source: StreamMemo<'K>) : StreamMemo<'S> =
+        if UntrackedPhase.isNullFn2 fold then
+            nullArg (nameof fold)
+
+        if UntrackedPhase.isNullFn2 binder then
+            nullArg (nameof binder)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        let g = source.Graph
+        g.Entered ("Creating a node", fun () -> StreamMemo<'S>.CreateFoldOn(g, seed, fold, (fun () -> source.Value), binder))
 
 /// <summary>Keyed copy-and-update over F# lists.</summary>
 [<RequireQualifiedAccess>]

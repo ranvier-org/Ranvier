@@ -152,6 +152,39 @@ type Reactive =
         Api.createMemoWithComparer comparer (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous))
 
     /// <summary>
+    /// A pure derived value split into a tracked <c>read</c> and an untracked <c>compute</c> invoked when <c>read</c>
+    /// settles on an unequal key.
+    /// </summary>
+    /// <remarks>
+    /// A pending or failed <c>read</c> surfaces on the memo while preserving the last settled key and cached
+    /// <c>compute</c> outcome; reading a pending source inside <c>compute</c> fails the memo with
+    /// <c>InvalidOperationException</c>.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    static member MemoOn<'T, 'U>(read: Func<'T>, compute: Func<'T, 'U>) : Memo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        Api.createMemoOn read.Invoke compute.Invoke
+
+    /// <summary>A split pure memo whose output cutoff uses <c>comparer</c> instead of the graph's equality policy.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c>, <c>compute</c>, or <c>comparer</c> is null.</exception>
+    static member MemoOn<'T, 'U>(read: Func<'T>, compute: Func<'T, 'U>, comparer: IEqualityComparer<'U>) : Memo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        if isNull comparer then
+            nullArg (nameof comparer)
+
+        Api.createMemoOnWithComparer comparer read.Invoke compute.Invoke
+
+    /// <summary>
     /// A value seeded by <c>seed ()</c> that accepts local edits through <c>Value</c>. An edit is dropped once the seed
     /// produces an unequal value.
     /// </summary>
@@ -177,6 +210,36 @@ type Reactive =
     /// <exception cref="T:System.ArgumentNullException"><c>comparer</c> is null.</exception>
     static member OwningMemo<'T>(compute: Func<'T>, comparer: IEqualityComparer<'T>) : Memo<'T> =
         Api.createOwningMemoWithComparer comparer (fun _ -> compute.Invoke ())
+
+    /// <summary>
+    /// A split memo whose <c>compute</c> owns the nodes and cleanups it creates, discharged before the next
+    /// <c>compute</c> on an unequal settled key and at disposal.
+    /// </summary>
+    /// <remarks><c>read</c> remains pure and tracked; equal, pending, or failed keys preserve the active scope.</remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    static member OwningMemoOn<'T, 'U>(read: Func<'T>, compute: Func<'T, 'U>) : Memo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        Api.createMemoWithOn read.Invoke compute.Invoke
+
+    /// <summary>An owning split memo whose output cutoff uses <c>comparer</c> instead of the graph's equality policy.</summary>
+    /// <remarks>An unequal settled key discharges the previous <c>compute</c> scope even when outputs compare equal.</remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c>, <c>compute</c>, or <c>comparer</c> is null.</exception>
+    static member OwningMemoOn<'T, 'U>(read: Func<'T>, compute: Func<'T, 'U>, comparer: IEqualityComparer<'U>) : Memo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        if isNull comparer then
+            nullArg (nameof comparer)
+
+        Api.createOwningMemoOnWithComparer comparer read.Invoke compute.Invoke
 
     /// <summary>An effect: <c>body</c> runs after the current flush and again when a value it read changes.</summary>
     /// <remarks>The enclosing scope disposes the effect; dispose the returned handle to stop it earlier.</remarks>
@@ -227,6 +290,105 @@ type Reactive =
     static member OwningAsync<'T>(compute: Func<CancellationToken, Task<'T>>, policy: FlightPolicy) : AsyncMemo<'T> =
         Api.createOwningAsyncWithPolicy policy (fun _ token -> compute.Invoke token)
 
+    /// <summary>
+    /// An async value split into a tracked pure <c>read</c> and an untracked pure <c>compute</c> launched when
+    /// <c>read</c> settles on an unequal key.
+    /// </summary>
+    /// <remarks>Equal, pending, or failed <c>read</c> transitions preserve any active flight and settled value.</remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    static member AsyncOn<'T, 'U>(read: Func<'T>, compute: Func<'T, CancellationToken, Task<'U>>) : AsyncMemo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        Api.createAsyncOn read.Invoke (fun key _ token -> compute.Invoke (key, token))
+
+    /// <summary><c>AsyncOn</c>, receiving the value last published through <c>Previous</c>.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    static member AsyncOn<'T, 'U>(read: Func<'T>, compute: Func<'T, Previous<'U>, CancellationToken, Task<'U>>) : AsyncMemo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        Api.createAsyncOn read.Invoke (fun key previous token -> compute.Invoke (key, previous, token))
+
+    /// <summary>A split async memo whose flights follow <c>policy</c> instead of the graph's flight policy.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    static member AsyncOn<'T, 'U>(read: Func<'T>, compute: Func<'T, CancellationToken, Task<'U>>, policy: FlightPolicy) : AsyncMemo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        Api.createAsyncOnWithPolicy policy read.Invoke (fun key _ token -> compute.Invoke (key, token))
+
+    /// <summary>A split async memo receiving the value last published, whose flights follow <c>policy</c>.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    static member AsyncOn<'T, 'U>
+        (read: Func<'T>, compute: Func<'T, Previous<'U>, CancellationToken, Task<'U>>, policy: FlightPolicy)
+        : AsyncMemo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        Api.createAsyncOnWithPolicy policy read.Invoke (fun key previous token -> compute.Invoke (key, previous, token))
+
+    /// <summary>
+    /// <c>AsyncOn</c>, owning the nodes and cleanups <c>compute</c> creates synchronously before its first suspending
+    /// <c>await</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    static member OwningAsyncOn<'T, 'U>(read: Func<'T>, compute: Func<'T, CancellationToken, Task<'U>>) : AsyncMemo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        Api.createAsyncWithOn read.Invoke (fun key _ token -> compute.Invoke (key, token))
+
+    /// <summary><c>OwningAsyncOn</c>, receiving the value last published through <c>Previous</c>.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    static member OwningAsyncOn<'T, 'U>(read: Func<'T>, compute: Func<'T, Previous<'U>, CancellationToken, Task<'U>>) : AsyncMemo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        Api.createAsyncWithOn read.Invoke (fun key previous token -> compute.Invoke (key, previous, token))
+
+    /// <summary>An owning split async memo whose flights follow <c>policy</c> instead of the graph's flight policy.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    static member OwningAsyncOn<'T, 'U>(read: Func<'T>, compute: Func<'T, CancellationToken, Task<'U>>, policy: FlightPolicy) : AsyncMemo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        Api.createOwningAsyncOnWithPolicy policy read.Invoke (fun key _ token -> compute.Invoke (key, token))
+
+    /// <summary>An owning split async memo receiving the value last published, whose flights follow <c>policy</c>.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    static member OwningAsyncOn<'T, 'U>
+        (read: Func<'T>, compute: Func<'T, Previous<'U>, CancellationToken, Task<'U>>, policy: FlightPolicy)
+        : AsyncMemo<'U> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull compute then
+            nullArg (nameof compute)
+
+        Api.createOwningAsyncOnWithPolicy policy read.Invoke (fun key previous token -> compute.Invoke (key, previous, token))
+
     /// <summary>A source that stays pending until <c>Settle</c> or <c>Fail</c> is called on it.</summary>
     static member AsyncSource<'T>() : AsyncSource<'T> =
         Api.createAsyncSource<'T>()
@@ -238,6 +400,39 @@ type Reactive =
     /// <summary>The fold of the stream's items into <c>seed</c>; a restart begins again from <c>seed</c>.</summary>
     static member StreamFold<'S, 'T>(seed: 'S, fold: Func<'S, 'T, 'S>, start: Func<CancellationToken, StreamSource<'T>>) : StreamMemo<'S> =
         Api.createStreamFold seed (fun state item -> fold.Invoke (state, item)) start.Invoke
+
+    /// <summary>
+    /// The latest item of a stream split into a tracked pure <c>read</c> and an untracked pure <c>start</c> invoked
+    /// when <c>read</c> settles on an unequal key.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>start</c> is null.</exception>
+    static member StreamOn<'K, 'T>(read: Func<'K>, start: Func<'K, CancellationToken, StreamSource<'T>>) : StreamMemo<'T> =
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull start then
+            nullArg (nameof start)
+
+        Api.createStreamOn read.Invoke (fun key token -> start.Invoke (key, token))
+
+    /// <summary>
+    /// The fold of a split stream's items into <c>seed</c>, restarting from <c>seed</c> when <c>read</c> settles on an
+    /// unequal key.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>fold</c>, <c>read</c>, or <c>start</c> is null.</exception>
+    static member StreamFoldOn<'K, 'S, 'T>
+        (seed: 'S, fold: Func<'S, 'T, 'S>, read: Func<'K>, start: Func<'K, CancellationToken, StreamSource<'T>>)
+        : StreamMemo<'S> =
+        if isNull fold then
+            nullArg (nameof fold)
+
+        if isNull read then
+            nullArg (nameof read)
+
+        if isNull start then
+            nullArg (nameof start)
+
+        Api.createStreamFoldOn seed (fun state item -> fold.Invoke (state, item)) read.Invoke (fun key token -> start.Invoke (key, token))
 
     /// <summary>A value that shows <c>fallback ()</c> while <c>body</c> reads a pending source.</summary>
     /// <remarks>An error in <c>body</c> propagates to the boundary's readers.</remarks>

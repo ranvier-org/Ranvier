@@ -150,6 +150,59 @@ let main _ =
     app.Dispatch 3
     equals "an Mvu selector reads the dispatched model" "6" (string doubled.Value)
 
+    let aotInput = Signal (g, 4)
+    let aotHidden = Signal (g, 100)
+
+    let splitFSharp =
+        createMemoOn (fun () -> aotInput.Value) (fun k -> k + aotHidden.Value)
+
+    equals "createMemoOn initial pull" "104" (string splitFSharp.Value)
+    aotHidden.Value <- 200
+    equals "createMemoOn closes tracking inside compute" "104" (string splitFSharp.Value)
+
+    let fusedChain =
+        aotInput
+        |> Signal.map (fun x -> x + 1)
+        |> Memo.map (fun x -> x * 2)
+        |> Memo.map (fun x -> x + 3)
+
+    equals "Signal.map into Memo.map fused chain" "13" (string fusedChain.Value)
+
+    let zippedMemos = Memo.zip splitFSharp fusedChain
+    let zLeft, zRight = zippedMemos.Value
+    equals "Memo.zip pairs derived values" "104:13" (string zLeft + ":" + string zRight)
+
+    let offsetSig = Signal (g, 5)
+
+    let boundSig =
+        aotInput
+        |> Signal.bind (fun x -> offsetSig |> Signal.map (fun o -> x * o))
+
+    equals "Signal.bind switches and tracks inner memo" "20" (string boundSig.Value)
+    offsetSig.Value <- 6
+    equals "Signal.bind updates on inner signal write" "24" (string boundSig.Value)
+
+    let splitCSharp =
+        Reactive.MemoOn (Func<int>(fun () -> aotInput.Value), Func<int, int>(fun k -> k * 10 + aotHidden.Value))
+
+    equals "Reactive.MemoOn initial pull" "240" (string splitCSharp.Value)
+    aotHidden.Value <- 300
+    equals "Reactive.MemoOn closes tracking inside compute" "240" (string splitCSharp.Value)
+
+    let csSelected =
+        RanvierExtensions.Select (RanvierExtensions.Select (aotInput, Func<int, int>(fun x -> x * 3)), Func<int, string>(fun x -> "cs:" + string x))
+
+    equals "RanvierExtensions.Select chain" "cs:12" csSelected.Value
+
+    let csZippedPair = RanvierExtensions.Zip (aotInput, offsetSig)
+    let struct (zpA, zpB) = csZippedPair.Value
+    equals "RanvierExtensions.Zip ValueTuple" "4,6" (string zpA + "," + string zpB)
+
+    let csZippedSel =
+        RanvierExtensions.Zip (aotInput, offsetSig, Func<int, int, int>(fun a b -> a + b))
+
+    equals "RanvierExtensions.Zip selector" "10" (string csZippedSel.Value)
+
     use client = new QueryClient (g)
 
     let numbers =
