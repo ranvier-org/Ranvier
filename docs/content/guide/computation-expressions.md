@@ -4,8 +4,8 @@ description: Choose reactive inputs, close dependency tracking and control per-k
 ---
 
 Open `Ranvier.CE` alongside `Ranvier` for the computation-expression API. The builders below describe the CE
-release. For the equivalent functions available before that release, see the
-[primitive selection table](#primitive-selection).
+release. For the public pre-CE equivalents and the internal runtime paths each builder selects, see
+[primitive selection](#primitive-selection).
 
 | Builder | Result | Header operations |
 | --- | --- | --- |
@@ -215,24 +215,26 @@ let labels (prefix: Signal<string>) (titles: Projection<int,string>) =
 
 The compiler selects a path from the expression shape and headers. In the table, a static key is one reactive
 source or independent sources combined with `and!`. Dynamic reads include a source selected by a preceding
-bind or a conditional branch.
+bind or a conditional branch. The **Public pre-CE equivalent** column lists the public functions callers invoke
+directly; `Create*`, `CombinatorMemos.*` and the `Editable` constructor listed under runtime dispatch are
+`internal` entry points that the builders call on the source graph or `Graph.Current`.
 
-| Expression shape | Runtime primitive and graph |
-| --- | --- |
-| `memo` maps one signal, memo or editable | `Signal.map`, `Memo.map` or `Memo.map` on the editable's value memo, on the source graph. Eligible chains can fuse. |
-| `memo` maps an async, stream, boundary or timed node | `CombinatorMemos.createSourceMap` on the source graph. |
-| `memo` maps a pointwise descriptor | `Memo.CreateOn` with the descriptor's tracked read on its graph. |
-| `memo` maps a pair of signals or a pair of memos/editables | `Signal.map2` or `Memo.map2` on the shared graph. |
-| `memo` maps mixed or larger independent inputs, or a static key with `owning` or `comparer` | `Memo.CreateOn` with the single or merged key, selected scope and output equality. |
-| `memo` with `option` | `createOptionMemo` semantics, on the static source graph or the current graph. |
-| `memo` ends in `return!` of a selected memo, including alternative tails | `Signal.bind` or `Memo.bind` for a simple default source, otherwise the split bind on the outer graph. The binder owns newly created children. |
-| `memo` uses previous output, sequential binds, branching or an imperative body | `Memo.Create` or `Memo.CreateWithComparer`. The outer static source supplies the graph when available, otherwise `Graph.Current`. |
-| `effect` consumes a static key, optionally with `node` | `EffectOn<'Key>.Create` or `CreateWithComparer` on the source graph. |
-| `effect` uses sequential binds or a body with no binds | `Effect.Create` on the outer source graph or current graph. With binds the terminal action is untracked. |
-| `asyncMemo` consumes a static key | `AsyncMemo.CreateOn` on the source graph, with the selected policy and ownership. |
-| `asyncMemo` starts with dynamic inputs or has no reactive binds | `AsyncMemo.Create` on the outer source graph or current graph. Tracking closes before asynchronous work. |
-| `stream` consumes a static key | `StreamMemo.CreateOn` for latest item, `StreamMemo.CreateFoldOn` for `fold`, on the source graph. |
-| `stream` uses sequential binds or has no reactive binds | `StreamMemo.Create` with latest-item or fold state, on the outer source graph or current graph. |
-| `editable` or `draft` derives a seed | `Editable` on the static source graph or current graph with the selected edit lifetime. |
-| `boundary` has `pending`, `failed` or both | `Boundary.Create` or `CreateWithComparer` under the current owner, using the active graph or entering the outer static source's graph. |
-| `row` combines item accessors and reactive sources | A reader thunk executes on the ambient row graph. It uses the projection's existing row memo. |
+| Expression shape | Public pre-CE equivalent | Runtime dispatch and graph |
+| --- | --- | --- |
+| `memo` maps one signal, memo or editable | `Signal.map`, `Memo.map`, or `createMemoOn` over `edit.Value` | Public `Signal.map`, `Memo.map`, or `Memo.map` on the editable's `internal` value memo, on the source graph. Eligible chains can fuse. |
+| `memo` maps an async, stream, boundary or timed node | `AsyncMemo.map`, `AsyncSource.map`, `StreamMemo.map`, or `createMemoOn` | `internal` `CombinatorMemos.createSourceMap` on the source graph. |
+| `memo` maps a pointwise descriptor | `createMemoOn` reading `.Get`, `.TryGet`, or `.Keys` | `internal` `Memo.CreateOn` with the descriptor's tracked read on its graph. |
+| `memo` maps a pair of signals or a pair of memos/editables | `Signal.map2` / `Signal.zip`, `Memo.map2` / `Memo.zip`, or `createMemoOn` | Public `Signal.map2` or `Memo.map2` on the shared graph. |
+| `memo` maps mixed or larger independent inputs, or a static key with `owning` or `comparer` | `createMemoOn`, `createMemoOnWithComparer`, `createMemoWithOn`, or `createOwningMemoOnWithComparer` | `internal` `Memo.CreateOn` with the single or merged key, selected scope and output equality on the source graph. |
+| `memo` with `option` | `createOptionMemo` | Public `createOptionMemo` semantics, on the static source graph or `Graph.Current`. |
+| `memo` ends in `return!` of a selected memo, including alternative tails | `Signal.bind`, `Memo.bind`, or `createMemoWithOn` | Public `Signal.bind` or `Memo.bind` for a simple default source, otherwise the `internal` split bind on the outer graph. The binder owns newly created children. |
+| `memo` uses previous output, sequential binds, branching or an imperative body | `createMemo`, `createMemoWithComparer`, `createMemoWith`, or `createOwningMemoWithComparer` | `internal` `Memo.Create` or `Memo.CreateWithComparer`. The outer static source supplies the graph when available, otherwise `Graph.Current`. |
+| `effect` consumes a static key, optionally with `node` | `createEffectOn` or `createEffectOnWithComparer` | `internal` `EffectOn<'Key>.Create` or `EffectOn<'Key>.CreateWithComparer` on the source graph. |
+| `effect` uses sequential binds or a body with no binds | `createEffect` or `createEffectNode` (with `untrack` around closed actions) | `internal` `Effect.Create` on the outer source graph or `Graph.Current`. With binds the terminal action is untracked. |
+| `asyncMemo` consumes a static key | `createAsyncOn`, `createAsyncWithOn`, `createAsyncOnWithPolicy`, `createOwningAsyncOnWithPolicy`, `AsyncMemo.bind`/`bindWithPolicy`, or `AsyncSource.bind` | `internal` `AsyncMemo.CreateOn` on the source graph, with the selected policy and ownership. |
+| `asyncMemo` starts with dynamic inputs or has no reactive binds | `createAsync`, `createAsyncWith`, `createAsyncWithPolicy`, or `createOwningAsyncWithPolicy` | `internal` `AsyncMemo.Create` on the outer source graph or `Graph.Current`. Tracking closes before asynchronous work. |
+| `stream` consumes a static key | `createStreamOn`, `createStreamFoldOn`, `StreamMemo.bind`, or `StreamMemo.bindFold` | `internal` `StreamMemo.CreateOn` for latest item, `internal` `StreamMemo.CreateFoldOn` for `fold`, on the source graph. |
+| `stream` uses sequential binds or has no reactive binds | `createStream` or `createStreamFold` | `internal` `StreamMemo.Create` with latest-item or fold state, on the outer source graph or `Graph.Current`. |
+| `editable` or `draft` derives a seed | `createEditable` or `createDraft` | `internal` `Editable` constructor on the static source graph or `Graph.Current` with the selected edit lifetime. |
+| `boundary` has `pending`, `failed` or both | `createSuspense*`, `createErrorBoundary*`, or `createBoundary*` | `internal` `Boundary.Create` or `Boundary.CreateWithComparer` under the current owner, using `Graph.Current` or entering the outer static source's graph. |
+| `row` combines item accessors and reactive sources | `fun item -> fun () -> ...` passed to `createProjectionWith*`, `createIndexProjectionWith`, or `Projection.mapWith` | A reader thunk executes on the ambient row graph with tracking closed for the result expression. It uses the projection's existing row memo. |
