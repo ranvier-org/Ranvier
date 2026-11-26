@@ -1044,7 +1044,7 @@ type CeRuntime =
         let savedProbing = InternalCeState.SwapProbing false
 
         try
-            eval ()
+            CeRuntime.RunStreamUntrackedContinuation (graph, (), eval)
         finally
             InternalCeState.SwapProbing savedProbing |> ignore
             InternalCeState.RestorePrevious savedPrev
@@ -1943,27 +1943,52 @@ type AsyncEval<'U> =
     | AsyncEvalSync of syncVal: 'U
     | AsyncEvalTask of asyncTask: Task<'U>
 
+/// <summary>Static factory bridge allowing <c>AsyncStatic</c> to wrap context tokens while preserving <c>CreateOn</c> and <c>keyComparer</c>.</summary>
+[<EditorBrowsable(EditorBrowsableState.Never)>]
+type IAsyncStaticFactory<'U> =
+    abstract Graph: Graph
+    abstract Create: owning: bool * policy: FlightPolicy voption -> AsyncMemo<'U>
+    abstract WithContext: extract: (Previous<'U> -> CancellationToken -> IAsyncStaticFactory<'U>) -> IAsyncStaticFactory<'U>
+
+/// <summary>Static factory implementation dispatching single or merged reactive <c>asyncMemo</c> blocks to <c>AsyncMemo.CreateOn</c>.</summary>
+[<Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
+type AsyncOnFactory<'K, 'U>(source: IReactive<'K>, buildWithKey: 'K -> Previous<'U> -> CancellationToken -> Task<'U>) =
+    member _.InvokeKey(k: 'K, prev: Previous<'U>, ct: CancellationToken) : Task<'U> =
+        buildWithKey k prev ct
+
+    interface IAsyncStaticFactory<'U> with
+        member _.Graph = source.Graph
+
+        member _.Create(owning, policy) =
+            CeRuntime.CreateAsyncFromReactive (source, buildWithKey, owning, policy)
+
+        member _.WithContext(extract) =
+            AsyncOnFactory<'K, 'U>(
+                source,
+                fun k prev ct ->
+                    let nextFactory = CeRuntime.ProbeBound (fun () -> extract prev ct)
+                    (unbox<AsyncOnFactory<'K, 'U>>(box nextFactory)).InvokeKey(k, prev, ct)
+            )
+            :> IAsyncStaticFactory<'U>
+
 /// <summary>Two-phase step carrier for <c>AsyncMemoBuilder</c> enforcing compile-time await ordering.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
 type AsyncStep<'Leaf, 'Phase, 'U> =
     | AsyncInline of inlineVal: 'U
     | AsyncDynamic of dynGraph: Graph * dynEval: (Previous<'U> -> CancellationToken -> AsyncEval<'U>)
-    | AsyncStatic of
-        staticGraph: Graph *
-        staticFactory: (bool -> FlightPolicy voption -> AsyncMemo<'U>) *
-        staticEval: (Previous<'U> -> CancellationToken -> AsyncEval<'U>)
+    | AsyncStatic of staticFactory: IAsyncStaticFactory<'U> * staticEval: (Previous<'U> -> CancellationToken -> AsyncEval<'U>)
 
     member inline this.TryGraph =
         match this with
         | AsyncInline _ -> Unchecked.defaultof<Graph>
         | AsyncDynamic (g, _) -> g
-        | AsyncStatic (g, _, _) -> g
+        | AsyncStatic (f, _) -> f.Graph
 
     member this.EvalAsync(prev: Previous<'U>, ct: CancellationToken) : AsyncEval<'U> =
         match this with
         | AsyncInline v -> AsyncEvalSync v
         | AsyncDynamic (_, f) -> f prev ct
-        | AsyncStatic (_, _, f) -> f prev ct
+        | AsyncStatic (_, f) -> f prev ct
 
 /// <summary>Header descriptor configured via <c>owning</c> and <c>policy</c> inside <c>asyncMemo</c>.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
@@ -2019,7 +2044,7 @@ type AsyncRunner =
             let savedProbing = InternalCeState.SwapProbing false
 
             try
-                match eval prev ct with
+                match CeRuntime.RunAsyncUntrackedContinuation (owning, graph, (), fun () -> eval prev ct) with
                 | AsyncEvalSync v -> Task.FromResult v
                 | AsyncEvalTask t -> CeRuntime.WrapAsyncPending t
             finally
@@ -2045,10 +2070,15 @@ type AsyncRunner =
                 | ValueNone -> AsyncMemo<'U>.Create(graph, compute, mode)
         )
 
+    static member ExtractStaticFactory<'Leaf, 'Phase, 'U>(step: AsyncStep<'Leaf, 'Phase, 'U>) : IAsyncStaticFactory<'U> =
+        match step with
+        | AsyncStatic (factory, _) -> factory
+        | _ -> invalidOp "Unexpected non-static AsyncStep during context extraction."
+
     static member EvalBound<'Leaf, 'U>(d: unit -> AsyncStep<'Leaf, BoundPhase, 'U>, owning: bool, policy: FlightPolicy voption) : AsyncMemo<'U> =
         CeRuntime.SuspendNested (fun () ->
             match CeRuntime.ProbeBound d with
-            | AsyncStatic (_, factory, _) -> factory owning policy
+            | AsyncStatic (factory, _) -> factory.Create (owning, policy)
             | AsyncDynamic (g, _) ->
                 let graph = if Platform.isNull (box g) then Graph.Current else g
                 AsyncRunner.CreateDynamicAsync (graph, (fun prev ct -> (d ()).EvalAsync(prev, ct)), owning, policy)
@@ -2092,29 +2122,32 @@ type AsyncRunner =
 
 #if !FABLE_COMPILER
     static member ReturnValueTask<'Leaf, 'Phase, 'U>(vt: ValueTask<'U>) : AsyncStep<'Leaf, 'Phase, 'U> =
-        if vt.IsCompletedSuccessfully then
-            AsyncInline vt.Result
-        else
-            let t = vt.AsTask ()
-            AsyncDynamic (Unchecked.defaultof<Graph>, fun _ _ -> AsyncEvalTask t)
+        AsyncDynamic (
+            Unchecked.defaultof<Graph>,
+            fun _ _ ->
+                if vt.IsCompletedSuccessfully then
+                    AsyncEvalSync vt.Result
+                else
+                    AsyncEvalTask (vt.AsTask ())
+        )
 
     static member ReturnUnitValueTask(vt: ValueTask) : AsyncStep<'Leaf, 'Phase, unit> =
-        if vt.IsCompletedSuccessfully then
-            vt.GetAwaiter().GetResult()
-            AsyncInline ()
-        else
-            let t = vt.AsTask ()
+        AsyncDynamic (
+            Unchecked.defaultof<Graph>,
+            fun _ _ ->
+                if vt.IsCompletedSuccessfully then
+                    vt.GetAwaiter().GetResult()
+                    AsyncEvalSync ()
+                else
+                    let t = vt.AsTask ()
 
-            AsyncDynamic (
-                Unchecked.defaultof<Graph>,
-                fun _ _ ->
                     AsyncEvalTask (
                         task {
                             do! t
                             return ()
                         }
                     )
-            )
+        )
 #endif
 
     static member EvalCombine<'L1, 'P1, 'L2, 'P2, 'U>
@@ -2360,7 +2393,7 @@ type AsyncRunner =
                 let key = CeRuntime.ReadCeTracked source
                 AsyncEvalSync (CeRuntime.RunAsyncUntrackedArg (InternalCeState.IsOwning, source.Graph, f, key))
 
-            AsyncStatic (source.Graph, (fun owning policy -> CeRuntime.CreateAsyncFromReactive (source, build, owning, policy)), evalDyn)
+            AsyncStatic (AsyncOnFactory<'K, 'U>(source, build) :> IAsyncStaticFactory<'U>, evalDyn)
 
     static member BindReactiveStatic<'K, 'U>
         (source: IReactive<'K>, continuation: 'K -> AsyncStep<IsLeaf, ColdPhase, 'U>)
@@ -2375,7 +2408,7 @@ type AsyncRunner =
             let build (k: 'K) (prev: Previous<'U>) (ct: CancellationToken) : Task<'U> =
                 CeRuntime.SuspendNested (fun () -> AsyncRunner.EvalTask (fun () -> (continuation k).EvalAsync(prev, ct)))
 
-            AsyncStatic (source.Graph, (fun owning policy -> CeRuntime.CreateAsyncFromReactive (source, build, owning, policy)), evalDyn)
+            AsyncStatic (AsyncOnFactory<'K, 'U>(source, build) :> IAsyncStaticFactory<'U>, evalDyn)
 
     static member BindReactiveDynamic<'K, 'AnyLeaf, 'ContPhase, 'U>
         (source: IReactive<'K>, continuation: 'K -> AsyncStep<'AnyLeaf, 'ContPhase, 'U>)
@@ -2392,34 +2425,52 @@ type AsyncRunner =
         AsyncDynamic (source.Graph, evalDyn)
 
     static member BindPrevious<'Leaf, 'Phase, 'U>(continuation: Previous<'U> -> AsyncStep<'Leaf, 'Phase, 'U>) : AsyncStep<'Leaf, 'Phase, 'U> =
-        let g =
-            if InternalCeState.IsProbing then
-                let ambient = CeRuntime.TryGetAmbientGraph ()
+        if InternalCeState.IsProbing then
+            let probed = continuation (AsyncRunner.DummyPrevious<'U>())
 
-                if not (Platform.isNull (box ambient)) then
-                    ambient
-                else
-                    (continuation (AsyncRunner.DummyPrevious<'U>())).TryGraph
-            else
-                Unchecked.defaultof<Graph>
+            match probed with
+            | AsyncStatic (factory, _) ->
+                AsyncStatic (
+                    factory.WithContext (fun prev _ -> AsyncRunner.ExtractStaticFactory (continuation prev)),
+                    fun prev ct -> (continuation prev).EvalAsync(prev, ct)
+                )
+            | _ ->
+                let probedGraph = probed.TryGraph
 
-        AsyncDynamic (g, fun prev ct -> (continuation prev).EvalAsync(prev, ct))
+                let resolvedGraph =
+                    if not (Platform.isNull (box probedGraph)) then
+                        probedGraph
+                    else
+                        CeRuntime.TryGetAmbientGraph ()
+
+                AsyncDynamic (resolvedGraph, fun prev ct -> (continuation prev).EvalAsync(prev, ct))
+        else
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> (continuation prev).EvalAsync(prev, ct))
 
     static member BindCancellationToken<'Leaf, 'Phase, 'U>
         (continuation: CancellationToken -> AsyncStep<'Leaf, 'Phase, 'U>)
         : AsyncStep<'Leaf, 'Phase, 'U> =
-        let g =
-            if InternalCeState.IsProbing then
-                let ambient = CeRuntime.TryGetAmbientGraph ()
+        if InternalCeState.IsProbing then
+            let probed = continuation CancellationToken.None
 
-                if not (Platform.isNull (box ambient)) then
-                    ambient
-                else
-                    (continuation CancellationToken.None).TryGraph
-            else
-                Unchecked.defaultof<Graph>
+            match probed with
+            | AsyncStatic (factory, _) ->
+                AsyncStatic (
+                    factory.WithContext (fun _ ct -> AsyncRunner.ExtractStaticFactory (continuation ct)),
+                    fun prev ct -> (continuation ct).EvalAsync(prev, ct)
+                )
+            | _ ->
+                let probedGraph = probed.TryGraph
 
-        AsyncDynamic (g, fun prev ct -> (continuation ct).EvalAsync(prev, ct))
+                let resolvedGraph =
+                    if not (Platform.isNull (box probedGraph)) then
+                        probedGraph
+                    else
+                        CeRuntime.TryGetAmbientGraph ()
+
+                AsyncDynamic (resolvedGraph, fun prev ct -> (continuation ct).EvalAsync(prev, ct))
+        else
+            AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> (continuation ct).EvalAsync(prev, ct))
 
     static member EvalBindTaskReturn<'A, 'U>(source: Task<'A>, f: 'A -> 'U) : AsyncEval<'U> =
 #if !FABLE_COMPILER
@@ -2577,10 +2628,14 @@ type IStreamStaticFactory<'T> =
     abstract Graph: Graph
     abstract CreateLatest: unit -> StreamMemo<'T>
     abstract CreateFold: seed: 'S * folder: ('S -> 'T -> 'S) -> StreamMemo<'S>
+    abstract WithContext: extract: (CancellationToken -> IStreamStaticFactory<'T>) -> IStreamStaticFactory<'T>
 
 /// <summary>Static factory implementation dispatching single or merged reactive <c>stream</c> blocks to <c>CreateOn</c>/<c>CreateFoldOn</c>.</summary>
 [<Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
 type StreamOnFactory<'K, 'T>(source: IReactive<'K>, build: 'K -> CancellationToken -> StreamSource<'T>) =
+    member _.InvokeKey(k: 'K, ct: CancellationToken) : StreamSource<'T> =
+        build k ct
+
     interface IStreamStaticFactory<'T> with
         member _.Graph = source.Graph
 
@@ -2606,6 +2661,15 @@ type StreamOnFactory<'K, 'T>(source: IReactive<'K>, build: 'K -> CancellationTok
                         StreamMemo<'S>.CreateFoldOn(g, seed, folder, cr.Source.ReadTracked, build, keyComparer = cr.Comparer)
                     | _ -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, source.ReadTracked, build)
             )
+
+        member _.WithContext(extract) =
+            StreamOnFactory<'K, 'T>(
+                source,
+                fun k ct ->
+                    let nextFactory = CeRuntime.ProbeBound (fun () -> extract ct)
+                    (unbox<StreamOnFactory<'K, 'T>>(box nextFactory)).InvokeKey(k, ct)
+            )
+            :> IStreamStaticFactory<'T>
 
 /// <summary>Two-phase step carrier for <c>StreamBuilder</c>.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
@@ -2731,21 +2795,35 @@ type StreamRunner =
 
         StreamDynamic (source.Graph, evalDyn)
 
+    static member ExtractStaticFactory<'Leaf, 'Phase, 'T>(step: StreamStep<'Leaf, 'Phase, 'T>) : IStreamStaticFactory<'T> =
+        match step with
+        | StreamStatic (factory, _) -> factory
+        | _ -> invalidOp "Unexpected non-static StreamStep during context extraction."
+
     static member BindCancellationToken<'Leaf, 'Phase, 'T>
         (continuation: CancellationToken -> StreamStep<'Leaf, 'Phase, 'T>)
         : StreamStep<'Leaf, 'Phase, 'T> =
-        let g =
-            if InternalCeState.IsProbing then
-                let ambient = CeRuntime.TryGetAmbientGraph ()
+        if InternalCeState.IsProbing then
+            let probed = continuation CancellationToken.None
 
-                if not (Platform.isNull (box ambient)) then
-                    ambient
-                else
-                    (continuation CancellationToken.None).TryGraph
-            else
-                Unchecked.defaultof<Graph>
+            match probed with
+            | StreamStatic (factory, _) ->
+                StreamStatic (
+                    factory.WithContext (fun ct -> StreamRunner.ExtractStaticFactory (continuation ct)),
+                    fun ct -> (continuation ct).EvalResult(ct)
+                )
+            | _ ->
+                let probedGraph = probed.TryGraph
 
-        StreamDynamic (g, fun ct -> (continuation ct).EvalResult(ct))
+                let resolvedGraph =
+                    if not (Platform.isNull (box probedGraph)) then
+                        probedGraph
+                    else
+                        CeRuntime.TryGetAmbientGraph ()
+
+                StreamDynamic (resolvedGraph, fun ct -> (continuation ct).EvalResult(ct))
+        else
+            StreamDynamic (Unchecked.defaultof<Graph>, fun ct -> (continuation ct).EvalResult(ct))
 
 namespace Ranvier.CE
 

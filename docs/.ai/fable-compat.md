@@ -83,7 +83,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| Builders.fs | 26 | 26 | 26 | 26 | 26 | 26 | 0 | 2 |
+| Builders.fs | 27 | 27 | 27 | 27 | 27 | 27 | 0 | 3 |
 | VendoredThoth.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | WireDecoding.fs | 31 | 31 | 31 | 31 | 31 | 31 | 2 | 0 |
 | NumericDecoding.fs | 66 | 66 | 66 | 66 | 66 | 66 | 1 | 0 |
@@ -92,7 +92,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1875 | 1861 | 1858 | 2103 | 2085 | 2082 | 161 | 3 |
+| **Total** | 1876 | 1862 | 1859 | 2104 | 2086 | 2083 | 161 | 4 |
 
 ## Tests.fs
 
@@ -2573,8 +2573,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | part of: Null argument validation on descriptors, withComparer, Merged* carriers, and *On/createReactiveBind | Fable erases optional `Some null` and `ValueSome null` parameters to None/ValueNone in JS. |
 | part of: Review Focus #2 & #5: asyncMemo keyComparer, match!, Phase-2 pending, use across await | ValueTask is a .NET BCL struct. |
+| part of: Task 4 Fix Round 1: ColdPhase closed/B17, token+static CreateOn+withComparer, and control flow | IValueTaskSource and ValueTask are .NET BCL types. |
 
-<details><summary>26 passed in every build and delivery that runs them</summary>
+<details><summary>27 passed in every build and delivery that runs them</summary>
 
 - IReactive<'T> resolves Graph without Activate and ReadTracked delegates across all 8 reactive node types
 - BoundaryAdapter, TimedAdapter, and StreamMemoAdapter work via CombinatorMemos.createSourceMap
@@ -2602,6 +2603,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - asyncMemo builder: FlightPolicy x6, previous, cancellationToken, owning, and ColdPhase
 - Review Focus #2 & #5: asyncMemo keyComparer, match!, Phase-2 pending, use across await
 - stream builder: latest & fold, withComparer, throwing keyComparer, reset, ct, and ColdPhase
+- Task 4 Fix Round 1: ColdPhase closed/B17, token+static CreateOn+withComparer, and control flow
 
 </details>
 
