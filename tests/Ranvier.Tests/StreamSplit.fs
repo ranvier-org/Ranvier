@@ -49,12 +49,14 @@ let tests =
 
                 let latest =
                     createStreamOn (fun () -> fst room.Value) (fun key _ ->
+                        // fsharpanalyzer: ignore-line-next RAN016
                         let meta = untrackedMeta.Value
                         startedKeys.Add $"{key}:{meta}"
                         latestFeed.Source)
 
                 let folded =
                     createStreamFoldOn 100 (+) (fun () -> fst room.Value) (fun _ _ ->
+                        // fsharpanalyzer: ignore-line-next RAN016
                         untrackedMeta.Value |> ignore
                         foldFeed.Source)
 
@@ -234,6 +236,7 @@ let tests =
 
                 let m =
                     createStreamOn (fun () -> s.Value) (fun _ _ ->
+                        // fsharpanalyzer: ignore-line-next RAN016
                         pending.Value |> ignore
                         feed.Source)
 

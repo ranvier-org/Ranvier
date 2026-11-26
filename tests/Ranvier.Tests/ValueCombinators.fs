@@ -58,15 +58,19 @@ let tests =
                 let s1 = new Signal<int> (g, 2)
                 let s2 = new Signal<int> (g, 3)
 
+                // fsharpanalyzer: ignore-line-next RAN016
                 let sigMap = Signal.map (fun x -> let _ = untracked.Value in x * 10) s1
 
+                // fsharpanalyzer: ignore-line-next RAN016
                 let sigMap2 = Signal.map2 (fun a b -> let _ = untracked.Value in a + b) s1 s2
 
                 let sigZip = Signal.zip s1 s2
 
+                // fsharpanalyzer: ignore-line-next RAN016
                 let memoMap = Memo.map (fun x -> let _ = untracked.Value in x + 1) sigMap
 
                 let memoMap2 =
+                    // fsharpanalyzer: ignore-line-next RAN016
                     Memo.map2 (fun a b -> let _ = untracked.Value in a * b) sigMap sigMap2
 
                 let memoZip = Memo.zip sigMap sigMap2
@@ -75,16 +79,20 @@ let tests =
                 let asrc2 = new AsyncSource<int> (g)
                 asrc1.Settle 4
                 asrc2.Settle 5
+                // fsharpanalyzer: ignore-line-next RAN016
                 let asrcMap = AsyncSource.map (fun x -> let _ = untracked.Value in x * 2) asrc1
 
                 let asrcMap2 =
+                    // fsharpanalyzer: ignore-line-next RAN016
                     AsyncSource.map2 (fun a b -> let _ = untracked.Value in a + b) asrc1 asrc2
 
                 let asrcZip = AsyncSource.zip asrc1 asrc2
 
                 let am1 = Make.AsyncMemo<int>(g, fun _ _ -> completed (s1.Value * 3))
                 let am2 = Make.AsyncMemo<int>(g, fun _ _ -> completed (s2.Value * 4))
+                // fsharpanalyzer: ignore-line-next RAN016
                 let amMap = AsyncMemo.map (fun x -> let _ = untracked.Value in x + 1) am1
+                // fsharpanalyzer: ignore-line-next RAN016
                 let amMap2 = AsyncMemo.map2 (fun a b -> let _ = untracked.Value in a + b) am1 am2
                 let amZip = AsyncMemo.zip am1 am2
 
@@ -92,7 +100,9 @@ let tests =
                 let feed2 = ManualStream<int>()
                 let sm1 = g.Run (fun () -> createStream (fun _ -> feed1.Source))
                 let sm2 = g.Run (fun () -> createStream (fun _ -> feed2.Source))
+                // fsharpanalyzer: ignore-line-next RAN016
                 let smMap = StreamMemo.map (fun x -> let _ = untracked.Value in x * 10) sm1
+                // fsharpanalyzer: ignore-line-next RAN016
                 let smMap2 = StreamMemo.map2 (fun a b -> let _ = untracked.Value in a + b) sm1 sm2
                 let smZip = StreamMemo.zip sm1 sm2
 
@@ -173,6 +183,7 @@ let tests =
                 Expect.equal exPure2.Message pureMsg "Caught Pure violation message"
 
                 // 2. Synchronous NotReadyException inside mapping wraps into InvalidOperationException with ErrorOrigin = self.
+                // fsharpanalyzer: ignore-line-next RAN016
                 let mPendingLeak = Signal.map (fun x -> x + pending.Value) s
                 let exLeak = failedWith mPendingLeak.TryValue
                 Expect.equal mPendingLeak.Status Status.Error "NotReadyException in mapping fails node"
@@ -189,6 +200,7 @@ let tests =
                 // 3. Calling a combinator inside a pure createMemo body fails the enclosing pure memo.
                 let mConstructInPure =
                     createMemo (fun _ ->
+                        // fsharpanalyzer: ignore-line-next RAN010
                         let child = Signal.map ((+) 1) s
                         child.Value)
 
@@ -458,6 +470,7 @@ let tests =
                 let dynBound =
                     Memo.bind
                         (fun k ->
+                            // fsharpanalyzer: ignore-line-next RAN016
                             let _ = untrackedInBinder.Value
                             log.Add $"bind:{k}"
                             onCleanup (fun () -> log.Add $"cleanup:{k}")
@@ -602,6 +615,7 @@ let tests =
                 let step1 =
                     AsyncSource.bind
                         (fun (k, _) _ ->
+                            // fsharpanalyzer: ignore-line-next RAN016
                             let _ = untracked.Value
                             let f = Flight<int>()
                             flights1[k] <- f
@@ -611,6 +625,7 @@ let tests =
                 let step2 =
                     AsyncMemo.bind
                         (fun v _ ->
+                            // fsharpanalyzer: ignore-line-next RAN016
                             let _ = untracked.Value
                             let f = Flight<string>()
                             flights2[v] <- f
@@ -674,6 +689,7 @@ let tests =
                 Expect.equal stepFinish.Value "keep:30" "FinishCurrent ran deferred flight 30 after 20 finished"
 
                 // Synchronous NotReadyException inside AsyncMemo.bind wraps into InvalidOperationException.
+                // fsharpanalyzer: ignore-line-next RAN016
                 let asyncLeak = AsyncMemo.bind (fun _ _ -> completed pendingLeak.Value) step1
                 let exAsyncLeak = failedWith asyncLeak.TryValue
                 Expect.isTrue (isInvalidOperation exAsyncLeak) "AsyncMemo.bind wraps synchronous NotReadyException"
@@ -688,6 +704,7 @@ let tests =
                 let boundStream =
                     StreamMemo.bind
                         (fun (room, _) _ ->
+                            // fsharpanalyzer: ignore-line-next RAN016
                             let _ = untracked.Value
                             ignore room
                             itemFeed.Source)
@@ -698,6 +715,7 @@ let tests =
                         100
                         (+)
                         (fun (room, _) _ ->
+                            // fsharpanalyzer: ignore-line-next RAN016
                             let _ = untracked.Value
                             ignore room
                             foldFeed.Source)
@@ -728,6 +746,7 @@ let tests =
                 let streamLeak =
                     StreamMemo.bind
                         (fun _ _ ->
+                            // fsharpanalyzer: ignore-line-next RAN016
                             let _ = pendingLeak.Value
                             itemFeed.Source)
                         keyStream

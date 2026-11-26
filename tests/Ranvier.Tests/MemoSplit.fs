@@ -76,6 +76,7 @@ let tests =
                 let summary =
                     createMemoOn (fun () -> List.length items.Value) (fun len ->
                         computeRuns.Value <- computeRuns.Value + 1
+                        // fsharpanalyzer: ignore-line-next RAN016
                         $"{len}:{theme.Value}")
 
                 Expect.equal summary.Value "2:light" "initial compute"
@@ -303,6 +304,7 @@ let tests =
                 let s = createSignal 1
                 let pending = createAsyncSource<int>()
 
+                // fsharpanalyzer: ignore-line-next RAN016
                 let m = createMemoOn (fun () -> s.Value) (fun x -> x + pending.Value)
 
                 let ex = failedWith m.TryValue

@@ -1116,6 +1116,7 @@ let tests =
                     memo {
                         let! x = sig1
                         closedRuns.Value <- closedRuns.Value + 1
+                        // fsharpanalyzer: ignore-line-next RAN016
                         return x + stray.Value
                     }
 
@@ -1217,6 +1218,7 @@ let tests =
                 let mBadPhase2 =
                     memo {
                         let! x = sig1
+                        // fsharpanalyzer: ignore-line-next RAN016
                         return x + pendingSrc.Value
                     }
 
@@ -1231,6 +1233,7 @@ let tests =
                     g.Run (fun () ->
                         memo {
                             coldRuns.Value <- coldRuns.Value + 1
+                            // fsharpanalyzer: ignore-line-next RAN018
                             return sig1.Value * 3
                         })
 
@@ -1391,6 +1394,7 @@ let tests =
                         let! k = sigOwn |> withComparer mod10
                         onCleanup (fun () -> ownLogs1.Add $"clean:{k}")
                         let child = createMemo (fun _ -> k * 10 + (k % 2))
+                        // fsharpanalyzer: ignore-line-next RAN016
                         return child.Value
                     }
 
@@ -1401,6 +1405,7 @@ let tests =
                         let! k = sigOwn
                         onCleanup (fun () -> ownLogs2.Add $"c2:{k}")
                         let child = createMemo (fun _ -> k * 2)
+                        // fsharpanalyzer: ignore-line-next RAN016
                         return child.Value + 1
                     }
 
@@ -1577,6 +1582,7 @@ let tests =
                     g.Run (fun () ->
                         memo {
                             let! p = memo.previousOr 1
+                            // fsharpanalyzer: ignore-line-next RAN018
                             return p + prevSig.Value
                         })
 
@@ -1613,6 +1619,7 @@ let tests =
                         | None -> return "none"
                         | Some name ->
                             let! o = owners |> Lookup.at name
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return $"{name}:{o}:{stray.Value}"
                     }
 
@@ -1634,11 +1641,14 @@ let tests =
 
                         let child =
                             memo {
+                                // Intentionally attaches cleanup to enclosing owning Phase 2 scope before child's let!.
+                                // fsharpanalyzer: ignore-line-next RAN010
                                 onCleanup (fun () -> childCleanups.Add x)
                                 let! y = stray
                                 return y + x
                             }
 
+                        // fsharpanalyzer: ignore-line-next RAN016
                         return child.Value
                     }
 
@@ -1707,7 +1717,7 @@ let tests =
                             if shouldFail then
                                 failwith "use-boom"
 
-                            return s1.Value
+                            return s1.Peek
                         })
 
                 Expect.equal mUse.Value 2 "mUse initial"
@@ -1733,6 +1743,7 @@ let tests =
 
                             while k < 2 do
                                 k <- k + 1
+                                // fsharpanalyzer: ignore-line-next RAN018
                                 acc <- acc + s1.Value
 
                             let finRan = ref false
@@ -1766,6 +1777,7 @@ let tests =
                         let! k = keySig |> withComparer mod10
                         use _d = new TrackedDisposable ($"on{k}", useLog)
                         onCleanup (fun () -> effCleanups.Add $"scope:{k}")
+                        // fsharpanalyzer: ignore-line-next RAN016
                         acted.Add (k + straySig.Value)
                     }
 
@@ -1839,13 +1851,16 @@ let tests =
                                 )
 
                             match! flagSig with
-                            | false -> dynLog.Add ("off:" + straySig.Value.ToString ())
+                            | false ->
+                                // fsharpanalyzer: ignore-line-next RAN016
+                                dynLog.Add ("off:" + straySig.Value.ToString ())
                             | true ->
                                 let! s = msgMemo
 
                                 if numSig.Peek < 0 then
                                     failwith "dyn-eff-boom"
 
+                                // fsharpanalyzer: ignore-line-next RAN016
                                 dynLog.Add (s + ":" + straySig.Value.ToString ())
                         })
 
@@ -1913,6 +1928,7 @@ let tests =
                 let eStatic =
                     editable {
                         let! x = seedSig
+                        // fsharpanalyzer: ignore-line-next RAN016
                         return x + straySig.Value
                     }
 
@@ -1920,6 +1936,7 @@ let tests =
                     draft {
                         let! a = seedSig
                         and! b = otherSig
+                        // fsharpanalyzer: ignore-line-next RAN016
                         return a + b + straySig.Value
                     }
 
@@ -1976,6 +1993,7 @@ let tests =
                     g.Run (fun () ->
                         editable {
                             eColdCalls.Value <- eColdCalls.Value + 1
+                            // fsharpanalyzer: ignore-line-next RAN018
                             return seedSig.Value
                         })
 
@@ -1983,6 +2001,7 @@ let tests =
                     g.Run (fun () ->
                         draft {
                             dColdCalls.Value <- dColdCalls.Value + 1
+                            // fsharpanalyzer: ignore-line-next RAN018
                             return seedSig.Value
                         })
 
@@ -2006,6 +2025,7 @@ let tests =
                     boundary {
                         pending (fun last -> ValueOption.defaultValue -1 last)
                         let! v = src
+                        // fsharpanalyzer: ignore-line-next RAN016
                         return v + straySig.Value
                     }
 
@@ -2035,6 +2055,7 @@ let tests =
                         onCleanup (fun () -> bndCleanups.Add m)
 
                         if m = 1 then
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return src.Value
                         elif m = 2 then
                             failwith "boom"
@@ -2044,6 +2065,7 @@ let tests =
                             return x
                         else
                             let! x = src
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return x + straySig.Value
                     }
 
@@ -2129,6 +2151,7 @@ let tests =
                                 let! (_, price) = item
                                 and! tax = taxSig
                                 rowRuns.Value <- rowRuns.Value + 1
+                                // fsharpanalyzer: ignore-line-next RAN016
                                 return price * tax + straySig.Value
                             })
                         (fun () -> itemsSig.Value)
@@ -2179,6 +2202,7 @@ let tests =
                         (fun item ->
                             row {
                                 let! (_, v) = item
+                                // fsharpanalyzer: ignore-line-next RAN010
                                 createEffect ignore
                                 return v
                             })
@@ -2204,6 +2228,7 @@ let tests =
                         let! a = s1
                         use _d = new TrackedDisposable ($"u{a}", useLog)
                         let! b = s2
+                        // fsharpanalyzer: ignore-line-next RAN016
                         useLog.Add $"run:{a}:{b}:{straySig.Value}"
                     }
 
@@ -2324,7 +2349,9 @@ let tests =
                         let! m = modeSig
 
                         match m with
-                        | 0 -> return pendSrc.Value
+                        | 0 ->
+                            // fsharpanalyzer: ignore-line-next RAN016
+                            return pendSrc.Value
                         | _ ->
                             let! v = pendSrc
                             return v + 10
@@ -2336,6 +2363,7 @@ let tests =
                         let! m = modeSig
 
                         if m = 0 then
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return pendSrc.Value
                         else
                             let! v = pendSrc
@@ -2350,6 +2378,7 @@ let tests =
                         pending (fun _ -> -1)
                         let! m = modeSig
                         let! k = stepSig
+                        // fsharpanalyzer: ignore-line-next RAN016
                         return m + k + pendSrc.Value
                     }
 
@@ -2402,11 +2431,16 @@ let tests =
                         memoRuns.Value <- memoRuns.Value + 1
 
                         match m with
-                        | 0 -> return straySig.Value
+                        | 0 ->
+                            // fsharpanalyzer: ignore-line-next RAN016
+                            return straySig.Value
                         | 1 ->
                             use _d = new TrackedDisposable ("m1", memoUseLog)
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return straySig.Value + 1
-                        | 2 -> return pendSrc.Value
+                        | 2 ->
+                            // fsharpanalyzer: ignore-line-next RAN016
+                            return pendSrc.Value
                         | _ ->
                             let! k = stepSig
 
@@ -2444,8 +2478,10 @@ let tests =
                         let! m = modeSig
 
                         if m = 2 then
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return pendSrc.Value
                         else
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return straySig.Value
                     }
 
@@ -2458,6 +2494,7 @@ let tests =
                 Expect.equal mMix.TryValue Pending "3-level nested let! inside memo preserves raw Phase-1 Pending"
 
                 // ColdPhase 0-bind regression check: 0-bind return remains tracked
+                // fsharpanalyzer: ignore-line-next RAN018
                 let mColdTracked = g.Run (fun () -> memo { return s2.Value })
                 Expect.equal mColdTracked.Value 20 "ColdPhase 0-bind initial"
                 s2.Value <- 25
@@ -2474,9 +2511,11 @@ let tests =
                         match m with
                         | 0 ->
                             use _d = new TrackedDisposable ("e0", editLog)
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return straySig.Value
                         | _ ->
                             let! k = stepSig
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return k + straySig.Value
                     }
 
@@ -2485,9 +2524,11 @@ let tests =
                         let! m = editMode
 
                         if m = 0 then
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return straySig.Value + 10
                         else
                             let! k = stepSig
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return k + straySig.Value
                     }
 
@@ -2521,8 +2562,12 @@ let tests =
                                     rowMixRuns.Value <- rowMixRuns.Value + 1
 
                                     match price with
-                                    | 0 -> return straySig.Value
-                                    | -1 -> return pendSrc.Value
+                                    | 0 ->
+                                        // fsharpanalyzer: ignore-line-next RAN016
+                                        return straySig.Value
+                                    | -1 ->
+                                        // fsharpanalyzer: ignore-line-next RAN016
+                                        return pendSrc.Value
                                     | _ ->
                                         let! v = pendSrc
                                         return price + v
@@ -2594,6 +2639,7 @@ let tests =
                             memo {
                                 let! prev = memo.previousOr 1
                                 memoColdPreamble <- memoColdPreamble + 1
+                                // fsharpanalyzer: ignore-line-next RAN018
                                 return prev + sig1.Value
                             }
 
@@ -2916,6 +2962,7 @@ let tests =
                             let! _b = pendSrc
                             return a
                         with _ ->
+                            // fsharpanalyzer: ignore-line-next RAN016
                             return pendOther.Value
                     }
 
@@ -2985,12 +3032,14 @@ let tests =
                 let rowOutside =
                     row {
                         let! x = s1
+                        // fsharpanalyzer: ignore-line-next RAN016
                         return x + straySig.Value
                     }
 
                 let badRowOutside =
                     row {
                         let! x = s1
+                        // fsharpanalyzer: ignore-line-next RAN010
                         createEffect ignore
                         return x
                     }
@@ -3383,6 +3432,7 @@ let tests =
                             else
                                 use _d = track "outer-nested" nestedCreated nestedDisposed
                                 let! b = s2
+                                // fsharpanalyzer: ignore-line-next RAN016
                                 return innerMemo.Value + b
                         })
 
@@ -3429,10 +3479,12 @@ let tests =
                         let! k = staticMode |> withComparer mod10
                         let! ct = asyncMemo.cancellationToken
                         staticTokens.Add ct
+                        // fsharpanalyzer: ignore-line-next RAN016
                         let s0 = stray.Value
                         let f = Flight<string>()
                         staticFlights.Add f
                         let! res = f.Task
+                        // fsharpanalyzer: ignore-line-next RAN012
                         return $"{k}:{res}:{s0}:{stray.Value}"
                     }
 
@@ -3513,6 +3565,7 @@ let tests =
                         let! k = qSig
                         onCleanup (fun () -> qCleanups.Add k)
                         let child = memo { let! c = qChildVal in return c + k }
+                        // fsharpanalyzer: ignore-line-next RAN016
                         let c0 = child.Value
                         let! prev = asyncMemo.previous
                         let f = Flight<int>()
@@ -3680,6 +3733,7 @@ let tests =
                     g.Run (fun () ->
                         asyncMemo {
                             let! v = fireTask ()
+                            // fsharpanalyzer: ignore-line-next RAN012, RAN018
                             return v + 1 + stray.Value
                         })
 
@@ -3715,6 +3769,7 @@ let tests =
                     g.Run (fun () ->
                         asyncMemo {
                             let! v = completed 7
+                            // fsharpanalyzer: ignore-line-next RAN012, RAN018
                             return v + stray.Value
                         })
 
@@ -3730,6 +3785,7 @@ let tests =
                     g.Run (fun () ->
                         asyncMemo {
                             let! v = completed 7
+                            // fsharpanalyzer: ignore-line-next RAN012, RAN018
                             return v + pend1.Value
                         })
 
@@ -3824,17 +3880,22 @@ let tests =
                 let aMatch =
                     asyncMemo {
                         match! modeSig with
-                        | 0 -> return 42 + straySig.Value
+                        | 0 ->
+                            // fsharpanalyzer: ignore-line-next RAN016
+                            return 42 + straySig.Value
                         | 1 ->
                             matchRuns.Value <- matchRuns.Value + 1
                             let! v = arm1Flight.Task
                             return v + 100
-                        | 2 -> return pendSrc.Value
+                        | 2 ->
+                            // fsharpanalyzer: ignore-line-next RAN016
+                            return pendSrc.Value
                         | _ ->
                             let! b = nestedSig
                             let f = Flight<int>()
                             arm2Flights.Add f
                             let! v = f.Task
+                            // fsharpanalyzer: ignore-line-next RAN012
                             return b + v + straySig.Value
                     }
 
@@ -4028,6 +4089,8 @@ let tests =
                 let pureDyn =
                     asyncMemo {
                         let! a = useKey
+                        // Intentionally sequential to put asyncMemo into dynamic compute mode.
+                        // fsharpanalyzer: ignore-line-next RAN017
                         let! b = topBoundSig
                         // Asserts the runtime failure of an owned node created in a pure derivation.
                         // fsharpanalyzer: ignore-line-next RAN010
@@ -4338,6 +4401,7 @@ let tests =
                     stream {
                         let! k = room |> withComparer mod10
                         let! _ct = stream.cancellationToken
+                        // fsharpanalyzer: ignore-line-next RAN016
                         startedKeys.Add $"{k}:{untrackedMeta.Value}"
                         return latestFeed.Source
                     }
@@ -4494,6 +4558,7 @@ let tests =
                                     sink.Next sub
                                     dynFeed1.Source.Run (sink, token))
                         | 2 ->
+                            // fsharpanalyzer: ignore-line-next RAN016
                             let _ = pendSrc.Value
                             return dynFeed0.Source
                         | _ ->
@@ -4574,6 +4639,7 @@ let tests =
                 let pendSrc = AsyncSource<int> g
 
                 // 1. Critical #1: 0-reactive-bind ColdPhase asyncMemo closes dependency tracking and enforces B17 / PureAsync / Owning
+                // fsharpanalyzer: ignore-line-next RAN018
                 let amColdPure = g.Run (fun () -> asyncMemo { return stray.Value + 1 })
 
                 amColdPure.TryValue |> ignore
@@ -4583,6 +4649,7 @@ let tests =
                 stray.Value <- 60
                 Expect.equal amColdPure.Value 51 "0-bind pure asyncMemo unaffected by stray write"
 
+                // fsharpanalyzer: ignore-line-next RAN018
                 let amColdPending = g.Run (fun () -> asyncMemo { return pendSrc.Value + 1 })
 
                 let exColdPend = failedWith amColdPending.TryValue
@@ -4608,6 +4675,7 @@ let tests =
                             owning
                             let child = memo { let! x = sigChild in return x * 10 }
                             onCleanup (fun () -> ownCleanups.Value <- ownCleanups.Value + 1)
+                            // fsharpanalyzer: ignore-line-next RAN018
                             return child.Value + stray.Value
                         })
 
@@ -4625,6 +4693,7 @@ let tests =
                 let amColdPreAwait =
                     g.Run (fun () ->
                         asyncMemo {
+                            // fsharpanalyzer: ignore-line-next RAN018
                             let s0 = stray.Value
                             let! ct = asyncMemo.cancellationToken
                             ignore ct
@@ -4643,6 +4712,7 @@ let tests =
                         asyncMemo {
                             let! ct = asyncMemo.cancellationToken
                             ignore ct
+                            // fsharpanalyzer: ignore-line-next RAN018
                             return pendSrc.Value
                         })
 
@@ -4669,6 +4739,7 @@ let tests =
                 let sColdClosed =
                     g.Run (fun () ->
                         stream {
+                            // fsharpanalyzer: ignore-line-next RAN018
                             let snap = stray.Value
 
                             return
@@ -4685,6 +4756,7 @@ let tests =
                 let sColdPend =
                     g.Run (fun () ->
                         stream {
+                            // fsharpanalyzer: ignore-line-next RAN018
                             let v = pendSrc.Value
 
                             return
@@ -4701,6 +4773,7 @@ let tests =
                     g.Run (fun () ->
                         stream {
                             let! _ct = stream.cancellationToken
+                            // fsharpanalyzer: ignore-line-next RAN018
                             let _ = stray.Value
                             // fsharpanalyzer: ignore-line-next RAN010
                             onCleanup ignore
@@ -4986,7 +5059,10 @@ let tests =
                     g.Run (fun () ->
                         memo {
                             let! _g = streamGate
+                            // Intentionally sequential to verify step-by-step Pending suspension while IsEvaluating = true.
+                            // fsharpanalyzer: ignore-line-next RAN017
                             let! x = sLatest
+                            // fsharpanalyzer: ignore-line-next RAN017
                             let! y = sFold
                             outerStreamRuns.Value <- outerStreamRuns.Value + 1
                             return x + y
@@ -4999,7 +5075,10 @@ let tests =
                     g.Run (fun () ->
                         memo {
                             let! g0 = outerGate
+                            // Intentionally sequential to verify lazy reentrant pulling while IsEvaluating = true.
+                            // fsharpanalyzer: ignore-line-next RAN017
                             let! a = amSync
+                            // fsharpanalyzer: ignore-line-next RAN017
                             let! b = amAsync
                             outerAsyncRuns.Value <- outerAsyncRuns.Value + 1
                             return g0 + a + b

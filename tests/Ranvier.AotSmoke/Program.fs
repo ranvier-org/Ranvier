@@ -181,6 +181,13 @@ module private CeSmoke =
 
         let prevSig = Signal (g, 5)
 
+        let mPrevRaw =
+            memo {
+                let! p = memo.previous
+                let! x = prevSig
+                return ValueOption.defaultValue 0 p + x
+            }
+
         let mPrev =
             memo {
                 let! x = prevSig
@@ -188,8 +195,10 @@ module private CeSmoke =
                 return x + p
             }
 
+        let prevRaw1 = mPrevRaw.Value
         let prev1 = mPrev.Value
         prevSig.Value <- 10
+        let prevRaw2 = mPrevRaw.Value
         let prev2 = mPrev.Value
 
         // 4. memo: option header
@@ -221,7 +230,7 @@ module private CeSmoke =
             | Some a, Some c -> not (obj.ReferenceEquals (a, c)) && c.Tag = "v3"
             | _ -> false
 
-        // 5. memo match! over Projection.tryAt + Lookup.at + KeyedCollection.tryAt, and return! (SplitBind)
+        // 5. memo match! over Projection.tryAt + Lookup.at + KeyedCollection.tryAt, plus Projection.at + KeyedCollection.at + Lookup.tryAt, and return! (SplitBind)
         let listSig = Signal (g, [ (1, "Alice") ])
         let proj = createProjection fst snd (fun () -> listSig.Value)
         let scoreBase = Signal (g, 10)
@@ -243,6 +252,28 @@ module private CeSmoke =
                     return name + ":" + string score
             }
 
+        let mDescAt =
+            memo {
+                let! pName = proj |> Projection.at 1
+                and! (_, kcLabel) = kc |> KeyedCollection.at 2
+                and! lkpCold = lkp |> Lookup.tryAt "Alice"
+                and! lkpWarm = lkp |> Lookup.tryAt "Bob"
+
+                let fmtOpt =
+                    function
+                    | None -> "None"
+                    | Some v -> "Some(" + string v + ")"
+
+                return
+                    pName
+                    + ":"
+                    + kcLabel
+                    + ":"
+                    + fmtOpt lkpCold
+                    + ":"
+                    + fmtOpt lkpWarm
+            }
+
         let desc0 = mDesc.Value
         kc.AddOrUpdate (2, "two")
         let desc1 = mDesc.Value
@@ -250,6 +281,9 @@ module private CeSmoke =
         let desc2 = mDesc.Value
         scoreBase.Value <- 15
         let desc3 = mDesc.Value
+        let descAt0 = mDescAt.Value
+        scoreBase.Value <- 20
+        let descAt1 = mDescAt.Value
 
         let splitKey = Signal (g, 1)
         let inOdd = Signal (g, 100)
@@ -419,14 +453,28 @@ module private CeSmoke =
         stCloseTcs[0].TrySetCanceled() |> ignore
         stCloseTcs[1].TrySetResult() |> ignore
 
-        // 9. editable (previousOr) & draft (previousOr)
+        // 9. editable (previous / previousOr) & draft (previous / previousOr)
         let editSig = Signal (g, 5)
+
+        let edRaw =
+            editable {
+                let! p = editable.previous
+                let! x = editSig
+                return ValueOption.defaultValue 0 p + x
+            }
 
         let ed =
             editable {
                 let! x = editSig
                 let! p = editable.previousOr 10
                 return x + p
+            }
+
+        let drRaw =
+            draft {
+                let! p = draft.previous
+                let! x = editSig
+                return ValueOption.defaultValue 0 p + x
             }
 
         let dr =
@@ -436,15 +484,29 @@ module private CeSmoke =
                 return x + p
             }
 
+        let edRawInit = edRaw.Value
         let edInit = ed.Value
+        let drRawInit = drRaw.Value
         let drInit = dr.Value
+        edRaw.Value <- 777
         ed.Value <- 999
+        drRaw.Value <- 666
         dr.Value <- 888
-        let editsHeld = ed.Value = 999 && dr.Value = 888
+
+        let editsHeld =
+            edRaw.Value = 777
+            && ed.Value = 999
+            && drRaw.Value = 666
+            && dr.Value = 888
+
         editSig.Value <- 6
+        let edRawDropped = edRaw.Value
         let edDropped = ed.Value
+        let drRawKept = drRaw.Value
         let drKept = dr.Value
+        drRaw.Reset ()
         dr.Reset ()
+        let drRawReset = drRaw.Value
         let drReset = dr.Value
 
         // 10. boundary: pending + failed + comparer
@@ -522,6 +584,8 @@ module private CeSmoke =
             + string fusedUpd
             + ":"
             + string midUpd
+            + ":"
+            + string stage2AfterUpd
             "CE memo and! (Signal*Signal, Memo*Memo, 3-way mixed)",
             mSigPair.Value = 7
             && mMemoPair.Value = 430
@@ -543,7 +607,18 @@ module private CeSmoke =
             + string ownOddCutoff
             + ":"
             + string ownEvenWake
-            "CE memo.previousOr", prev1 = 105 && prev2 = 115, string prev1 + ":" + string prev2
+            "CE memo.previous and previousOr",
+            prevRaw1 = 5
+            && prevRaw2 = 15
+            && prev1 = 105
+            && prev2 = 115,
+            string prevRaw1
+            + ":"
+            + string prevRaw2
+            + ":"
+            + string prev1
+            + ":"
+            + string prev2
             "CE memo option identity deduplication",
             optSameRef && optIsNone && optFreshRef,
             string optSameRef
@@ -551,12 +626,24 @@ module private CeSmoke =
             + string optIsNone
             + ":"
             + string optFreshRef
-            "CE memo match! over Projection.tryAt + Lookup.at + KeyedCollection.tryAt",
+            "CE memo match! over Projection.tryAt + Lookup.at + KeyedCollection.tryAt and at/tryAt descriptors",
             desc0 = "absent"
             && desc1 = "kc:two"
             && desc2 = "Bob:30"
-            && desc3 = "Bob:35",
-            desc0 + "|" + desc1 + "|" + desc2 + "|" + desc3
+            && desc3 = "Bob:35"
+            && descAt0 = "Alice:two:None:Some(35)"
+            && descAt1 = "Alice:two:None:Some(40)",
+            desc0
+            + "|"
+            + desc1
+            + "|"
+            + desc2
+            + "|"
+            + desc3
+            + "|"
+            + descAt0
+            + "|"
+            + descAt1
             "CE memo return! SplitBind",
             split1 = 101
             && split2 = 106
@@ -618,20 +705,35 @@ module private CeSmoke =
             + string stResetPending
             + ":"
             + string stV2
-            "CE editable and draft previousOr",
-            edInit = 15
+            "CE editable and draft previous and previousOr",
+            edRawInit = 5
+            && edInit = 15
+            && drRawInit = 5
             && drInit = 25
             && editsHeld
+            && edRawDropped = 11
             && edDropped = 21
+            && drRawKept = 666
             && drKept = 888
+            && drRawReset = 11
             && drReset = 31,
-            string edInit
+            string edRawInit
+            + ":"
+            + string edInit
+            + ":"
+            + string drRawInit
             + ":"
             + string drInit
             + ":"
+            + string edRawDropped
+            + ":"
             + string edDropped
             + ":"
+            + string drRawKept
+            + ":"
             + string drKept
+            + ":"
+            + string drRawReset
             + ":"
             + string drReset
             "CE boundary pending + failed + comparer",

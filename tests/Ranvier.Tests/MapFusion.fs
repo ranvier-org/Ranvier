@@ -343,6 +343,7 @@ let tests =
                                 failwith "s2"
 
                             if x = 101 then
+                                // fsharpanalyzer: ignore-line-next RAN016
                                 pending.Value |> ignore
 
                             if x = 201 then
@@ -657,6 +658,7 @@ let tests =
                 for observe in [ false; true ] do
                     let s = createSignal 10
                     let m1 = Signal.map ((+) 1) s
+                    // fsharpanalyzer: ignore-line-next RAN016
                     let m2 = Memo.map (fun v -> if v > 15 then m1.Value * 2 else v * 2) m1
                     let m3 = Memo.map ((+) 100) m2
 
@@ -684,6 +686,7 @@ let tests =
                 // 5-stage mid-execution de-fusion inside stage 2 on Run 2, then revert!
                 let s5 = createSignal 10
                 let c1 = Signal.map ((+) 1) s5
+                // fsharpanalyzer: ignore-line-next RAN016
                 let c2 = Memo.map (fun v -> if v > 15 then c1.Value * 2 else v * 2) c1
                 let c3 = Memo.map ((+) 3) c2
                 let c4 = Memo.map ((*) 2) c3
@@ -700,6 +703,7 @@ let tests =
                 for observe in [ false; true ] do
                     let sSelf = createSignal 5
                     let mutable self1: Memo<int> = Unchecked.defaultof<_>
+                    // fsharpanalyzer: ignore-line-next RAN016
                     let r1 = Signal.map (fun x -> self1.Value + x) sSelf
                     self1 <- r1
                     let r2 = Memo.map ((*) 10) r1
