@@ -4,13 +4,17 @@ open System
 open System.Collections.Generic
 open System.Threading
 open System.Threading.Tasks
+#if FABLE_COMPILER
 open Fable.Core
+#endif
 open Ranvier
 
 /// <summary>Portable completion-source cancellation and zero-state-machine task helpers.</summary>
 module internal QueryTask =
     /// <summary>Cancels a completion source using the target runtime's operation.</summary>
+#if FABLE_COMPILER
     [<Emit("$0.SetCancelled()")>]
+#endif
     let cancel (source: TaskCompletionSource<'T>) =
         source.SetCanceled ()
 

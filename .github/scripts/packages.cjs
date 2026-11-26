@@ -89,6 +89,9 @@ function checkPackage(buffer, expected, projects = []) {
     problems.push(`${expected.id}: lib frameworks are [${frameworks}], expected [${expected.frameworks}]`);
   }
   for (const [id, version] of dependencies(manifest)) {
+    if (id === 'Fable.Core' && !expected.id.startsWith('Fable.')) {
+      problems.push(`${expected.id}: must not depend on Fable.Core`);
+    }
     const base = id.endsWith('.Traced') ? id.slice(0, -'.Traced'.length) : id;
     const sibling = projects.find(project => project.id === base);
     if (!sibling) continue;
