@@ -2161,4 +2161,476 @@ let tests =
                 Expect.isTrue (isInvalidOperation badEx) "owned node in row throws InvalidOperationException"
                 Expect.stringContains badEx.Message "factory body" "error cites factoryRow scope message"
             }
+
+            test "Fix Round 1 Critical #1: effect preserves nested let! inside control flow after outer let! and lazy top-level use" {
+                use g = new Graph ()
+                let s1 = Signal (g, 1)
+                let s2 = Signal (g, 10)
+                let straySig = Signal (g, 1000)
+
+                // Case 1: outer let! followed by use + inner let!
+                let useLog = ResizeArray<string>()
+
+                let _nUse =
+                    effect {
+                        node
+                        let! a = s1
+                        use _d = new TrackedDisposable ($"u{a}", useLog)
+                        let! b = s2
+                        useLog.Add $"run:{a}:{b}:{straySig.Value}"
+                    }
+
+                Expect.sequenceEqual useLog [ "run:1:10:1000"; "disp:u1" ] "effect runs nested let! inside use and disposes"
+
+                // Mutating untracked straySig in body does NOT re-run effect
+                straySig.Value <- 2000
+                Expect.sequenceEqual useLog [ "run:1:10:1000"; "disp:u1" ] "straySig stays untracked inside effect body"
+
+                // Mutating inner let! s2 re-runs effect dynamically
+                s2.Value <- 20
+
+                Expect.sequenceEqual
+                    useLog
+                    [ "run:1:10:1000"; "disp:u1"; "run:1:20:2000"; "disp:u1" ]
+                    "inner let! s2 inside use is tracked and re-runs effect"
+
+                // Case 2: outer let! followed by if/for/while/try-finally wrapping inner let!
+                let gateSig = Signal (g, 0)
+                let flowLog = ResizeArray<string>()
+                let compCount = ref 0
+
+                let _nFlow =
+                    effect {
+                        node
+                        let! gate = gateSig
+
+                        try
+                            if gate > 0 then
+                                for idx in 1..2 do
+                                    let! b = s2
+                                    flowLog.Add $"for:{gate}:{idx}:{b}"
+                        finally
+                            compCount.Value <- compCount.Value + 1
+                    }
+
+                Expect.sequenceEqual flowLog [] "gate=0 skips inner for+let!"
+                Expect.equal compCount.Value 1 "try-finally runs compensation initially"
+
+                // s2 is NOT tracked while gate=0
+                s2.Value <- 30
+                Expect.equal compCount.Value 1 "s2 untracked while guarded branch skipped"
+
+                gateSig.Value <- 2
+                Expect.sequenceEqual flowLog [ "for:2:1:30"; "for:2:2:30" ] "gate=2 enters for+inner let! loop"
+                Expect.equal compCount.Value 2 "try-finally compensated on gate=2"
+
+                s2.Value <- 40
+
+                Expect.sequenceEqual
+                    flowLog
+                    [ "for:2:1:30"; "for:2:2:30"; "for:2:1:40"; "for:2:2:40" ]
+                    "inner let! inside try-finally + if + for tracks s2 dynamically"
+
+                // Case 3: mix of use arm and inner let! arm in match after outer let!
+                let branchLog = ResizeArray<string>()
+                let branchMode = Signal (g, 0)
+
+                let _nMatch =
+                    effect {
+                        node
+                        let! m = branchMode
+
+                        match m with
+                        | 0 ->
+                            use _d = new TrackedDisposable ("arm0", branchLog)
+                            branchLog.Add "arm0"
+                        | _ ->
+                            let! b = s2
+                            branchLog.Add $"arm1:{b}"
+                    }
+
+                Expect.sequenceEqual branchLog [ "arm0"; "disp:arm0" ] "match arm0 with use runs and disposes"
+                s2.Value <- 50
+                Expect.sequenceEqual branchLog [ "arm0"; "disp:arm0" ] "s2 not tracked on arm0"
+                branchMode.Value <- 1
+                Expect.sequenceEqual branchLog [ "arm0"; "disp:arm0"; "arm1:50" ] "match switches to inner let! arm1"
+                s2.Value <- 60
+                Expect.sequenceEqual branchLog [ "arm0"; "disp:arm0"; "arm1:50"; "arm1:60" ] "s2 tracked dynamically on arm1"
+
+                // Case 4: top-level use before let! (DelayedBoundPhase -> EvalCold, runs & disposes per evaluation)
+                let topUseLog = ResizeArray<string>()
+
+                let _topUseNode =
+                    g.Run (fun () ->
+                        effect {
+                            node
+                            use _d = new TrackedDisposable ("top", topUseLog)
+                            let! a = s1
+                            topUseLog.Add $"top:{a}"
+                        })
+
+                Expect.sequenceEqual topUseLog [ "top:1"; "disp:top" ] "top-level use before let! evaluates and disposes"
+                s1.Value <- 2
+                Expect.sequenceEqual topUseLog [ "top:1"; "disp:top"; "top:2"; "disp:top" ] "top-level use+let! tracks s1"
+            }
+
+            test "Fix Round 1 Important #1: boundary closed Phase-2 pending read fails with InvalidOperationException instead of Pending" {
+                use g = new Graph ()
+                let modeSig = Signal (g, 0)
+                let pendSrc = AsyncSource<int> g
+                let failedLog = ResizeArray<string>()
+
+                let bWithFailed =
+                    boundary {
+                        pending (fun _ -> -1)
+
+                        failed (fun ex _ ->
+                            failedLog.Add (
+                                if isNotReadyException ex then
+                                    "raw-pending"
+                                else
+                                    "wrapped-err"
+                            )
+
+                            -2)
+
+                        let! m = modeSig
+
+                        match m with
+                        | 0 -> return pendSrc.Value
+                        | _ ->
+                            let! v = pendSrc
+                            return v + 10
+                    }
+
+                let bPendingOnly =
+                    boundary {
+                        pending (fun _ -> -1)
+                        let! m = modeSig
+
+                        if m = 0 then
+                            return pendSrc.Value
+                        else
+                            let! v = pendSrc
+                            return v + 100
+                    }
+
+                // Multi-bind closed return after 2 reactive let! bindings
+                let stepSig = Signal (g, 5)
+
+                let bTwoBinds =
+                    boundary {
+                        pending (fun _ -> -1)
+                        let! m = modeSig
+                        let! k = stepSig
+                        return m + k + pendSrc.Value
+                    }
+
+                Expect.equal bWithFailed.Value -2 "closed Phase-2 pending read triggers failed handler rather than pending handler"
+                Expect.sequenceEqual failedLog [ "wrapped-err" ] "failed handler received non-NotReadyException failure"
+
+                let poReading = bPendingOnly.TryValue
+
+                match poReading with
+                | Failed ex ->
+                    Expect.isTrue (isInvalidOperation ex) "pending-only closed Phase-2 pending read wraps to InvalidOperationException"
+                    Expect.isFalse (isNotReadyException ex) "must not leak raw NotReadyException into Pending state"
+                | other -> failtestf "expected Failed InvalidOperationException on bPendingOnly, got %A" other
+
+                let twoBindReading = bTwoBinds.TryValue
+
+                match twoBindReading with
+                | Failed ex ->
+                    Expect.isTrue (isInvalidOperation ex) "two-bind closed Phase-2 pending read surfaces InvalidOperationException"
+                    Expect.isFalse (isNotReadyException ex) "must not hang Pending after 2 reactive binds"
+                | other -> failtestf "expected Failed InvalidOperationException on bTwoBinds, got %A" other
+
+                // Settling pendSrc later must NOT silently wake untracked closed Phase-2 failure while m = 0,
+                // while switching m = 1 MUST suspend Pending in Phase 1 and wake on Settle.
+                modeSig.Value <- 1
+                Expect.equal bWithFailed.Value -1 "reactive let! pendSrc branch enters pending handler"
+                Expect.equal bPendingOnly.Value -1 "pending-only reactive let! pendSrc branch enters pending handler"
+
+                pendSrc.Settle 40
+                Expect.equal bWithFailed.Value 50 "reactive let! pendSrc wakes boundary after settle"
+                Expect.equal bPendingOnly.Value 140 "pending-only boundary wakes after settle"
+                modeSig.Value <- 0
+                Expect.equal bWithFailed.Value 40 "closed Phase-2 read succeeds once pendSrc is settled"
+            }
+
+            test "Fix Round 1 Important #2: non-BindReturn return after reactive let! stays untracked across memo, editable, draft, boundary, row" {
+                use g = new Graph ()
+                let modeSig = Signal (g, 0)
+                let stepSig = Signal (g, 1)
+                let s2 = Signal (g, 20)
+                let straySig = Signal (g, 500)
+                let pendSrc = AsyncSource<int> g
+                let memoRuns = ref 0
+                let memoUseLog = ResizeArray<string>()
+
+                // 1. Pure memo mixing closed return arm, use+return arm, and 3-level nested let! arm
+                let mMix =
+                    memo {
+                        let! m = modeSig
+                        memoRuns.Value <- memoRuns.Value + 1
+
+                        match m with
+                        | 0 -> return straySig.Value
+                        | 1 ->
+                            use _d = new TrackedDisposable ("m1", memoUseLog)
+                            return straySig.Value + 1
+                        | 2 -> return pendSrc.Value
+                        | _ ->
+                            let! k = stepSig
+
+                            if k = 1 then
+                                let! c = pendSrc
+                                return m + k + c
+                            else
+                                return 0
+                    }
+
+                Expect.equal mMix.Value 500 "m=0 returns straySig initial value"
+                let runs0 = memoRuns.Value
+                straySig.Value <- 600
+                Expect.equal mMix.Value 500 "non-BindReturn return arm after match! keeps straySig untracked"
+                Expect.equal memoRuns.Value runs0 "memo did not recompute on straySig update"
+
+                modeSig.Value <- 1
+                Expect.equal mMix.Value 601 "m=1 use+return reads latest straySig=600"
+                Expect.sequenceEqual memoUseLog [ "disp:m1" ] "use in mixed match arm disposes cleanly"
+                let runs1 = memoRuns.Value
+                straySig.Value <- 700
+                Expect.equal mMix.Value 601 "use+return arm after let! also keeps straySig untracked"
+                Expect.equal memoRuns.Value runs1 "memo did not recompute on straySig update after use+return"
+
+                // Closed pending read in pure memo wraps InvalidOperationException
+                modeSig.Value <- 2
+                let pureClosedEx = failedWith mMix.TryValue
+                Expect.isTrue (isInvalidOperation pureClosedEx) "closed match! return pendSrc wraps InvalidOperationException"
+                Expect.isFalse (isNotReadyException pureClosedEx) "pure non-BindReturn return must not suspend Pending"
+
+                // Owning memo non-BindReturn pending read wraps InvalidOperationException too
+                let mOwning =
+                    memo {
+                        owning
+                        let! m = modeSig
+
+                        if m = 2 then
+                            return pendSrc.Value
+                        else
+                            return straySig.Value
+                    }
+
+                let ownClosedEx = failedWith mOwning.TryValue
+                Expect.isTrue (isInvalidOperation ownClosedEx) "owning memo closed return wraps InvalidOperationException"
+                Expect.isFalse (isNotReadyException ownClosedEx) "owning memo closed return must not suspend Pending"
+
+                // 3-level nested reactive let! (m=3 -> k=1 -> pendSrc) preserves raw Phase-1 Pending & wakes cleanly
+                modeSig.Value <- 3
+                Expect.equal mMix.TryValue Pending "3-level nested let! inside memo preserves raw Phase-1 Pending"
+
+                // ColdPhase 0-bind regression check: 0-bind return remains tracked
+                let mColdTracked = g.Run (fun () -> memo { return s2.Value })
+                Expect.equal mColdTracked.Value 20 "ColdPhase 0-bind initial"
+                s2.Value <- 25
+                Expect.equal mColdTracked.Value 25 "ColdPhase 0-bind remains tracked"
+
+                // 2. Editable and draft with match! / use non-BindReturn return stay untracked
+                let editMode = Signal (g, 0)
+                let editLog = ResizeArray<string>()
+
+                let eMix =
+                    editable {
+                        let! m = editMode
+
+                        match m with
+                        | 0 ->
+                            use _d = new TrackedDisposable ("e0", editLog)
+                            return straySig.Value
+                        | _ ->
+                            let! k = stepSig
+                            return k + straySig.Value
+                    }
+
+                let dMix =
+                    draft {
+                        let! m = editMode
+
+                        if m = 0 then
+                            return straySig.Value + 10
+                        else
+                            let! k = stepSig
+                            return k + straySig.Value
+                    }
+
+                Expect.equal eMix.Value 700 "editable m=0 initial"
+                Expect.equal dMix.Value 710 "draft m=0 initial"
+                Expect.sequenceEqual editLog [ "disp:e0" ] "editable use disposed"
+
+                eMix.Value <- 9999
+                dMix.Value <- 8888
+                straySig.Value <- 800
+                Expect.equal eMix.Value 9999 "editable keeps local edit when closed return straySig changes"
+                Expect.equal dMix.Value 8888 "draft keeps local edit when closed return straySig changes"
+                editMode.Value <- 1
+                Expect.equal eMix.Value 801 "editable updates cleanly when bound editMode changes"
+                Expect.equal dMix.Value 8888 "draft retains edit across mode switch until Reset()"
+                dMix.Reset ()
+                Expect.equal dMix.Value 801 "draft Reset() reflects updated seed"
+
+                // 3. Row non-BindReturn return keeps stray untracked, wraps closed Pending,
+                //    propagates inner let! Pending to enclosing Boundary, and does not leak onto outer memo
+                let itemsSig = Signal (g, [ (1, 0); (2, 3) ])
+                let rowMixRuns = ref 0
+
+                let projMix =
+                    g.Run (fun () ->
+                        createProjectionWith
+                            fst
+                            (fun item ->
+                                row {
+                                    let! (_, price) = item
+                                    rowMixRuns.Value <- rowMixRuns.Value + 1
+
+                                    match price with
+                                    | 0 -> return straySig.Value
+                                    | -1 -> return pendSrc.Value
+                                    | _ ->
+                                        let! v = pendSrc
+                                        return price + v
+                                })
+                            (fun () -> itemsSig.Value))
+
+                Expect.equal (projMix.Get 1) 800 "row m=0 reads closed straySig"
+                let rRuns0 = rowMixRuns.Value
+                straySig.Value <- 900
+                Expect.equal (projMix.Get 1) 800 "row non-BindReturn return keeps straySig untracked"
+                Expect.equal rowMixRuns.Value rRuns0 "row did not recompute on straySig update"
+
+                // Row inside outer memo Phase 2 must NOT leak row's internal let! dependency onto outer memo
+                let innerRow =
+                    row {
+                        let! v = s2
+                        return v * 2
+                    }
+
+                let outerMemoCallingRow =
+                    memo {
+                        let! m = stepSig
+                        return m + innerRow ()
+                    }
+
+                Expect.equal outerMemoCallingRow.Value 51 "outer memo calling row in closed Phase 2 computes 1 + 50"
+                s2.Value <- 30
+                Expect.equal outerMemoCallingRow.Value 51 "row called in outer memo closed Phase 2 does NOT leak s2 dependency"
+
+                // Row pending check: key -1 triggers closed InvalidOperationException, key 2 suspends Boundary Pending until settled
+                itemsSig.Value <- [ (1, -1); (2, 3) ]
+
+                let bRowClosed =
+                    g.Run (fun () -> createBoundary (fun _ -> -1) (fun _ _ -> -2) (fun () -> projMix.Get 1))
+
+                let bRowPhase1 =
+                    g.Run (fun () -> createBoundary (fun _ -> -1) (fun _ _ -> -2) (fun () -> projMix.Get 2))
+
+                Expect.equal bRowClosed.Value -2 "row closed Phase-2 pending read fails with InvalidOperationException (-2)"
+                Expect.equal bRowPhase1.Value -1 "row Phase-1 inner let! pendSrc suspends enclosing boundary (-1)"
+
+                pendSrc.Settle 100
+                Expect.equal mMix.Value 104 "3-level nested let! memo wakes with settled pendSrc (3 + 1 + 100 = 104)"
+                Expect.equal bRowPhase1.Value 103 "enclosing boundary wakes when row inner let! pendSrc settles (3 + 100 = 103)"
+            }
+
+            test "Fix Round 1 Important #3: previous/previousOr construction does not eagerly execute preamble or unready reads" {
+                use g = new Graph ()
+                let sig1 = Signal (g, 10)
+                let pendSrc = AsyncSource<int> g
+                let mutable memoBoundPreamble = 0
+                let mutable memoColdPreamble = 0
+                let mutable editPreamble = 0
+                let mutable draftPreamble = 0
+
+                let mBoundLazy, mColdLazy, eLazy, dLazy =
+                    g.Run (fun () ->
+                        let mb =
+                            memo {
+                                let! prev = memo.previous
+                                memoBoundPreamble <- memoBoundPreamble + 1
+                                let p0 = ValueOption.defaultValue 0 prev
+                                let v = pendSrc.Value
+                                let! x = sig1
+                                return p0 + v + x
+                            }
+
+                        let mc =
+                            memo {
+                                let! prev = memo.previousOr 1
+                                memoColdPreamble <- memoColdPreamble + 1
+                                return prev + sig1.Value
+                            }
+
+                        let ed =
+                            editable {
+                                let! prev = editable.previous
+                                editPreamble <- editPreamble + 1
+                                let v = pendSrc.Value
+                                let! x = sig1
+
+                                return
+                                    match prev with
+                                    | ValueNone -> v + x
+                                    | ValueSome p -> p + x
+                            }
+
+                        let dr =
+                            draft {
+                                let! prev = draft.previousOr 5
+                                draftPreamble <- draftPreamble + 1
+                                let! x = sig1
+                                return prev + x
+                            }
+
+                        mb, mc, ed, dr)
+
+                Expect.equal memoBoundPreamble 0 "memo.previous + unready preamble did not execute at construction"
+                Expect.equal memoColdPreamble 0 "0-bind memo.previousOr preamble did not execute at construction"
+                Expect.equal editPreamble 0 "editable.previous + unready preamble did not execute at construction"
+                Expect.equal draftPreamble 0 "draft.previousOr preamble did not execute at construction"
+
+                // Also verify ColdPhase Combine before let! after previous stays lazy outside g.Run when inside g.Run
+                let mutable combinedPreamble = 0
+
+                let mCombined =
+                    g.Run (fun () ->
+                        memo {
+                            let! prev = memo.previousOr 2
+
+                            if sig1.Value > 0 then
+                                combinedPreamble <- combinedPreamble + 1
+
+                            let! x = sig1
+                            return prev + x
+                        })
+
+                Expect.equal combinedPreamble 0 "Combine before reactive let! after previous stays lazy at construction"
+
+                pendSrc.Settle 7
+                Expect.equal mBoundLazy.Value 17 "mBoundLazy evaluates 0 + 7 + 10 on first read"
+                Expect.equal mColdLazy.Value 11 "mColdLazy evaluates 1 + 10 on first read"
+                Expect.equal eLazy.Value 17 "eLazy evaluates 7 + 10 on first read"
+                Expect.equal dLazy.Value 15 "dLazy evaluates 5 + 10 on first read"
+                Expect.equal mCombined.Value 12 "mCombined evaluates 2 + 10 on first read"
+                Expect.equal memoBoundPreamble 1 "mBoundLazy preamble ran once on read"
+                Expect.equal memoColdPreamble 1 "mColdLazy preamble ran once on read"
+                Expect.equal editPreamble 1 "eLazy preamble ran once on read"
+                Expect.equal draftPreamble 1 "dLazy preamble ran once on read"
+
+                sig1.Value <- 20
+                Expect.equal mBoundLazy.Value 44 "mBoundLazy uses previous=17 -> 17 + 7 + 20"
+                Expect.equal mColdLazy.Value 31 "mColdLazy uses previous=11 -> 11 + 20"
+                Expect.equal eLazy.Value 37 "eLazy uses previous=17 -> 17 + 20"
+                Expect.equal dLazy.Value 35 "dLazy uses previous=15 -> 15 + 20"
+                Expect.equal mCombined.Value 32 "mCombined uses previous=12 -> 12 + 20"
+            }
         ]
