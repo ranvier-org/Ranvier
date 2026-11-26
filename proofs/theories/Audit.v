@@ -556,3 +556,5 @@ Print Assumptions async_on_flight_preservation_eq.
 Print Assumptions fused_map_chain_eq_unfused.
 Print Assumptions map2_zip_status_precedence_eq.
 Print Assumptions split_bind_inner_tick_eq.
+Print Assumptions ce_dispatch_and_nested_eval_eq.
+Print Assumptions merge_sources_nary_precedence_eq.
