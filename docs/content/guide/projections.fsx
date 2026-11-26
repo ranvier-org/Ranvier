@@ -161,6 +161,27 @@ to a reactive CE. An optional read handles missing keys while preserving pending
 For a projection factory, `row { ... }` returns the reader for each key. See
 [pointwise collection reads](computation-expressions.md#pointwise-collection-reads).
 
+*)
+open Ranvier.CE
+
+let titleCount = memo { let! keys = Projection.keys titles in return keys.Length }
+
+let focusTitle =
+    memo {
+        match! Projection.tryAt 99 titles with
+        | Some title -> return title
+        | None ->
+            let! firstTitle = Projection.at 1 titles
+            return firstTitle
+    }
+
+titleCount.Value, focusTitle.Value
+(**
+
+```text
+(3, "Write the guide")
+```
+
 Use `Projection.ensureUniqueKeys keyOf items` at an input boundary to check for duplicate keys before
 constructing rows. It uses the projection's key equality and raises on the first duplicate.
 

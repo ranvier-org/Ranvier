@@ -87,6 +87,20 @@ In a reactive CE, bind `Lookup.at key onHand` for a demand-creating read or `Loo
 inspect an existing cell. See
 [pointwise collection reads](computation-expressions.md#pointwise-collection-reads).
 
+*)
+open Ranvier.CE
+
+let coldPear = memo { let! count = Lookup.tryAt "pears" onHand in return count }
+let appleCount = memo { let! count = Lookup.at "apples" onHand in return count }
+let warmApple = memo { let! count = Lookup.tryAt "apples" onHand in return count }
+
+coldPear.Value, appleCount.Value, warmApple.Value, onHand.CellCount
+(**
+
+```text
+(None, 3, Some 3, 1)
+```
+
 :::details Failed and pending lookup cells
 
 A key whose computation throws holds the exception, and is recomputed on every later transition until

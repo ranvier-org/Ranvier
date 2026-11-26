@@ -28,7 +28,7 @@ Ranvier's engine compiles with `dotnet fickl` in this repository, and the shared
 
 ## Package sources and CI
 
-Package builds of `Ranvier`, `Ranvier.Elmish`, `Ranvier.CSharp`, `Ranvier.Query`, `Ranvier.Wire` (`0.2.1`), `Fable.Ranvier.Dom` (`0.1.0`), and the view packages, including their `.Traced` variants, ship Fable sources and a standalone `fable/<package>.fsproj`. Reference the NuGet package normally from a Fable project compiled with `dotnet fickl`; CI compiles and runs locally packed package consumers across both targets. See [Installation](../guide/installation.md#from-nuget) and [Views](../guide/installation.md#views).
+Package builds of `Ranvier`, `Ranvier.Elmish`, `Ranvier.CSharp`, `Ranvier.Query`, `Ranvier.Wire` (`0.2.3`), `Fable.Ranvier.Dom` (`0.1.1`), and the view packages, including their `.Traced` variants, ship Fable sources and a standalone `fable/<package>.fsproj`. Reference the NuGet package normally from a Fable project compiled with `dotnet fickl`; CI compiles and runs locally packed package consumers across both targets. See [Installation](../guide/installation.md#from-nuget) and [Views](../guide/installation.md#views).
 
 ## Known differences from .NET
 

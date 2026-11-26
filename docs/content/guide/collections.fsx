@@ -3,6 +3,14 @@
 title: Collections
 ---
 *)
+(*** hide ***)
+#load "../../literate.fsx"
+
+open Ranvier
+open Ranvier.Docs.Maps
+
+let graph = new Graph ()
+let active = graph.Activate ()
 (**
 Give each collection row its own reactive value, so an edit updates the readers of that row.
 Use a lookup for arbitrary requested keys and a selector for selection membership.
@@ -30,9 +38,41 @@ In a reactive CE, `KeyedCollection.at key store`, `KeyedCollection.tryAt key sto
 `KeyedCollection.keys store` select the corresponding read of `store.Rows`. See
 [pointwise collection reads](computation-expressions.md#pointwise-collection-reads).
 
+*)
+open Ranvier.CE
+
+let store = createKeyedCollection fst
+store.AddOrUpdate (1, "Write")
+store.AddOrUpdate (2, "Review")
+
+let storeKeys = memo { let! ks = KeyedCollection.keys store in return ks }
+
+let rowLabel =
+    memo {
+        match! KeyedCollection.tryAt 2 store with
+        | Some (_, label) -> return label
+        | None ->
+            let! (_, firstLabel) = KeyedCollection.at 1 store
+            return firstLabel
+    }
+
+let before = storeKeys.Value, rowLabel.Value
+ignore (store.Remove 2)
+let after = storeKeys.Value, rowLabel.Value
+before, after
+(**
+
+```text
+(([|1; 2|], "Review"), ([|1|], "Write"))
+```
+
 For renderers that create one view object per key, projections also offer create-first teardown
 ordering and `createProjectionOnce`, which stores a factory result without a row memo. The latter
 supports `Keys`, key readers, `length`, `isEmpty`, and positional readers, while value readers,
 `AsObservableCollection`, collection view operators, and fold/search/extreme aggregates require row
 memos; see [Store a factory result once per key](projections.fsx#store-a-factory-result-once-per-key).
 *)
+(*** hide ***)
+store.Dispose ()
+active.Dispose ()
+graph.Dispose ()
