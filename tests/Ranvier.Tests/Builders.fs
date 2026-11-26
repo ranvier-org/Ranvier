@@ -2257,7 +2257,7 @@ let tests =
                 s2.Value <- 60
                 Expect.sequenceEqual branchLog [ "arm0"; "disp:arm0"; "arm1:50"; "arm1:60" ] "s2 tracked dynamically on arm1"
 
-                // Case 4: top-level use before let! (DelayedBoundPhase -> EvalCold, runs & disposes per evaluation)
+                // Case 4: top-level use before let! (BoundPhase -> EvalBound + EvalOnceThen, runs & disposes once per evaluation)
                 let topUseLog = ResizeArray<string>()
 
                 let _topUseNode =
@@ -2632,5 +2632,333 @@ let tests =
                 Expect.equal eLazy.Value 37 "eLazy uses previous=17 -> 17 + 20"
                 Expect.equal dLazy.Value 35 "dLazy uses previous=15 -> 15 + 20"
                 Expect.equal mCombined.Value 32 "mCombined uses previous=12 -> 12 + 20"
+            }
+
+            test
+                "Fix Round 2 Important #1: if/match mixes direct let! arm with use/Combine+let! arms across all 6 builders and preserves EffectOn leaf use" {
+                use g = new Graph ()
+                let s1 = Signal (g, 10)
+                let s2 = Signal (g, 20)
+                let s3 = Signal (g, 30)
+                let modeSig = Signal (g, 0)
+                let log = ResizeArray<string>()
+
+                // 1. Standalone top-level if/match mixing direct let! arm with use+let! arm (true and false arms)
+                let mBranch cond =
+                    memo {
+                        if cond then
+                            let! x = s1
+                            return x + 1
+                        else
+                            use _d = new TrackedDisposable ("m", log)
+                            let! y = s2
+                            return y + 2
+                    }
+
+                let mOwnBranch cond =
+                    memo {
+                        owning
+
+                        match cond with
+                        | 0 ->
+                            let! x = s1
+                            return x
+                        | 1 ->
+                            use _d = new TrackedDisposable ("mown", log)
+                            let! y = s2
+                            return y + 100
+                        | _ ->
+                            try
+                                let! z = s3
+                                return z + 200
+                            finally
+                                log.Add "fin-leaf"
+                    }
+
+                let mOptBranch cond =
+                    memo {
+                        option
+
+                        if cond then
+                            let! x = s1
+                            return Some x
+                        else
+                            use _d = new TrackedDisposable ("mopt", log)
+                            let! y = s2
+                            return Some y
+                    }
+
+                let eBranch cond =
+                    editable {
+                        if cond then
+                            let! x = s1
+                            return x
+                        else
+                            use _d = new TrackedDisposable ("edit", log)
+                            let! y = s2
+                            return y + 5
+                    }
+
+                let dBranch cond =
+                    draft {
+                        if cond then
+                            let! x = s1
+                            return x
+                        else
+                            use _d = new TrackedDisposable ("draft", log)
+                            let! y = s2
+                            return y + 6
+                    }
+
+                let bBranch cond =
+                    boundary {
+                        pending (fun _ -> -1)
+
+                        if cond then
+                            let! x = s1
+                            return x
+                        else
+                            use _d = new TrackedDisposable ("bnd", log)
+                            let! y = s2
+                            return y + 7
+                    }
+
+                let rBranch cond =
+                    row {
+                        if cond then
+                            let! x = s1
+                            return x
+                        else
+                            use _d = new TrackedDisposable ("row", log)
+                            let! y = s2
+                            return y + 8
+                    }
+
+                let effBranch cond =
+                    g.Run (fun () ->
+                        effect {
+                            node
+
+                            if cond then
+                                let! x = s1
+                                log.Add $"eff0:{x}"
+                            else
+                                use _d = new TrackedDisposable ("eff", log)
+                                let! y = s2
+                                log.Add $"eff1:{y}"
+                        })
+
+                let mTrue = mBranch true
+
+                let mFalse, mOwn1, mOwn2, mOptFalse, eFalse, dFalse, bFalse =
+                    g.Run (fun () -> mBranch false, mOwnBranch 1, mOwnBranch 2, mOptBranch false, eBranch false, dBranch false, bBranch false)
+
+                let rFalse = rBranch false
+                let _effNodeFalse = effBranch false
+
+                // Before any Memo/Editable/Draft/Boundary/Row is read, only eager Effect logged.
+                Expect.sequenceEqual log [ "eff1:20"; "disp:eff" ] "mixed effect branch runs on construction while lazy branches defer"
+
+                // Evaluate Run #1 and verify single disposal (no EvalBound double-call leak of _d on Run #1)
+                Expect.equal mTrue.Value 11 "memo if direct let! branch"
+                Expect.equal mFalse.Value 22 "memo else use+let! branch"
+                Expect.equal mOwn1.Value 120 "owning memo match use+let! branch"
+                Expect.equal mOwn2.Value 230 "owning memo match try-finally+let! branch"
+                Expect.equal mOptFalse.Value (Some 20) "option memo else use+let! branch"
+                Expect.equal eFalse.Value 25 "editable else use+let! branch"
+                Expect.equal dFalse.Value 26 "draft else use+let! branch"
+                Expect.equal bFalse.Value 27 "boundary else use+let! branch"
+                Expect.equal (rFalse ()) 28 "row else use+let! branch"
+
+                Expect.sequenceEqual
+                    log
+                    [
+                        "eff1:20"
+                        "disp:eff"
+                        "disp:m"
+                        "disp:mown"
+                        "fin-leaf"
+                        "disp:mopt"
+                        "disp:edit"
+                        "disp:draft"
+                        "disp:bnd"
+                        "disp:row"
+                    ]
+                    "all 6 mixed-branch use+let! runs execute and dispose exactly once on first evaluation"
+
+                log.Clear ()
+
+                // 2. Reactive updates on Run #2+ obtain fresh disposables
+                s2.Value <- 21
+                Expect.equal mFalse.Value 23 "memo else use+let! recomputes on s2"
+                Expect.equal eFalse.Value 26 "editable else use+let! recomputes on s2"
+                Expect.equal dFalse.Value 27 "draft else use+let! recomputes on s2"
+                Expect.equal bFalse.Value 28 "boundary else use+let! recomputes on s2"
+                Expect.equal (rFalse ()) 29 "row else use+let! recomputes on s2"
+
+                // 3. Outer let! + match mixing direct let!, use+let!, and Combine+let!
+                let mNested =
+                    memo {
+                        let! m = modeSig
+
+                        match m with
+                        | 0 ->
+                            let! x = s1
+                            return x
+                        | 1 ->
+                            use _d = new TrackedDisposable ("nm1", log)
+                            let! y = s2
+                            return y
+                        | _ ->
+                            if true then
+                                log.Add "nm2"
+
+                            let! z = s3
+                            return z
+                    }
+
+                Expect.equal mNested.Value 10 "nested match arm 0"
+                modeSig.Value <- 1
+                Expect.equal mNested.Value 21 "nested match arm 1 (use+let!)"
+                modeSig.Value <- 2
+                Expect.equal mNested.Value 30 "nested match arm 2 (Combine+let!)"
+
+                // 4. Leaf use inside effect { let! a = withComparer cmp s1; use _d = ...; log.Add a } keeps EffectOn cutoff
+                let leafEffectLog = ResizeArray<string>()
+                let mod2 = comparer (fun (a: int) b -> a % 2 = b % 2)
+                let keySig = Signal (g, 1)
+
+                let _leafEffNode =
+                    effect {
+                        node
+                        let! k = withComparer mod2 keySig
+                        use _d = new TrackedDisposable ($"leaf{k}", leafEffectLog)
+                        leafEffectLog.Add $"k={k}"
+                    }
+
+                Expect.sequenceEqual leafEffectLog [ "k=1"; "disp:leaf1" ] "EffectOn with leaf use runs initially"
+                keySig.Value <- 3
+                Expect.sequenceEqual leafEffectLog [ "k=1"; "disp:leaf1" ] "EffectOn cutoff under withComparer preserved despite leaf use"
+                keySig.Value <- 4
+                Expect.sequenceEqual leafEffectLog [ "k=1"; "disp:leaf1"; "k=4"; "disp:leaf4" ] "EffectOn fires when mod2 key changes"
+            }
+
+            test
+                "Fix Round 2 Important #2: try/with catching 2nd+ Phase-1 NotReadyException preserves Pending, clears Phase1Pending, and Row works outside Activate" {
+                use g = new Graph ()
+                let s1 = Signal (g, 1)
+                let pendSrc = AsyncSource<int> g
+                let pendOther = AsyncSource<int> g
+
+                let mTryPending =
+                    memo {
+                        let! a = s1
+
+                        try
+                            let! b = pendSrc
+                            return a + b
+                        with _ ->
+                            return 99
+                    }
+
+                let mTrySwallowClosedRead =
+                    memo {
+                        let! a = s1
+
+                        try
+                            let! _b = pendSrc
+                            return a
+                        with _ ->
+                            return pendOther.Value
+                    }
+
+                let mTryReraise =
+                    memo {
+                        let! a = s1
+
+                        try
+                            let! b = pendSrc
+                            return a + b
+                        with ex ->
+                            raise ex
+                            return 0
+                    }
+
+                let bTryPending =
+                    boundary {
+                        pending (fun _ -> -1)
+                        failed (fun _ _ -> -2)
+                        let! a = s1
+
+                        try
+                            let! b = pendSrc
+                            return a + b
+                        with _ ->
+                            return 99
+                    }
+
+                let rTryPending =
+                    row {
+                        let! a = s1
+
+                        try
+                            let! b = pendSrc
+                            return a + b
+                        with _ ->
+                            return 99
+                    }
+
+                let mHostingRow = Make.Memo (g, (fun _ -> rTryPending ()))
+
+                let bHostingRow =
+                    g.Run (fun () -> createBoundary (fun _ -> -1) (fun _ _ -> -2) (fun () -> rTryPending ()))
+
+                // 2nd+ let! NotReadyException caught by user try/with STILL suspends Pending (raisedPending preserved!)
+                Expect.equal mTryPending.TryValue Pending "memo 2nd+ let! caught by try/with must still suspend Pending"
+                Expect.isTrue (isNull InternalCeState.CurrentPhase1Pending) "Phase1Pending cleared when try/with swallows NotReadyException"
+
+                // Inside the with handler itself, reading pendOther.Value untracked wraps as InvalidOperationException
+                let handlerEx = failedWith mTrySwallowClosedRead.TryValue
+                Expect.isTrue (isInvalidOperation handlerEx) "closed pending read inside try/with handler wraps InvalidOperationException"
+                Expect.isFalse (isNotReadyException handlerEx) "closed pending read in handler must not leak raw NotReadyException"
+                Expect.isTrue (isNull InternalCeState.CurrentPhase1Pending) "Phase1Pending remains cleared after handler fails"
+
+                // Reraise in try/with still suspends Pending cleanly
+                Expect.equal mTryReraise.TryValue Pending "memo try/with reraise preserves Pending"
+                Expect.isTrue (isNull InternalCeState.CurrentPhase1Pending) "Phase1Pending cleared after reraise unwinds node"
+
+                // Boundary and Row hosted in Memo/Boundary preserve raisedPending across try/with too
+                Expect.equal bTryPending.Value -1 "boundary 2nd+ let! caught by try/with invokes pending (-1), not 99"
+                Expect.equal mHostingRow.TryValue Pending "row 2nd+ let! caught by try/with suspends hosting Memo Pending"
+                Expect.equal bHostingRow.Value -1 "row 2nd+ let! caught by try/with suspends hosting Boundary pending (-1)"
+
+                // Row bound to IReactive outside ambient g.Run enters graph cleanly for factoryRow violation & closed return
+                let straySig = Signal (g, 500)
+
+                let rowOutside =
+                    row {
+                        let! x = s1
+                        return x + straySig.Value
+                    }
+
+                let badRowOutside =
+                    row {
+                        let! x = s1
+                        createEffect ignore
+                        return x
+                    }
+
+                Expect.equal (rowOutside ()) 501 "row bound to Signal works outside g.Run"
+                let badRowEx = Expect.throwsC (fun () -> badRowOutside () |> ignore) id
+                Expect.isTrue (isInvalidOperation badRowEx) "owned node in row outside g.Run raises InvalidOperationException"
+                Expect.stringContains badRowEx.Message "factory body" "error cites factoryRow instead of missing ambient graph"
+
+                // Settle pendSrc -> all Pending computations wake up cleanly
+                pendSrc.Settle 10
+                Expect.equal mTryPending.Value 11 "mTryPending wakes to 11 after settle"
+                Expect.equal mTryReraise.Value 11 "mTryReraise wakes to 11 after settle"
+                Expect.equal bTryPending.Value 11 "bTryPending wakes to 11 after settle"
+                Expect.equal mHostingRow.Value 11 "mHostingRow wakes to 11 after settle"
+                Expect.equal bHostingRow.Value 11 "bHostingRow wakes to 11 after settle"
             }
         ]

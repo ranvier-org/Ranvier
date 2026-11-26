@@ -14,9 +14,9 @@ type ColdPhase = struct end
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
 type BoundPhase = struct end
 
-/// <summary>Phantom phase marker indicating a delayed control-flow block containing an inner reactive bind.</summary>
+/// <summary>Phantom phase marker indicating a leaf body inside <c>effect</c> eligible for static <c>EffectOn</c>.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type DelayedBoundPhase = struct end
+type LeafPhase = struct end
 
 /// <summary>Phantom scope mode marker for pure memo computation expressions.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
@@ -111,6 +111,7 @@ module private CeEvalSlot =
     let mutable evalDepth = 0
     let mutable hasPrev = false
     let mutable prevValue: obj = null
+    let mutable effectGraph: Graph = Unchecked.defaultof<Graph>
     let mutable effectObserver: obj = null
     let mutable phase1Pending: exn = null
     let mutable hasReactiveBind = false
@@ -177,12 +178,20 @@ type InternalCeState =
         else
             seed
 
+    static member CurrentEffectGraph: Graph = CeEvalSlot.effectGraph
+
     static member CurrentEffectObserver: obj = CeEvalSlot.effectObserver
 
-    static member SwapEffectObserver(obs: obj) : obj =
-        let prev = CeEvalSlot.effectObserver
+    static member SwapEffectObserver(g: Graph, obs: obj) : struct (Graph * obj) =
+        let prev = struct (CeEvalSlot.effectGraph, CeEvalSlot.effectObserver)
+        CeEvalSlot.effectGraph <- g
         CeEvalSlot.effectObserver <- obs
         prev
+
+    static member RestoreEffectObserver(saved: struct (Graph * obj)) : unit =
+        let struct (g, obs) = saved
+        CeEvalSlot.effectGraph <- g
+        CeEvalSlot.effectObserver <- obs
 
     static member CurrentPhase1Pending: exn = CeEvalSlot.phase1Pending
 
@@ -223,6 +232,9 @@ type InternalCeState =
 
     [<ThreadStatic; Microsoft.FSharp.Core.DefaultValue>]
     static val mutable private prevValue: obj
+
+    [<ThreadStatic; Microsoft.FSharp.Core.DefaultValue>]
+    static val mutable private effectGraph: Graph
 
     [<ThreadStatic; Microsoft.FSharp.Core.DefaultValue>]
     static val mutable private effectObserver: obj
@@ -306,13 +318,22 @@ type InternalCeState =
         else
             seed
 
+    static member CurrentEffectGraph: Graph = InternalCeState.effectGraph
+
     static member CurrentEffectObserver: obj = InternalCeState.effectObserver
 
     [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
-    static member SwapEffectObserver(obs: obj) : obj =
-        let prev = InternalCeState.effectObserver
+    static member SwapEffectObserver(g: Graph, obs: obj) : struct (Graph * obj) =
+        let prev = struct (InternalCeState.effectGraph, InternalCeState.effectObserver)
+        InternalCeState.effectGraph <- g
         InternalCeState.effectObserver <- obs
         prev
+
+    [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
+    static member RestoreEffectObserver(saved: struct (Graph * obj)) : unit =
+        let struct (g, obs) = saved
+        InternalCeState.effectGraph <- g
+        InternalCeState.effectObserver <- obs
 
     static member CurrentPhase1Pending: exn = InternalCeState.phase1Pending
 
@@ -691,27 +712,52 @@ type CeRuntime =
             Unchecked.defaultof<Graph>
 #endif
 
-    static member private RunUntrackedPureBody<'A, 'T>(isRow: bool, g: Graph, f: 'A -> 'T, arg: 'A) : 'T =
-        let host = CeRuntime.PickPureHost (isRow, g)
+    static member EvalOnceThen<'T>(firstFn: unit -> 'T, fallbackFn: unit -> 'T) : unit -> 'T =
+        let mutable pendingFirst = ValueSome firstFn
 
-#if FABLE_COMPILER
-        g.RunUntrackedPureArg (host, f, arg)
-#else
-        let hasJournal = not (Platform.isNull g.Journal)
+        fun () ->
+            match pendingFirst with
+            | ValueSome fn ->
+                pendingFirst <- ValueNone
+                fn ()
+            | ValueNone -> fallbackFn ()
 
-        if hasJournal then
-            g.Journal.EnterDerived ()
-
-        let saved = g.EnterUntrackedPure host
+    static member RunTryWithHandler<'T>(caughtEx: exn, handle: unit -> 'T) : 'T =
+        let savedPending = InternalCeState.SwapPhase1Pending null
 
         try
-            f arg
-        finally
-            g.LeaveUntrackedPure saved
+            handle ()
+        with ex2 ->
+            if obj.ReferenceEquals (ex2, caughtEx) then
+                InternalCeState.SetPhase1Pending savedPending
 
-            if hasJournal then
-                g.Journal.LeaveDerived ()
+            reraise ()
+
+    static member private RunUntrackedPureBody<'A, 'T>(isRow: bool, g: Graph, f: 'A -> 'T, arg: 'A) : 'T =
+        g.Entered (
+            "An untracked read",
+            fun () ->
+                let host = CeRuntime.PickPureHost (isRow, g)
+
+#if FABLE_COMPILER
+                g.RunUntrackedPureArg (host, f, arg)
+#else
+                let hasJournal = not (Platform.isNull g.Journal)
+
+                if hasJournal then
+                    g.Journal.EnterDerived ()
+
+                let saved = g.EnterUntrackedPure host
+
+                try
+                    f arg
+                finally
+                    g.LeaveUntrackedPure saved
+
+                    if hasJournal then
+                        g.Journal.LeaveDerived ()
 #endif
+        )
 
     static member RunUntrackedPureArg<'A, 'T>(isRow: bool, g: Graph, f: 'A -> 'T, arg: 'A) : 'T =
         try
@@ -726,20 +772,17 @@ type CeRuntime =
             raise (UntrackedPhase.wrapPending UntrackedPhase.mapPending ex)
 
     static member RunUntrackedRowArg<'A, 'T>(explicitGraph: Graph, f: 'A -> 'T, arg: 'A) : 'T =
-        let g =
-            if not (Platform.isNull (box explicitGraph)) then
-                explicitGraph
-            else
-                CeRuntime.TryGetAmbientGraph ()
+        let ambient = CeRuntime.TryGetAmbientGraph ()
 
-        if not (Platform.isNull (box g)) then
-            CeRuntime.RunUntrackedPureArg (true, g, f, arg)
+        if not (Platform.isNull (box ambient)) then
+            CeRuntime.RunUntrackedPureArg (true, ambient, f, arg)
+        elif not (Platform.isNull (box explicitGraph)) then
+            use _ = explicitGraph.Activate ()
+            CeRuntime.RunUntrackedPureArg (true, explicitGraph, f, arg)
         else
             f arg
 
-    static member RunUntrackedMemoBind<'A, 'U>(owning: bool, f: 'A -> 'U, arg: 'A) : 'U =
-        let g = Graph.Current
-
+    static member RunUntrackedMemoBind<'A, 'U>(owning: bool, g: Graph, f: 'A -> 'U, arg: 'A) : 'U =
         if owning then
             CeRuntime.RunUntrackedBoundaryArg (g, f, arg)
         else
@@ -752,10 +795,13 @@ type CeRuntime =
         try
             if not (Platform.isNull (box activeObs)) then
                 readFn ()
-            elif not (Platform.isNull savedObs) then
-                g.RunHosted (unbox<IComputation> savedObs, readFn)
+            elif
+                not (Platform.isNull savedObs)
+                && obj.ReferenceEquals (g, InternalCeState.CurrentEffectGraph)
+            then
+                g.ResumeTracked (unbox<IComputation> savedObs, readFn)
             else
-                readFn ()
+                g.Entered ("A reactive read", readFn)
         with NotReadyException _ as ex ->
             InternalCeState.SetPhase1Pending ex
             reraise ()
@@ -772,15 +818,15 @@ type CeRuntime =
             readFn ()
 
     static member RunUntrackedContinuation<'K, 'T>(isRow: bool, owning: bool, g: Graph, key: 'K, cont: 'K -> 'T) : 'T =
-        let obs: obj =
+        let struct (obsGraph, obs) =
             let active = g.CurrentObserver
 
             if not (Platform.isNull (box active)) then
-                box active
+                struct (g, box active)
             else
-                InternalCeState.CurrentEffectObserver
+                struct (InternalCeState.CurrentEffectGraph, InternalCeState.CurrentEffectObserver)
 
-        let prevObs = InternalCeState.SwapEffectObserver obs
+        let prevObs = InternalCeState.SwapEffectObserver (obsGraph, obs)
 
         try
             try
@@ -794,31 +840,29 @@ type CeRuntime =
                 else
                     raise (UntrackedPhase.wrapPending UntrackedPhase.mapPending ex)
         finally
-            InternalCeState.SwapEffectObserver prevObs
-            |> ignore
+            InternalCeState.RestoreEffectObserver prevObs
 
     static member RunRowContinuation<'K, 'V>(explicitGraph: Graph, key: 'K, cont: 'K -> 'V) : 'V =
-        let g =
-            if not (Platform.isNull (box explicitGraph)) then
-                explicitGraph
-            else
-                CeRuntime.TryGetAmbientGraph ()
+        let ambient = CeRuntime.TryGetAmbientGraph ()
 
-        if Platform.isNull (box g) then
-            cont key
+        if not (Platform.isNull (box ambient)) then
+            CeRuntime.RunUntrackedContinuation (true, false, ambient, key, cont)
+        elif not (Platform.isNull (box explicitGraph)) then
+            use _ = explicitGraph.Activate ()
+            CeRuntime.RunUntrackedContinuation (true, false, explicitGraph, key, cont)
         else
-            CeRuntime.RunUntrackedContinuation (true, false, g, key, cont)
+            cont key
 
     static member EvalRow<'V>(eval: unit -> 'V) : 'V =
         let g = CeRuntime.TryGetAmbientGraph ()
 
-        let activeObs: obj =
+        let struct (obsGraph, activeObs) =
             if not (Platform.isNull (box g)) then
-                box g.CurrentObserver
+                struct (g, box g.CurrentObserver)
             else
-                null
+                struct (Unchecked.defaultof<Graph>, null)
 
-        let savedObs = InternalCeState.SwapEffectObserver activeObs
+        let savedObs = InternalCeState.SwapEffectObserver (obsGraph, activeObs)
         let savedPending = InternalCeState.SwapPhase1Pending null
 
         try
@@ -827,8 +871,7 @@ type CeRuntime =
             InternalCeState.SwapPhase1Pending savedPending
             |> ignore
 
-            InternalCeState.SwapEffectObserver savedObs
-            |> ignore
+            InternalCeState.RestoreEffectObserver savedObs
 
     static member TryAsMemo<'T>(source: IReactive<'T>) : Memo<'T> voption =
         match source with
@@ -913,7 +956,7 @@ type CeRuntime =
             let savedDepth = InternalCeState.EnterEval ()
             let savedReactive = InternalCeState.SwapReactiveBind false
             let savedOwning = InternalCeState.SwapOwning owning
-            let savedObs = InternalCeState.SwapEffectObserver (box graph.CurrentObserver)
+            let savedObs = InternalCeState.SwapEffectObserver (graph, box graph.CurrentObserver)
             let savedPending = InternalCeState.SwapPhase1Pending null
             let savedPrev = InternalCeState.SwapPrevious prev
 
@@ -925,8 +968,7 @@ type CeRuntime =
                 InternalCeState.SwapPhase1Pending savedPending
                 |> ignore
 
-                InternalCeState.SwapEffectObserver savedObs
-                |> ignore
+                InternalCeState.RestoreEffectObserver savedObs
 
                 InternalCeState.SwapOwning savedOwning |> ignore
 
@@ -948,7 +990,7 @@ type CeRuntime =
             let savedDepth = InternalCeState.EnterEval ()
             let savedReactive = InternalCeState.SwapReactiveBind false
             let savedOwning = InternalCeState.SwapOwning false
-            let savedObs = InternalCeState.SwapEffectObserver (box graph.CurrentObserver)
+            let savedObs = InternalCeState.SwapEffectObserver (graph, box graph.CurrentObserver)
             let savedPending = InternalCeState.SwapPhase1Pending null
             let savedPrev = InternalCeState.SuspendPrevious ()
 
@@ -960,8 +1002,7 @@ type CeRuntime =
                 InternalCeState.SwapPhase1Pending savedPending
                 |> ignore
 
-                InternalCeState.SwapEffectObserver savedObs
-                |> ignore
+                InternalCeState.RestoreEffectObserver savedObs
 
                 InternalCeState.SwapOwning savedOwning |> ignore
 
@@ -993,21 +1034,20 @@ type CeRuntime =
     static member RunEffectContinuation<'K>(source: IReactive<'K>, key: 'K, cont: 'K -> unit) : unit =
         let g = source.Graph
 
-        let obs: obj =
+        let struct (obsGraph, obs) =
             let active = g.CurrentObserver
 
             if not (Platform.isNull (box active)) then
-                box active
+                struct (g, box active)
             else
-                InternalCeState.CurrentEffectObserver
+                struct (InternalCeState.CurrentEffectGraph, InternalCeState.CurrentEffectObserver)
 
-        let prevObs = InternalCeState.SwapEffectObserver obs
+        let prevObs = InternalCeState.SwapEffectObserver (obsGraph, obs)
 
         try
             g.RunUntrackedWith (cont, key)
         finally
-            InternalCeState.SwapEffectObserver prevObs
-            |> ignore
+            InternalCeState.RestoreEffectObserver prevObs
 
     static member CreateEffectOn<'K>(source: IReactive<'K>, act: 'K -> unit, asNode: bool) : INode =
         let g = source.Graph
@@ -1027,7 +1067,7 @@ type CeRuntime =
         let runBody () =
             let savedDepth = InternalCeState.EnterEval ()
             let savedPrev = InternalCeState.SuspendPrevious ()
-            let savedObs = InternalCeState.SwapEffectObserver (box graph.CurrentObserver)
+            let savedObs = InternalCeState.SwapEffectObserver (graph, box graph.CurrentObserver)
             let savedPending = InternalCeState.SwapPhase1Pending null
 
             try
@@ -1036,8 +1076,7 @@ type CeRuntime =
                 InternalCeState.SwapPhase1Pending savedPending
                 |> ignore
 
-                InternalCeState.SwapEffectObserver savedObs
-                |> ignore
+                InternalCeState.RestoreEffectObserver savedObs
 
                 InternalCeState.RestorePrevious savedPrev
                 InternalCeState.ExitEval savedDepth
@@ -1052,7 +1091,7 @@ type CeRuntime =
             let savedDepth = InternalCeState.EnterEval ()
             let savedReactive = InternalCeState.SwapReactiveBind false
             let savedOwning = InternalCeState.SwapOwning false
-            let savedObs = InternalCeState.SwapEffectObserver (box graph.CurrentObserver)
+            let savedObs = InternalCeState.SwapEffectObserver (graph, box graph.CurrentObserver)
             let savedPending = InternalCeState.SwapPhase1Pending null
             let savedPrev = InternalCeState.SwapPrevious prev
 
@@ -1064,8 +1103,7 @@ type CeRuntime =
                 InternalCeState.SwapPhase1Pending savedPending
                 |> ignore
 
-                InternalCeState.SwapEffectObserver savedObs
-                |> ignore
+                InternalCeState.RestoreEffectObserver savedObs
 
                 InternalCeState.SwapOwning savedOwning |> ignore
 
@@ -1096,7 +1134,7 @@ type CeRuntime =
         let body () =
             let savedDepth = InternalCeState.EnterEval ()
             let savedOwning = InternalCeState.SwapOwning true
-            let savedObs = InternalCeState.SwapEffectObserver (box g.CurrentObserver)
+            let savedObs = InternalCeState.SwapEffectObserver (g, box g.CurrentObserver)
             let savedPending = InternalCeState.SwapPhase1Pending null
             let savedPrev = InternalCeState.SuspendPrevious ()
 
@@ -1108,8 +1146,7 @@ type CeRuntime =
                 InternalCeState.SwapPhase1Pending savedPending
                 |> ignore
 
-                InternalCeState.SwapEffectObserver savedObs
-                |> ignore
+                InternalCeState.RestoreEffectObserver savedObs
 
                 InternalCeState.SwapOwning savedOwning |> ignore
                 InternalCeState.ExitEval savedDepth
@@ -1127,7 +1164,7 @@ type CeRuntime =
         let savedPrev = InternalCeState.SuspendPrevious ()
         let savedReactive = InternalCeState.SwapReactiveBind false
         let savedOwning = InternalCeState.SwapOwning false
-        let savedObs = InternalCeState.SwapEffectObserver null
+        let savedObs = InternalCeState.SwapEffectObserver (Unchecked.defaultof<Graph>, null)
         let savedPending = InternalCeState.SwapPhase1Pending null
         let savedDedup = InternalCeState.SwapOptionDedup null
 
@@ -1140,8 +1177,7 @@ type CeRuntime =
             InternalCeState.SwapPhase1Pending savedPending
             |> ignore
 
-            InternalCeState.SwapEffectObserver savedObs
-            |> ignore
+            InternalCeState.RestoreEffectObserver savedObs
 
             InternalCeState.SwapOwning savedOwning |> ignore
 
@@ -1212,9 +1248,9 @@ type MemoRunner =
 
             match step with
             | MemoStatic (_, factory) -> factory owning cmp null
-            | MemoDynamic (g, _) ->
+            | MemoDynamic (g, firstFn) ->
                 let graph = if Platform.isNull (box g) then Graph.Current else g
-                CeRuntime.CreateDynamicMemo (graph, (fun () -> (d ()).EvalValue()), owning, cmp)
+                CeRuntime.CreateDynamicMemo (graph, CeRuntime.EvalOnceThen (firstFn, fun () -> (d ()).EvalValue()), owning, cmp)
             | MemoInline _ ->
                 let graph = Graph.Current
                 CeRuntime.CreateDynamicMemo (graph, (fun () -> (d ()).EvalValue()), owning, cmp))
@@ -1233,9 +1269,9 @@ type MemoRunner =
 
             match step with
             | MemoStatic (_, factory) -> factory false ValueNone (box dedup)
-            | MemoDynamic (g, _) ->
+            | MemoDynamic (g, firstFn) ->
                 let graph = if Platform.isNull (box g) then Graph.Current else g
-                CeRuntime.CreateDynamicOptionMemo (graph, fun () -> (d ()).EvalValue())
+                CeRuntime.CreateDynamicOptionMemo (graph, CeRuntime.EvalOnceThen (firstFn, fun () -> (d ()).EvalValue()))
             | MemoInline _ -> CeRuntime.CreateDynamicOptionMemo (Graph.Current, fun () -> (d ()).EvalValue()))
 
     static member EvalColdOption<'A>(d: unit -> MemoStep<ColdPhase, NoPrev, 'A option>) : Memo<'A option> =
@@ -1264,7 +1300,7 @@ type MemoRunner =
     static member BindSource<'K, 'Prev, 'U>(source: IReactive<'K>, f: 'K -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadCeTracked source
-            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, f, key))
+            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, source.Graph, f, key))
         else
             let g = source.Graph
 
@@ -1273,7 +1309,7 @@ type MemoRunner =
     static member BindSignal<'K, 'Prev, 'U>(source: Signal<'K>, f: 'K -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadTrackedOn (source.Graph, fun () -> source.Value)
-            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, f, key))
+            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, source.Graph, f, key))
         else
             let g = source.Graph
 
@@ -1289,7 +1325,7 @@ type MemoRunner =
     static member BindMemo<'K, 'Prev, 'U>(source: Memo<'K>, f: 'K -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadTrackedOn (source.Graph, fun () -> source.Value)
-            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, f, key))
+            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, source.Graph, f, key))
         else
             let g = source.Graph
 
@@ -1303,12 +1339,12 @@ type MemoRunner =
             )
 
     static member BindMergedSignals<'A, 'B, 'Prev, 'U>(source: MergedSignals<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+        let g = (source :> IReactive<struct ('A * 'B)>).Graph
+
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadCeTracked source
-            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, f, key))
+            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, g, f, key))
         else
-            let g = (source :> IReactive<struct ('A * 'B)>).Graph
-
             MemoStatic (
                 g,
                 fun owning cmp dedup ->
@@ -1319,12 +1355,12 @@ type MemoRunner =
             )
 
     static member BindMergedMemos<'A, 'B, 'Prev, 'U>(source: MergedMemos<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+        let g = (source :> IReactive<struct ('A * 'B)>).Graph
+
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadCeTracked source
-            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, f, key))
+            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, g, f, key))
         else
-            let g = (source :> IReactive<struct ('A * 'B)>).Graph
-
             MemoStatic (
                 g,
                 fun owning cmp dedup ->
@@ -1335,12 +1371,12 @@ type MemoRunner =
             )
 
     static member BindMergedReactive<'A, 'B, 'Prev, 'U>(source: MergedReactive<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+        let g = (source :> IReactive<struct ('A * 'B)>).Graph
+
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadCeTracked source
-            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, f, key))
+            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, g, f, key))
         else
-            let g = (source :> IReactive<struct ('A * 'B)>).Graph
-
             MemoStatic (g, fun owning cmp dedup -> CeRuntime.CreateMemoFromMergedReactive (source, f, owning, cmp, dedup))
 
     static member BindReactive<'K, 'Phase, 'Prev, 'U>
@@ -1378,7 +1414,7 @@ type MemoRunner =
 
     static member BindReturnPrevVal<'T, 'Phase, 'U>(prev: 'T, f: 'T -> 'U) : MemoStep<'Phase, WithPrev, 'U> =
         if InternalCeState.HasReactiveBind then
-            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, f, prev))
+            MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, Graph.Current, f, prev))
         else
             MemoInline (f prev)
 
@@ -1412,13 +1448,13 @@ type EffectRunner =
         CeRuntime.SuspendNested (fun () ->
             match d () with
             | EffectStatic (_, factory, _) -> factory asNode
-            | EffectDynamicFn (g, _) ->
+            | EffectDynamicFn (g, firstFn) ->
                 let graph = if Platform.isNull (box g) then Graph.Current else g
-                CeRuntime.CreateDynamicEffect (graph, (fun () -> (d ()).EvalUnit()), asNode)
+                CeRuntime.CreateDynamicEffect (graph, CeRuntime.EvalOnceThen (firstFn, fun () -> (d ()).EvalUnit()), asNode)
             | EffectUnit -> CeRuntime.CreateDynamicEffect (Graph.Current, (fun () -> (d ()).EvalUnit()), asNode))
 
-    static member EvalCold<'Phase>(d: unit -> EffectStep<'Phase>, asNode: bool) : INode =
-        CeRuntime.CreateDynamicEffect (Graph.Current, (fun () -> (d ()).EvalUnit()), asNode)
+    static member EvalCold(d: unit -> EffectStep<ColdPhase>, asNode: bool) : INode =
+        CeRuntime.SuspendNested (fun () -> CeRuntime.CreateDynamicEffect (Graph.Current, (fun () -> (d ()).EvalUnit()), asNode))
 
 /// <summary>Step carrier shared by <c>EditableBuilder</c> and <c>DraftBuilder</c>.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
@@ -1444,9 +1480,9 @@ type EditableRunner =
             let step = d ()
 
             match step with
-            | EditDynamic (g, _) ->
+            | EditDynamic (g, firstFn) ->
                 let graph = if Platform.isNull (box g) then Graph.Current else g
-                CeRuntime.CreateEditable (graph, (fun () -> (d ()).EvalValue()), draft)
+                CeRuntime.CreateEditable (graph, CeRuntime.EvalOnceThen (firstFn, fun () -> (d ()).EvalValue()), draft)
             | EditInline _ -> CeRuntime.CreateEditable (Graph.Current, (fun () -> (d ()).EvalValue()), draft))
 
     static member EvalCold<'Prev, 'U>(d: unit -> EditableStep<ColdPhase, 'Prev, 'U>, draft: bool) : Editable<'U> =
@@ -1528,7 +1564,7 @@ type EditableRunner =
                 try
                     (body ()).EvalValue()
                 with ex ->
-                    (handler ex).EvalValue()
+                    CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalValue())
         )
 
     static member TryFinallyStep<'P, 'POut, 'Prev, 'U>
@@ -1602,7 +1638,8 @@ type BoundaryRunner =
         ) : Boundary<'U> =
         CeRuntime.SuspendNested (fun () ->
             match d () with
-            | BoundaryDynamic (g, _) -> CeRuntime.CreateBoundary (g, (fun () -> (d ()).EvalValue()), onPending, onError, comparer)
+            | BoundaryDynamic (g, firstFn) ->
+                CeRuntime.CreateBoundary (g, CeRuntime.EvalOnceThen (firstFn, fun () -> (d ()).EvalValue()), onPending, onError, comparer)
             | BoundaryInline _ -> CeRuntime.CreateBoundary (Unchecked.defaultof<Graph>, (fun () -> (d ()).EvalValue()), onPending, onError, comparer))
 
     static member EvalCold<'U>
@@ -1714,7 +1751,7 @@ type MemoBuilder() =
                 try
                     (body ()).EvalValue()
                 with ex ->
-                    (handler ex).EvalValue()
+                    CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalValue())
         )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -1918,7 +1955,7 @@ type EffectBuilder() =
     member inline _.Delay([<InlineIfLambda>] f: unit -> 'T) : unit -> 'T = f
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Combine(first: EffectStep<ColdPhase>, [<InlineIfLambda>] second: unit -> EffectStep<ColdPhase>) : EffectStep<'Phase> =
+    member inline _.Combine(first: EffectStep<LeafPhase>, [<InlineIfLambda>] second: unit -> EffectStep<LeafPhase>) : EffectStep<'Phase> =
         EffectDynamicFn (
             Unchecked.defaultof<Graph>,
             fun () ->
@@ -1927,7 +1964,7 @@ type EffectBuilder() =
         )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> EffectStep<ColdPhase>) : EffectStep<'Phase> =
+    member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> EffectStep<LeafPhase>) : EffectStep<'Phase> =
         EffectDynamicFn (
             Unchecked.defaultof<Graph>,
             fun () ->
@@ -1937,7 +1974,7 @@ type EffectBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.TryWith
-        ([<InlineIfLambda>] body: unit -> EffectStep<ColdPhase>, [<InlineIfLambda>] handler: exn -> EffectStep<ColdPhase>)
+        ([<InlineIfLambda>] body: unit -> EffectStep<LeafPhase>, [<InlineIfLambda>] handler: exn -> EffectStep<LeafPhase>)
         : EffectStep<'Phase> =
         EffectDynamicFn (
             Unchecked.defaultof<Graph>,
@@ -1945,12 +1982,12 @@ type EffectBuilder() =
                 try
                     (body ()).EvalUnit()
                 with ex ->
-                    (handler ex).EvalUnit()
+                    CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalUnit())
         )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.TryFinally
-        ([<InlineIfLambda>] body: unit -> EffectStep<ColdPhase>, [<InlineIfLambda>] compensation: unit -> unit)
+        ([<InlineIfLambda>] body: unit -> EffectStep<LeafPhase>, [<InlineIfLambda>] compensation: unit -> unit)
         : EffectStep<'Phase> =
         EffectDynamicFn (
             Unchecked.defaultof<Graph>,
@@ -1962,7 +1999,7 @@ type EffectBuilder() =
         )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Using(resource: 'D, [<InlineIfLambda>] body: 'D -> EffectStep<ColdPhase>) : EffectStep<'Phase> when 'D :> IDisposable =
+    member inline _.Using(resource: 'D, [<InlineIfLambda>] body: 'D -> EffectStep<LeafPhase>) : EffectStep<'Phase> when 'D :> IDisposable =
         EffectDynamicFn (
             Unchecked.defaultof<Graph>,
             fun () ->
@@ -1979,7 +2016,7 @@ type EffectBuilder() =
         ConfiguredEffect<'Out, 'Phase>(body)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EffectStep<ColdPhase>) : EffectStep<'Phase> =
+    member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EffectStep<LeafPhase>) : EffectStep<'Phase> =
         EffectDynamicFn (
             Unchecked.defaultof<Graph>,
             fun () ->
@@ -2005,7 +2042,7 @@ type EffectBuilder() =
         MergedReactive<'A, 'B>(source1, source2)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> EffectStep<ColdPhase>) : EffectStep<BoundPhase> =
+    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> EffectStep<LeafPhase>) : EffectStep<BoundPhase> =
         let evalDyn () =
             let key = CeRuntime.ReadEffectTracked source
             CeRuntime.RunEffectContinuation (source, key, fun k -> (continuation k).EvalUnit())
@@ -2281,7 +2318,7 @@ type BoundaryBuilder() =
                 try
                     (body ()).EvalValue()
                 with ex ->
-                    (handler ex).EvalValue()
+                    CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalValue())
         )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -2440,7 +2477,7 @@ type RowBuilder() =
             try
                 (body ()).EvalValue()
             with ex ->
-                (handler ex).EvalValue())
+                CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalValue()))
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.TryFinally
@@ -2603,7 +2640,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Combine
             (first: MemoStep<'P1, 'Prev, unit>, [<InlineIfLambda>] second: unit -> MemoStep<'P2, 'Prev, 'U>)
-            : MemoStep<ColdPhase, 'Prev, 'U> =
+            : MemoStep<'OutPhase, 'Prev, 'U> =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2614,7 +2651,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.While
             ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> MemoStep<'P, 'Prev, unit>)
-            : MemoStep<ColdPhase, 'Prev, unit> =
+            : MemoStep<'OutPhase, 'Prev, unit> =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2625,20 +2662,20 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryWith
             ([<InlineIfLambda>] body: unit -> MemoStep<'P1, 'Prev, 'U>, [<InlineIfLambda>] handler: exn -> MemoStep<'P2, 'Prev, 'U>)
-            : MemoStep<ColdPhase, 'Prev, 'U> =
+            : MemoStep<'OutPhase, 'Prev, 'U> =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
                     try
                         (body ()).EvalValue()
                     with ex ->
-                        (handler ex).EvalValue()
+                        CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalValue())
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryFinally
             ([<InlineIfLambda>] body: unit -> MemoStep<'P, 'Prev, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
-            : MemoStep<ColdPhase, 'Prev, 'U> =
+            : MemoStep<'OutPhase, 'Prev, 'U> =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2651,7 +2688,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Using
             (resource: 'D, [<InlineIfLambda>] body: 'D -> MemoStep<'P, 'Prev, 'U>)
-            : MemoStep<ColdPhase, 'Prev, 'U> when 'D :> IDisposable =
+            : MemoStep<'OutPhase, 'Prev, 'U> when 'D :> IDisposable =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2663,7 +2700,7 @@ module BuilderExtensions =
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> MemoStep<'P, 'Prev, unit>) : MemoStep<ColdPhase, 'Prev, unit> =
+        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> MemoStep<'P, 'Prev, unit>) : MemoStep<'OutPhase, 'Prev, unit> =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2717,7 +2754,7 @@ module BuilderExtensions =
 
     type EffectBuilder with
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Combine(first: EffectStep<'P1>, [<InlineIfLambda>] second: unit -> EffectStep<'P2>) : EffectStep<DelayedBoundPhase> =
+        member inline _.Combine(first: EffectStep<'P1>, [<InlineIfLambda>] second: unit -> EffectStep<'P2>) : EffectStep<BoundPhase> =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2726,9 +2763,7 @@ module BuilderExtensions =
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.While
-            ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> EffectStep<'P>)
-            : EffectStep<DelayedBoundPhase> =
+        member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> EffectStep<'P>) : EffectStep<BoundPhase> =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2739,20 +2774,20 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryWith
             ([<InlineIfLambda>] body: unit -> EffectStep<'P1>, [<InlineIfLambda>] handler: exn -> EffectStep<'P2>)
-            : EffectStep<DelayedBoundPhase> =
+            : EffectStep<BoundPhase> =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
                     try
                         (body ()).EvalUnit()
                     with ex ->
-                        (handler ex).EvalUnit()
+                        CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalUnit())
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryFinally
             ([<InlineIfLambda>] body: unit -> EffectStep<'P>, [<InlineIfLambda>] compensation: unit -> unit)
-            : EffectStep<DelayedBoundPhase> =
+            : EffectStep<BoundPhase> =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2763,7 +2798,7 @@ module BuilderExtensions =
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Using(resource: 'D, [<InlineIfLambda>] body: 'D -> EffectStep<'P>) : EffectStep<DelayedBoundPhase> when 'D :> IDisposable =
+        member inline _.Using(resource: 'D, [<InlineIfLambda>] body: 'D -> EffectStep<'P>) : EffectStep<BoundPhase> when 'D :> IDisposable =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2775,7 +2810,7 @@ module BuilderExtensions =
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EffectStep<'P>) : EffectStep<DelayedBoundPhase> =
+        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EffectStep<'P>) : EffectStep<BoundPhase> =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2812,52 +2847,39 @@ module BuilderExtensions =
         member inline _.Run(d: unit -> ConfiguredEffect<NodeOut, BoundPhase>) : INode =
             EffectRunner.EvalBound ((fun () -> (d ()).Body()), true)
 
-        [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> EffectStep<DelayedBoundPhase>) : unit =
-            EffectRunner.EvalCold (d, false) |> ignore
-
-        [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredEffect<UnitOut, DelayedBoundPhase>) : unit =
-            EffectRunner.EvalCold ((fun () -> (d ()).Body()), false)
-            |> ignore
-
-        [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredEffect<NodeOut, DelayedBoundPhase>) : INode =
-            EffectRunner.EvalCold ((fun () -> (d ()).Body()), true)
-
     type EditableBuilder with
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Combine
             (first: EditableStep<'P1, 'Prev, unit>, [<InlineIfLambda>] second: unit -> EditableStep<'P2, 'Prev, 'U>)
-            : EditableStep<ColdPhase, 'Prev, 'U> =
+            : EditableStep<'OutPhase, 'Prev, 'U> =
             EditableRunner.CombineSteps (first, second)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.While
             ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> EditableStep<'P, 'Prev, unit>)
-            : EditableStep<ColdPhase, 'Prev, unit> =
+            : EditableStep<'OutPhase, 'Prev, unit> =
             EditableRunner.WhileStep (guard, body)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryWith
             ([<InlineIfLambda>] body: unit -> EditableStep<'P1, 'Prev, 'U>, [<InlineIfLambda>] handler: exn -> EditableStep<'P2, 'Prev, 'U>)
-            : EditableStep<ColdPhase, 'Prev, 'U> =
+            : EditableStep<'OutPhase, 'Prev, 'U> =
             EditableRunner.TryWithStep (body, handler)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryFinally
             ([<InlineIfLambda>] body: unit -> EditableStep<'P, 'Prev, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
-            : EditableStep<ColdPhase, 'Prev, 'U> =
+            : EditableStep<'OutPhase, 'Prev, 'U> =
             EditableRunner.TryFinallyStep (body, compensation)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Using
             (resource: 'D, [<InlineIfLambda>] body: 'D -> EditableStep<'P, 'Prev, 'U>)
-            : EditableStep<ColdPhase, 'Prev, 'U> when 'D :> IDisposable =
+            : EditableStep<'OutPhase, 'Prev, 'U> when 'D :> IDisposable =
             EditableRunner.UsingStep (resource, body)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EditableStep<'P, 'Prev, unit>) : EditableStep<ColdPhase, 'Prev, unit> =
+        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EditableStep<'P, 'Prev, unit>) : EditableStep<'OutPhase, 'Prev, unit> =
             EditableRunner.ForSeqStep (sequence, body)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -2868,35 +2890,35 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Combine
             (first: EditableStep<'P1, 'Prev, unit>, [<InlineIfLambda>] second: unit -> EditableStep<'P2, 'Prev, 'U>)
-            : EditableStep<ColdPhase, 'Prev, 'U> =
+            : EditableStep<'OutPhase, 'Prev, 'U> =
             EditableRunner.CombineSteps (first, second)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.While
             ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> EditableStep<'P, 'Prev, unit>)
-            : EditableStep<ColdPhase, 'Prev, unit> =
+            : EditableStep<'OutPhase, 'Prev, unit> =
             EditableRunner.WhileStep (guard, body)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryWith
             ([<InlineIfLambda>] body: unit -> EditableStep<'P1, 'Prev, 'U>, [<InlineIfLambda>] handler: exn -> EditableStep<'P2, 'Prev, 'U>)
-            : EditableStep<ColdPhase, 'Prev, 'U> =
+            : EditableStep<'OutPhase, 'Prev, 'U> =
             EditableRunner.TryWithStep (body, handler)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryFinally
             ([<InlineIfLambda>] body: unit -> EditableStep<'P, 'Prev, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
-            : EditableStep<ColdPhase, 'Prev, 'U> =
+            : EditableStep<'OutPhase, 'Prev, 'U> =
             EditableRunner.TryFinallyStep (body, compensation)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Using
             (resource: 'D, [<InlineIfLambda>] body: 'D -> EditableStep<'P, 'Prev, 'U>)
-            : EditableStep<ColdPhase, 'Prev, 'U> when 'D :> IDisposable =
+            : EditableStep<'OutPhase, 'Prev, 'U> when 'D :> IDisposable =
             EditableRunner.UsingStep (resource, body)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EditableStep<'P, 'Prev, unit>) : EditableStep<ColdPhase, 'Prev, unit> =
+        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EditableStep<'P, 'Prev, unit>) : EditableStep<'OutPhase, 'Prev, unit> =
             EditableRunner.ForSeqStep (sequence, body)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -2907,7 +2929,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Combine
             (first: BoundaryStep<'P1, unit>, [<InlineIfLambda>] second: unit -> BoundaryStep<'P2, 'U>)
-            : BoundaryStep<ColdPhase, 'U> =
+            : BoundaryStep<'OutPhase, 'U> =
             BoundaryDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2918,7 +2940,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.While
             ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> BoundaryStep<'P, unit>)
-            : BoundaryStep<ColdPhase, unit> =
+            : BoundaryStep<'OutPhase, unit> =
             BoundaryDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2929,20 +2951,20 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryWith
             ([<InlineIfLambda>] body: unit -> BoundaryStep<'P1, 'U>, [<InlineIfLambda>] handler: exn -> BoundaryStep<'P2, 'U>)
-            : BoundaryStep<ColdPhase, 'U> =
+            : BoundaryStep<'OutPhase, 'U> =
             BoundaryDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
                     try
                         (body ()).EvalValue()
                     with ex ->
-                        (handler ex).EvalValue()
+                        CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalValue())
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryFinally
             ([<InlineIfLambda>] body: unit -> BoundaryStep<'P, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
-            : BoundaryStep<ColdPhase, 'U> =
+            : BoundaryStep<'OutPhase, 'U> =
             BoundaryDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2955,7 +2977,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Using
             (resource: 'D, [<InlineIfLambda>] body: 'D -> BoundaryStep<'P, 'U>)
-            : BoundaryStep<ColdPhase, 'U> when 'D :> IDisposable =
+            : BoundaryStep<'OutPhase, 'U> when 'D :> IDisposable =
             BoundaryDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -2967,7 +2989,7 @@ module BuilderExtensions =
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> BoundaryStep<'P, unit>) : BoundaryStep<ColdPhase, unit> =
+        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> BoundaryStep<'P, unit>) : BoundaryStep<'OutPhase, unit> =
             BoundaryDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -3013,13 +3035,13 @@ module BuilderExtensions =
 
     type RowBuilder with
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Combine(first: RowStep<'P1, unit>, [<InlineIfLambda>] second: unit -> RowStep<'P2, 'V>) : RowStep<ColdPhase, 'V> =
+        member inline _.Combine(first: RowStep<'P1, unit>, [<InlineIfLambda>] second: unit -> RowStep<'P2, 'V>) : RowStep<'OutPhase, 'V> =
             RowThunk (fun () ->
                 first.EvalValue ()
                 (second ()).EvalValue())
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> RowStep<'P, unit>) : RowStep<ColdPhase, unit> =
+        member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> RowStep<'P, unit>) : RowStep<'OutPhase, unit> =
             RowThunk (fun () ->
                 while guard () do
                     (body ()).EvalValue())
@@ -3027,17 +3049,17 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryWith
             ([<InlineIfLambda>] body: unit -> RowStep<'P1, 'V>, [<InlineIfLambda>] handler: exn -> RowStep<'P2, 'V>)
-            : RowStep<ColdPhase, 'V> =
+            : RowStep<'OutPhase, 'V> =
             RowThunk (fun () ->
                 try
                     (body ()).EvalValue()
                 with ex ->
-                    (handler ex).EvalValue())
+                    CeRuntime.RunTryWithHandler (ex, fun () -> (handler ex).EvalValue()))
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryFinally
             ([<InlineIfLambda>] body: unit -> RowStep<'P, 'V>, [<InlineIfLambda>] compensation: unit -> unit)
-            : RowStep<ColdPhase, 'V> =
+            : RowStep<'OutPhase, 'V> =
             RowThunk (fun () ->
                 try
                     (body ()).EvalValue()
@@ -3045,7 +3067,7 @@ module BuilderExtensions =
                     compensation ())
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Using(resource: 'D, [<InlineIfLambda>] body: 'D -> RowStep<'P, 'V>) : RowStep<ColdPhase, 'V> when 'D :> IDisposable =
+        member inline _.Using(resource: 'D, [<InlineIfLambda>] body: 'D -> RowStep<'P, 'V>) : RowStep<'OutPhase, 'V> when 'D :> IDisposable =
             RowThunk (fun () ->
                 try
                     (body resource).EvalValue()
@@ -3054,7 +3076,7 @@ module BuilderExtensions =
                         resource.Dispose ())
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> RowStep<'P, unit>) : RowStep<ColdPhase, unit> =
+        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> RowStep<'P, unit>) : RowStep<'OutPhase, unit> =
             RowThunk (fun () ->
                 for item in sequence do
                     (body item).EvalValue())

@@ -6592,6 +6592,40 @@ type Graph(options: GraphOptions) =
                 raisedPending <- previousRaised
 #endif
 
+    /// <summary>
+    /// Temporarily restores <c>observer</c> as the active tracking context and clears untracked
+    /// body suppression without resetting <c>raisedPending</c> or <c>currentOwner</c>.
+    /// </summary>
+    member internal _.ResumeTracked(observer: IComputation, body: unit -> 'T) : 'T =
+        let previous = current
+        let previousNode = currentNode
+        let previousHost = untrackedHost
+        let previousInBody = untrackedInBody
+
+        untrackedHost <- Platform.nil ()
+        untrackedInBody <- false
+
+#if !FABLE_COMPILER || !RANVIER_TRACE
+        match box observer with
+        | :? Node as n ->
+            current <- Platform.nil ()
+            currentNode <- n
+        | _ ->
+            current <- observer
+            currentNode <- Platform.nil ()
+#else
+        current <- observer
+        currentNode <- Platform.nil ()
+#endif
+
+        try
+            body ()
+        finally
+            current <- previous
+            currentNode <- previousNode
+            untrackedHost <- previousHost
+            untrackedInBody <- previousInBody
+
 #if !FABLE_COMPILER
     /// <summary>
     /// Detaches a flight continuation starting on the graph thread from the
