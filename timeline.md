@@ -190,6 +190,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 73,282 | 97,998 | 1,602,906 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 73,299 | 97,978 | 1,602,959 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 64,844 | 164,850 | 1,517,801 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 64,906 | 165,001 | 1,531,076 |
 
 ## app-table
 
@@ -381,6 +382,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,820,696 | 4,744,280 | 60,408,854 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,820,697 | 4,744,278 | 60,522,645 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,067,717 | 4,202,103 | 60,421,732 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 2,078,884 | 4,225,046 | 61,337,004 |
 
 ## async-recover
 
@@ -572,6 +574,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 93,861 | 30,048 | 361,698 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 93,861 | 30,050 | 361,701 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 92,229 | 26,035 | 312,413 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 92,462 | 25,745 | 311,826 |
 
 ## async-resolve
 
@@ -763,6 +766,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,754,645 | 719,028 | 9,058,184 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,753,844 | 719,060 | 9,058,187 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,706,599 | 624,759 | 7,651,583 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 2,714,598 | 614,820 | 7,631,194 |
 
 ## chain
 
@@ -954,6 +958,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 13,019 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 13,019 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 13,147 | 318 | 1,240 | 4,516 | 2,779 | 72,462 | 58,502 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 13,019 | 318 | 1,240 | 4,420 | 2,709 | 72,358 | 58,609 |
 
 ## chain-affinity
 
@@ -1145,6 +1150,391 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,416 | 2,941 | 2,358 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,416 | 2,941 | 2,358 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,240 | 1,985 | 1,447 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,240 | 1,985 | 1,447 |
+
+## chain-map
+
+| Commit | Date | Subject | dotnet Ranvier | node Ranvier | node-jitless Ranvier |
+|---|---|---|---:|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | — | — | — |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | — | — | — |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | — | — | — |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | — | — | — |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | — | — | — |
+| `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | — | — | — |
+| `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | — | — | — |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | — | — | — |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | — | — | — |
+| `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | — | — | — |
+| `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | — | — | — |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | — | — | — |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | — | — | — |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | — | — | — |
+| `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | — | — | — |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | — | — | — |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | — | — | — |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | — | — | — |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | — | — | — |
+| `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | — | — | — |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — | — |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | — | — | — |
+| `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | — | — | — |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | — | — | — |
+| `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | — | — | — |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | — | — | — |
+| `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | — | — | — |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | — | — | — |
+| `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | — | — | — |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | — | — | — |
+| `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | — | — | — |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | — | — | — |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | — | — | — |
+| `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | — | — | — |
+| `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | — | — | — |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | — | — | — |
+| `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | — | — | — |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | — | — | — |
+| `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | — | — | — |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | — | — | — |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | — | — | — |
+| `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | — | — | — |
+| `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | — | — | — |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | — | — | — |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | — | — | — |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | — | — | — |
+| `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | — | — | — |
+| `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | — | — | — |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | — | — | — |
+| `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | — | — | — |
+| `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | — | — | — |
+| `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | — | — | — |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | — | — | — |
+| `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | — | — | — |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | — | — | — |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | — | — | — |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | — | — | — |
+| `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | — | — | — |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | — | — | — |
+| `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | — | — | — |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | — | — | — |
+| `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | — | — | — |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | — | — | — |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | — | — | — |
+| `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | — | — | — |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | — | — | — |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | — | — | — |
+| `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | — | — | — |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | — | — | — |
+| `01c8295` | 2026-10-24 | Merge pull request #170 from shayanhabibi/integration/issues | — | — | — |
+| `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | — | — | — |
+| `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | — | — | — |
+| `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | — | — | — |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | — | — | — |
+| `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | — | — | — |
+| `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | — | — | — |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | — | — | — |
+| `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | — | — | — |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | — | — | — |
+| `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | — | — | — |
+| `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | — | — | — |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | — | — | — |
+| `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | — | — | — |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | — | — | — |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | — | — | — |
+| `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | — | — | — |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | — | — | — |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | — | — | — |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | — | — | — |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | — | — | — |
+| `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | — | — | — |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | — | — | — |
+| `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | — | — | — |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | — | — | — |
+| `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | — | — | — |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | — | — | — |
+| `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | — | — | — |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | — | — | — |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | — | — | — |
+| `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | — | — | — |
+| `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | — | — | — |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | — | — | — |
+| `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | — | — | — |
+| `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | — | — | — |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | — | — | — |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | — | — | — |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | — | — | — |
+| `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | — | — | — |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | — | — | — |
+| `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | — | — | — |
+| `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | — | — | — |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | — | — | — |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | — | — | — |
+| `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | — | — | — |
+| `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | — | — | — |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | — | — | — |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | — | — | — |
+| `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | — | — | — |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | — | — | — |
+| `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | — | — | — |
+| `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | — | — | — |
+| `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | — | — | — |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | — | — | — |
+| `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | — | — | — |
+| `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | — | — | — |
+| `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | — | — | — |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | — | — | — |
+| `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | — | — | — |
+| `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | — | — | — |
+| `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | — | — | — |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | — | — | — |
+| `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | — | — | — |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | — | — | — |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | — | — | — |
+| `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | — | — | — |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | — | — | — |
+| `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | — | — | — |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | — | — | — |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | — | — | — |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | — | — | — |
+| `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | — | — | — |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | — | — | — |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | — | — | — |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | — | — | — |
+| `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | — | — | — |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | — | — | — |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | — | — | — |
+| `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | — | — | — |
+| `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | — | — | — |
+| `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | — | — | — |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | — | — | — |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | — | — | — |
+| `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | — | — | — |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | — | — | — |
+| `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | — | — | — |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | — | — | — |
+| `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | — | — | — |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | — | — | — |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | — | — | — |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | — | — | — |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | — | — | — |
+| `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | — | — | — |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | — | — | — |
+| `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | — | — | — |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | — | — | — |
+| `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | — | — | — |
+| `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | — | — | — |
+| `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | — | — | — |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | — | — | — |
+| `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | — | — | — |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | — | — | — |
+| `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | — | — | — |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | — | — | — |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | — | — | — |
+| `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | — | — | — |
+| `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | — | — | — |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | — | — | — |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | — | — | — |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | — | — | — |
+| `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | — | — | — |
+| `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | — | — | — |
+| `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | — | — | — |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | — | — | — |
+| `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | — | — | — |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | — | — | — |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | — | — | — |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 468 | 726 | 18,900 |
+
+## chain-on
+
+| Commit | Date | Subject | dotnet Ranvier | node Ranvier | node-jitless Ranvier |
+|---|---|---|---:|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | — | — | — |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | — | — | — |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | — | — | — |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | — | — | — |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | — | — | — |
+| `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | — | — | — |
+| `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | — | — | — |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | — | — | — |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | — | — | — |
+| `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | — | — | — |
+| `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | — | — | — |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | — | — | — |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | — | — | — |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | — | — | — |
+| `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | — | — | — |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | — | — | — |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | — | — | — |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | — | — | — |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | — | — | — |
+| `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | — | — | — |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — | — |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | — | — | — |
+| `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | — | — | — |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | — | — | — |
+| `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | — | — | — |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | — | — | — |
+| `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | — | — | — |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | — | — | — |
+| `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | — | — | — |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | — | — | — |
+| `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | — | — | — |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | — | — | — |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | — | — | — |
+| `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | — | — | — |
+| `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | — | — | — |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | — | — | — |
+| `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | — | — | — |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | — | — | — |
+| `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | — | — | — |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | — | — | — |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | — | — | — |
+| `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | — | — | — |
+| `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | — | — | — |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | — | — | — |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | — | — | — |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | — | — | — |
+| `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | — | — | — |
+| `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | — | — | — |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | — | — | — |
+| `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | — | — | — |
+| `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | — | — | — |
+| `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | — | — | — |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | — | — | — |
+| `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | — | — | — |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | — | — | — |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | — | — | — |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | — | — | — |
+| `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | — | — | — |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | — | — | — |
+| `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | — | — | — |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | — | — | — |
+| `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | — | — | — |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | — | — | — |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | — | — | — |
+| `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | — | — | — |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | — | — | — |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | — | — | — |
+| `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | — | — | — |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | — | — | — |
+| `01c8295` | 2026-10-24 | Merge pull request #170 from shayanhabibi/integration/issues | — | — | — |
+| `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | — | — | — |
+| `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | — | — | — |
+| `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | — | — | — |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | — | — | — |
+| `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | — | — | — |
+| `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | — | — | — |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | — | — | — |
+| `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | — | — | — |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | — | — | — |
+| `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | — | — | — |
+| `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | — | — | — |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | — | — | — |
+| `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | — | — | — |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | — | — | — |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | — | — | — |
+| `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | — | — | — |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | — | — | — |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | — | — | — |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | — | — | — |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | — | — | — |
+| `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | — | — | — |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | — | — | — |
+| `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | — | — | — |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | — | — | — |
+| `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | — | — | — |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | — | — | — |
+| `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | — | — | — |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | — | — | — |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | — | — | — |
+| `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | — | — | — |
+| `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | — | — | — |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | — | — | — |
+| `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | — | — | — |
+| `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | — | — | — |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | — | — | — |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | — | — | — |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | — | — | — |
+| `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | — | — | — |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | — | — | — |
+| `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | — | — | — |
+| `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | — | — | — |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | — | — | — |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | — | — | — |
+| `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | — | — | — |
+| `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | — | — | — |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | — | — | — |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | — | — | — |
+| `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | — | — | — |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | — | — | — |
+| `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | — | — | — |
+| `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | — | — | — |
+| `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | — | — | — |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | — | — | — |
+| `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | — | — | — |
+| `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | — | — | — |
+| `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | — | — | — |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | — | — | — |
+| `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | — | — | — |
+| `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | — | — | — |
+| `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | — | — | — |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | — | — | — |
+| `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | — | — | — |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | — | — | — |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | — | — | — |
+| `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | — | — | — |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | — | — | — |
+| `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | — | — | — |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | — | — | — |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | — | — | — |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | — | — | — |
+| `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | — | — | — |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | — | — | — |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | — | — | — |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | — | — | — |
+| `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | — | — | — |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | — | — | — |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | — | — | — |
+| `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | — | — | — |
+| `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | — | — | — |
+| `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | — | — | — |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | — | — | — |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | — | — | — |
+| `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | — | — | — |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | — | — | — |
+| `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | — | — | — |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | — | — | — |
+| `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | — | — | — |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | — | — | — |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | — | — | — |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | — | — | — |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | — | — | — |
+| `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | — | — | — |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | — | — | — |
+| `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | — | — | — |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | — | — | — |
+| `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | — | — | — |
+| `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | — | — | — |
+| `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | — | — | — |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | — | — | — |
+| `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | — | — | — |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | — | — | — |
+| `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | — | — | — |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | — | — | — |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | — | — | — |
+| `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | — | — | — |
+| `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | — | — | — |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | — | — | — |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | — | — | — |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | — | — | — |
+| `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | — | — | — |
+| `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | — | — | — |
+| `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | — | — | — |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | — | — | — |
+| `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | — | — | — |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | — | — | — |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | — | — | — |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 2,021 | 4,449 | 85,379 |
 
 ## control
 
@@ -1336,6 +1726,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 74,709 | 458,463 | 2,267,653 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 74,709 | 466,694 | 2,267,660 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 74,709 | 467,905 | 2,262,597 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 74,709 | 475,417 | 2,270,230 |
 
 ## create
 
@@ -1527,6 +1918,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 13,447,656 | 2,866,615 | 2,265,893 | 4,442,504 | 3,093,757 | 32,788,182 | 45,467,113 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 13,637,184 | 2,896,617 | 2,264,925 | 4,443,259 | 3,093,722 | 32,788,182 | 45,467,086 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 13,572,355 | 2,880,744 | 1,574,639 | 4,542,625 | 1,662,974 | 32,890,792 | 33,517,760 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 13,573,379 | 2,880,681 | 1,577,620 | 4,443,255 | 1,661,947 | 32,790,736 | 33,522,435 |
 
 ## create-on
 
@@ -1718,6 +2110,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,673,212 | 3,407,139 | 51,017,163 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,686,238 | 3,407,065 | 51,017,240 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,878,271 | 2,000,800 | 38,953,020 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,882,250 | 1,999,829 | 38,957,379 |
 
 ## cutoff
 
@@ -1909,6 +2302,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,182 | 50 | 14 | 65 | 56 | 1,095 | 830 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,182 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 
 ## derive-effect
 
@@ -2100,6 +2494,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 701 | 703 | 15,092 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 701 | 703 | 15,092 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 268 | 597 | 12,922 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 268 | 597 | 12,928 |
 
 ## derive-on
 
@@ -2291,6 +2686,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 650 | 696 | 14,938 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 666 | 696 | 14,938 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 276 | 589 | 13,658 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 276 | 589 | 13,663 |
 
 ## dispose
 
@@ -2482,6 +2878,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,707,645 | 806,288 | 355,483 | 480,070 | 501,594 | 11,184,829 | 9,120,395 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,707,646 | 806,290 | 355,483 | 480,211 | 501,548 | 11,184,819 | 9,120,661 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,707,643 | 806,290 | 284,345 | 479,220 | 856,743 | 11,185,486 | 7,329,454 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 2,706,253 | 806,290 | 284,345 | 479,901 | 856,947 | 11,184,745 | 7,329,319 |
 
 ## dispose-on
 
@@ -2673,6 +3070,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 334,483 | 493,397 | 8,916,995 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 334,483 | 493,405 | 8,916,980 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 284,345 | 856,879 | 7,329,261 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 284,345 | 857,032 | 7,328,936 |
 
 ## editable-edit
 
@@ -2864,6 +3262,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 160,709 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 160,709 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 73,306 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 73,409 |
 
 ## editable-upstream
 
@@ -3055,6 +3454,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 205,109 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 205,109 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 128,806 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 128,609 |
 
 ## fail-recompute
 
@@ -3246,6 +3646,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 55,263 | 1,310 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 55,355 | 1,310 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 54,324 | 720 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 54,307 | 723 |
 
 ## flight
 
@@ -3437,6 +3838,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 9,233 | 5,203 | 5,205 | 9,498 | 9,036 | 9,684 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 
 ## keyed-insert
 
@@ -3628,6 +4030,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,791,450 | 33,842 | 34,584 | 2,414,033 | 169,115 | 536,428 | 39,867,707 | 2,738,070 | 2,761,886 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,791,389 | 33,816 | 34,568 | 2,414,077 | 169,111 | 536,492 | 39,867,698 | 2,738,121 | 2,761,881 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,112,587 | 26,179 | 26,827 | 2,151,505 | 470,549 | 477,698 | 36,840,117 | 2,603,592 | 2,619,918 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,112,549 | 26,229 | 26,838 | 2,149,543 | 469,507 | 477,142 | 36,885,301 | 2,598,011 | 2,612,940 |
 
 ## keyed-remove
 
@@ -3819,6 +4222,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,790,590 | 28,110 | 29,480 | 2,459,775 | 463,990 | 144,944 | 39,842,585 | 1,879,616 | 1,918,088 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,790,526 | 28,089 | 29,470 | 2,459,763 | 463,990 | 144,950 | 39,842,615 | 1,879,554 | 1,918,077 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,112,112 | 23,551 | 24,705 | 2,143,109 | 414,377 | 426,018 | 36,810,752 | 1,908,818 | 1,937,624 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,112,096 | 23,551 | 24,729 | 2,141,346 | 413,268 | 425,240 | 36,855,694 | 1,903,327 | 1,930,571 |
 
 ## keyed-swap
 
@@ -4010,6 +4414,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,771,549 | 31,566 | 32,203 | 3,046,212 | 365,620 | 80,335 | 40,403,437 | 692,899 | 710,079 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,771,489 | 31,550 | 32,187 | 3,046,204 | 365,599 | 80,344 | 40,403,451 | 692,928 | 710,112 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,092,665 | 30,690 | 31,021 | 2,692,633 | 367,689 | 92,658 | 37,428,854 | 691,958 | 704,846 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,092,753 | 30,640 | 31,022 | 2,690,621 | 366,626 | 91,666 | 37,461,904 | 691,007 | 704,000 |
 
 ## mvu-dispatch
 
@@ -4201,6 +4606,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 57,337 | 698 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 57,336 | 698 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 32,385 | 345 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 32,385 | 345 |
 
 ## persist-write
 
@@ -4392,6 +4798,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | — | — |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | — | — |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | — | — |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | — | — |
 
 ## project-chain
 
@@ -4583,6 +4990,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 68,827 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 68,841 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 58,460 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 58,742 |
 
 ## project-churn
 
@@ -4774,6 +5182,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 24,273 | 22,027 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 24,289 | 22,027 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 23,215 | 21,225 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 23,235 | 21,246 |
 
 ## project-edit
 
@@ -4965,6 +5374,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 29,651 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 29,667 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 22,467 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 22,470 |
 
 ## project-reorder
 
@@ -5156,6 +5566,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 463,119 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 463,145 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 239,687 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 239,691 |
 
 ## server-render
 
@@ -5347,6 +5758,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | — | — | — |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | — | — | — |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | — | — | — |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | — | — | — |
 
 ## shape-diamond
 
@@ -5538,6 +5950,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 57,370 | 83,971 | 1,730,751 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 57,370 | 83,971 | 1,730,751 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 45,940 | 81,851 | 1,543,700 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 45,940 | 82,554 | 1,544,581 |
 
 ## shape-dynamic
 
@@ -5729,6 +6142,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 79,026 | 103,744 | 1,866,486 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 79,026 | 103,744 | 1,866,487 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 44,340 | 86,806 | 1,604,464 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 44,340 | 86,822 | 1,604,706 |
 
 ## stream-burst-1
 
@@ -5920,6 +6334,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,711 | 1,419 | 2,258 | 13,266 | 2,495 | 11,114 | 36,095 | 34,518 | 44,692 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,711 | 1,419 | 2,256 | 13,266 | 2,495 | 11,115 | 36,095 | 34,518 | 44,691 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,193 | 823 | 1,690 | 12,419 | 4,338 | 12,516 | 35,025 | 33,223 | 43,614 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,193 | 823 | 1,690 | 12,417 | 4,336 | 12,601 | 35,054 | 33,256 | 43,788 |
 
 ## stream-burst-16
 
@@ -6111,6 +6526,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 3,736 | 22,494 | 4,628 | 14,800 | 27,562 | 13,368 | 90,925 | 540,090 | 100,222 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 3,736 | 22,494 | 4,626 | 14,803 | 27,562 | 13,372 | 90,925 | 540,090 | 100,223 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,453 | 12,958 | 3,280 | 13,478 | 25,881 | 13,557 | 81,448 | 521,242 | 77,591 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 2,453 | 12,958 | 3,280 | 13,477 | 26,618 | 13,645 | 81,475 | 521,628 | 77,758 |
 
 ## stream-burst-256
 
@@ -6302,6 +6718,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 36,112 | 359,694 | 42,527 | 88,092 | 448,442 | 66,955 | 968,426 | 8,627,816 | 988,093 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 36,112 | 359,694 | 42,525 | 88,092 | 448,442 | 66,958 | 968,421 | 8,627,816 | 988,078 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 22,589 | 207,118 | 28,699 | 83,162 | 410,549 | 57,670 | 821,691 | 8,325,598 | 620,428 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 22,589 | 207,118 | 28,699 | 83,803 | 410,555 | 57,672 | 821,862 | 8,331,776 | 620,609 |
 
 ## stream-restart
 
@@ -6493,6 +6910,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 3,659 | 4,530 | 7,741 | 6,165 | 41,434 | 70,581 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 3,659 | 4,530 | 7,741 | 6,166 | 41,438 | 70,582 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 3,180 | 3,499 | 16,970 | 14,813 | 39,820 | 66,716 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 3,186 | 3,509 | 17,066 | 14,807 | 39,957 | 66,898 |
 
 ## timed-admit-both
 
@@ -6684,6 +7102,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 107,913 | 130,793 | 2,467,738 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 106,889 | 130,787 | 2,467,738 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 83,107 | 112,720 | 2,282,043 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 83,107 | 112,731 | 2,282,299 |
 
 ## timed-admit-debounce
 
@@ -6875,6 +7294,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 107,465 | 129,380 | 2,453,685 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 106,441 | 129,379 | 2,453,685 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 82,595 | 110,361 | 2,256,698 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 82,595 | 110,345 | 2,256,617 |
 
 ## timed-admit-first
 
@@ -7066,6 +7486,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 67,658 | 76,123 | 1,516,393 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 66,634 | 76,123 | 1,516,393 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 45,668 | 62,483 | 1,407,854 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 45,668 | 62,484 | 1,407,797 |
 
 ## timed-admit-last
 
@@ -7257,6 +7678,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 107,721 | 129,702 | 2,463,541 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 106,697 | 129,699 | 2,463,529 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 82,851 | 111,690 | 2,266,746 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 82,851 | 111,692 | 2,266,662 |
 
 ## timed-capture-both
 
@@ -7448,6 +7870,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 34,545 | 42,650 | 831,357 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 34,545 | 42,652 | 831,357 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 25,291 | 40,074 | 748,688 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 25,291 | 40,205 | 748,622 |
 
 ## timed-capture-debounce
 
@@ -7639,6 +8062,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 34,417 | 44,515 | 832,009 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 34,417 | 44,515 | 832,010 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 24,971 | 38,606 | 734,829 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 24,971 | 38,607 | 734,800 |
 
 ## timed-capture-first
 
@@ -7830,6 +8254,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 30,769 | 35,602 | 714,370 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 30,769 | 35,602 | 714,370 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 24,075 | 34,446 | 677,931 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 24,075 | 34,446 | 677,904 |
 
 ## timed-capture-last
 
@@ -8021,6 +8446,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 34,353 | 44,448 | 824,137 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 34,353 | 44,450 | 824,137 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 25,035 | 38,670 | 732,459 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 25,035 | 38,671 | 732,431 |
 
 ## update
 
@@ -8212,6 +8638,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,090,590 | 38,805 | 73,905 | 196,922 | 88,983 | 2,533,236 | 1,684,076 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,088,990 | 38,805 | 73,905 | 196,936 | 88,983 | 2,533,214 | 1,684,062 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,089,090 | 38,805 | 28,306 | 206,606 | 71,299 | 2,543,060 | 1,333,833 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,090,590 | 38,805 | 28,306 | 196,938 | 71,281 | 2,533,222 | 1,334,501 |
 
 ## update-on
 
@@ -8403,6 +8830,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 84,605 | 108,899 | 1,994,254 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 86,205 | 108,886 | 1,994,255 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 35,406 | 82,582 | 1,633,106 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 35,406 | 82,583 | 1,633,644 |
 
 ## work-form
 
@@ -8594,6 +9022,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 146,579 | 140,586 | 291,721 | 242,309 | 4,726,481 | 4,639,329 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 146,579 | 140,570 | 291,727 | 242,312 | 4,726,448 | 4,639,333 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 87,492 | 79,896 | 255,149 | 269,288 | 3,955,968 | 4,027,772 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 87,492 | 79,896 | 255,145 | 269,281 | 3,956,607 | 4,028,332 |
 
 ## work-status
 
@@ -8785,6 +9214,7 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 92,745 | 70,255 | 194,381 | 95,496 | 1,810,481 | 1,525,230 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 92,745 | 71,855 | 194,396 | 95,498 | 1,810,455 | 1,525,252 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 51,446 | 31,786 | 181,483 | 79,507 | 1,593,996 | 1,388,918 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 51,446 | 31,786 | 181,497 | 79,606 | 1,594,508 | 1,389,121 |
 
 ## work-value
 
@@ -8976,4 +9406,5 @@
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 99,869 | 112,169 | 194,664 | 219,560 | 1,795,133 | 2,102,403 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 99,869 | 113,769 | 194,691 | 219,542 | 1,795,096 | 2,102,371 |
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 58,570 | 65,870 | 181,726 | 198,064 | 1,578,618 | 1,876,541 |
+| `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 58,570 | 65,870 | 181,786 | 198,155 | 1,579,219 | 1,877,081 |
 
