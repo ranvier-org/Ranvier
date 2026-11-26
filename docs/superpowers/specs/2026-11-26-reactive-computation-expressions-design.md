@@ -4,7 +4,7 @@ Date: 2026-11-26
 Branch: `feat/computation-expressions`
 Baseline: `b8ee210dad43fcc2807f080a6e2523842d201359` (`origin/master` after PR `#389`, `Ranvier` `0.2.2` / `Ranvier.Dom` `0.1.1`)
 Companion Repository: `ranvier-org/Ranvier.View` (`tools/Ranvier.Analyzers`, `tools/Ranvier.Analyzers.Tests`, `docs/content/analyzers/`)
-Status: draft — pending builder check and user approval.
+Status: ready for user approval (builder review completed).
 
 ---
 
@@ -27,9 +27,10 @@ Before cutting a `1.0` release, we want idiomatic F# computation expressions (`m
 ### Goals
 1. **Eight singleton computation expression builders explicitly gated behind `Ranvier.CE`** (user-decided):
    - `memo`, `effect`, `asyncMemo`, `stream`, `editable`, `draft`, `boundary`, and `row` live in `namespace Ranvier.CE` (via `[<AutoOpen>]` modules inside `Ranvier.CE`, matching `namespace Ranvier.View.Dsl`, and never `[<AutoOpen>]` in `Ranvier`), so `open Ranvier` introduces zero unqualified CE identifiers, while callers opt in explicitly via `open Ranvier.CE`.
-2. **Header-only `[<CustomOperation>]` configuration** (user-decided):
+2. **Header-only `[<CustomOperation>]` configuration + `withComparer` Phase-1 key wrapper** (user-decided):
    - Builder settings (`owning`, `comparer`, `option`, `node`, `policy`, `fold`, `pending`, `failed`) are expressed via custom operations restricted by the F# type system to the header of the CE (before the first `let!` / `match!` / body statement), without `[<MaintainsVariableSpace>]` tuple allocations (`0` anonymous tuples emitted on both `fsc` and `Fickl 0.13.0`, `measured here` via `dotnet fsi` and `dotnet tool run fickl` probes).
-   - Duplicate or mutually exclusive header operations (e.g., two `comparer` ops, `owning` + `option` on `memo`, `comparer` on a 0-`let!` `effect`, or a `boundary` missing both `pending` and `failed`) fail at compile time (`FS0001` / `FS0193` / `FS0041`).
+   - Duplicate or mutually exclusive header operations (e.g., two `comparer` ops, `owning` + `option` on `memo`, or a `boundary` missing both `pending` and `failed`) fail at compile time (`FS0001` / `FS0193` / `FS0041`).
+   - Phase-1 input-key equality customization across `effect`, `memo`, `asyncMemo`, and `stream` uses `withComparer (cmp: IEqualityComparer<'K>) (source: IReactive<'K>) : ComparedReactive<'K>` in `Ranvier.CE` (`let! k = source |> withComparer cmp`), keeping `effect`'s step type unparameterized by `'K` so `match!` / `if` arms in `effect` can mix arbitrary reactive types and `unit` branches without type mismatch.
 3. **Builder-scoped `inline` context tokens** (user-decided):
    - Context values valid only inside a specific CE (`memo.previous`, `memo.previousOr seed`, `editable.previous`, `editable.previousOr seed`, `draft.previous`, `draft.previousOr seed`, `asyncMemo.previous`, `asyncMemo.cancellationToken`, `stream.cancellationToken`) are exposed as `inline` members on their respective singleton builder instances for IDE dot-discoverability, zero `[<AutoOpen>]` namespace clutter, compile-time rejection inside the wrong builder, and inert zero-exception safety if referenced outside a CE.
 4. **Compile-time primitive selection & closed-window Phase 2 by default** (user-decided):
@@ -125,13 +126,21 @@ module KeyedCollection =
 | Builder singleton | Output type | Context token members (`inline` on singleton) | Header `[<CustomOperation>]`s (before first `!` / body) |
 |---|---|---|---|
 | `memo` | `Memo<'U>` | `memo.previous` (`'U voption`), `memo.previousOr (seed: 'U)` (`'U`) | `owning`, `comparer (cmp: IEqualityComparer<'U>)`, `option` |
-| `effect` | `unit` (default) or `INode` (with `node`) | — | `node`, `comparer (cmp: IEqualityComparer<'K>)` |
+| `effect` | `unit` (default) or `INode` (with `node`) | — | `node` *(input-key comparer via `source \|> withComparer cmp`)* |
 | `asyncMemo` | `AsyncMemo<'U>` | `asyncMemo.previous` (`Previous<'U>`), `asyncMemo.cancellationToken` (`CancellationToken`) | `owning`, `policy (p: FlightPolicy)` |
 | `stream` | `StreamMemo<'U>` | `stream.cancellationToken` (`CancellationToken`) | `fold (seed: 'S) (folder: 'S -> 'T -> 'S)` |
 | `editable` | `Editable<'U>` | `editable.previous` (`'U voption`), `editable.previousOr (seed: 'U)` (`'U`) | — |
 | `draft` | `Editable<'U>` | `draft.previous` (`'U voption`), `draft.previousOr (seed: 'U)` (`'U`) | — |
 | `boundary` | `Boundary<'U>` | — | `pending (fn: 'U voption -> 'U)`, `failed (fn: exn -> 'U voption -> 'U)`, `comparer (cmp: IEqualityComparer<'U>)` |
 | `row` | `unit -> 'V` | — | — |
+
+In addition to the eight builder singletons, `Ranvier.CE` exposes:
+```fsharp
+/// Wraps a bindable reactive source (including an `and!`-merged source) so Phase-1 settled-key cutoff
+/// in `effect`, `memo`, `asyncMemo`, or `stream` compares keys under `comparer` instead of the graph's equality policy.
+val inline withComparer : comparer: IEqualityComparer<'K> -> source: IReactive<'K> -> ComparedReactive<'K>
+```
+`ComparedReactive<'K>` is a `[<Struct; NoEquality; NoComparison>]` descriptor (validating non-null `comparer` and `source`) implementing `IReactive<'K>` and carrying `Comparer: IEqualityComparer<'K>` into `EffectOn<'K>.CreateWithComparer`, `Memo.CreateOn` (custom key equality), `AsyncMemo.CreateOn`, and `StreamMemo.CreateOn` / `CreateFoldOn` (user-decided).
 
 #### Context Token Semantics (User-Decided)
 - Each context token is a distinct `[<Struct; NoEquality; NoComparison>]` value with an `internal` constructor and zero public fields/methods:
@@ -147,7 +156,7 @@ module KeyedCollection =
 #### Compile-Time Header State Transitions
 Every builder with custom operations defines `Yield(_: unit)` returning a phantom-typed `[<Struct; NoEquality; NoComparison>]` header struct (with `MaintainsVariableSpace` omitted, so F# never packs variables into tuples):
 1. **`memo`**: `MemoHeader<'Mode, 'Cmp>` where `'Mode` transitions `PureMode -> OwningMode` (`owning`) or `PureMode -> OptionMode` (`option`, only when `'Cmp = NoCmp`), and `'Cmp` transitions `NoCmp -> WithCmp<'U>` (`comparer cmp`, only when `'Mode <> OptionMode`). Duplicate `owning`, duplicate `comparer`, or `option` + `owning`/`comparer` fails to unify (`FS0193`).
-2. **`effect`**: `EffectHeader<'Out, 'KeyCmp>` where `Yield(_: unit)` and `Zero()` both return `EffectHeader<UnitOut, NoCmp>`. `node` transitions `UnitOut -> NodeOut`; `comparer cmp` transitions `NoCmp -> WithCmp<'K>`. `For` transitions `EffectHeader<'Out, 'KeyCmp>` into `ConfiguredEffect<'Out, 'KeyCmp, 'K>` **only** when `'KeyCmp = NoCmp` OR the body has a static Phase-1 key `'K` (so `effect { comparer cmp; doWork () }` with `0` `let!` bindings is rejected at compile time!).
+2. **`effect`**: `EffectHeader<'Out>` where `Yield(_: unit)` and `Zero()` return `EffectHeader<UnitOut>` / `EffectStep<ColdPhase>`, and `node` transitions `UnitOut -> NodeOut` (duplicate `node` fails to unify via `FS0193`). Keeping `EffectStep<'Phase>` unparameterized by `'K` allows `match!` / `if` arms in `effect` to mix differing reactive bind types (`User`, `Settings`) and `unit` branches without type mismatch, while `let! k = src |> withComparer cmp` dispatches to `EffectOn<'K>.CreateWithComparer`.
 3. **`asyncMemo`**: `AsyncHeader<'Mode, 'Pol>` where `owning` transitions `PureMode -> OwningMode` and `policy p` transitions `DefaultPolicy -> ExplicitPolicy`.
 4. **`stream`**: `StreamHeader<'Fold>` where `fold seed folder` transitions `LatestMode -> FoldMode<'S, 'T>`.
 5. **`boundary`**: `BoundaryHeader<'Pend, 'Fail, 'Cmp>` where `pending fn` transitions `NoPending -> WithPending<'U>`, `failed fn` transitions `NoFailed -> WithFailed<'U>`, and `comparer cmp` transitions `NoCmp -> WithCmp<'U>`. `Run` is defined for `(WithPending, NoFailed)`, `(NoPending, WithFailed)`, and `(WithPending, WithFailed)` (each with `NoCmp` or `WithCmp`), and **omitted** for `(NoPending, NoFailed)` so an empty `boundary { let! x = a; return x }` without `pending` or `failed` fails at compile time!
@@ -202,7 +211,7 @@ Two empirical F# compiler invariants govern the step representation (`measured h
 | `memo { [owning;] [comparer;] let! x = r [and! ...]; return! innerMemo x }` (or multi-arm `return!`) | `owning`? `comparer`? | `Signal.bind` / `Memo.bind` (default header on `Signal`/`Memo`) or `SplitBind` over `r.Graph` (`B20`; Phase-2 binder is inherently owning) | `r.Graph` (no `Activate ()`) |
 | `memo { let! prev = memo.previous[Or]; ... }` | `owning`? `comparer`? | `Memo.Create` / `Memo.CreateWithComparer` passing `prev` (Phase 1 tracked through last reactive `!`, Phase 2 `return` closed) | First reactive source's `.Graph`, else `Graph.Current` |
 | `memo { let! a = r1; let! b = pick a; return f a b }` / `match!` / `if` / `try` / `use` | `owning`? `comparer`? | `Memo.Create` / `Memo.CreateWithComparer` (`1` dynamic node; Phase-1 `!`s tracked, terminal `return` closed) | Outer `r1.Graph` when outer bind is static, else `Graph.Current` |
-| `effect { [node;] [comparer cmp;] let! k = r1 [and! ...]; act k }` | `node`? `comparer`? | `EffectOn<'K>.Create[WithComparer](r1.Graph, readKey, act)` (`B16`-style split effect) | `r1.Graph` (no `Activate ()`) |
+| `effect { [node;] let! k = r1 [and! ...] [\|> withComparer cmp]; act k }` | `node`? | `EffectOn<'K>.Create[WithComparer](r1.Graph, readKey, act)` (`B16`-style split effect) | `r1.Graph` (no `Activate ()`) |
 | `effect { [node;] let! a = r1; let! b = pick a; act a b }` | `node`? | `Effect.Create(r1.Graph, ...)` with tracked `!` reads and `RunUntracked` around terminal `act` | `r1.Graph` or `Graph.Current` |
 | `effect { [node;] body () }` (0 `let!`s) | `node`? | `Effect.Create(Graph.Current, body)` | `Graph.Current` |
 | `asyncMemo { [owning;] [policy p;] let! k = r1 [and! ...]; <Phase 2> }` | `owning`? `policy`? | `AsyncMemo.CreateOn(r1.Graph, readKey, computePhase2, mode, pol)` (`B17`) | `r1.Graph` (no `Activate ()`) |
@@ -349,10 +358,14 @@ Once this spec and the implementation plan (`writing-plans`) are approved, work 
 - **Antigravity `self` / `research` subagents**: Independent two-stage spec-compliance and code-quality reviewers on every task slice, plus cross-target (`fsc` Debug/Release, `Fickl`, `Ranvier.Counters`, `Budget.fs`) verification.
 - **Coordinator (this session)**: Owns worktree integration, cross-repo compatibility gates, PR creation, CI/Perf monitoring, and squash-merging (`AGENTS.md`).
 
-### 7.2 Cross-Repo Release & PR Sequencing (`RELEASE-RUNBOOK.md`)
-- **PR 1 (`ranvier-org/Ranvier`)**: Ships `Builders.fs`, pointwise collection descriptors, Rocq `B21` proofs, tests, NativeAOT smoke, benchmarks, and docs.
-  - *Important Packaging Gate*: `Ranvier.Analyzers` itself (`Ranvier.Analyzers.fsproj`) matches symbols by string name and has **no** compile-time binary dependency on `Ranvier.dll`, whereas `Ranvier.Analyzers.Tests` compiles fixture strings against the `Ranvier.dll` in `Ranvier.View`'s build output (`Options.fs:43-54`). Locally, `-p:UseLocalRanvier=true` tests everything end-to-end immediately. On GitHub Actions, `Ranvier.View` restores `Ranvier` from `nuget.org` (`$(RanvierVersion)` in `Ranvier.View/Directory.Build.props`).
-  - Therefore, before opening PR 2 on `ranvier-org/Ranvier.View`, we will confirm whether PR 1 on `Ranvier` should keep `<Version>0.2.2</Version>` (no NuGet publish yet) or bump `<Version>0.2.3</Version>` so `Ranvier` `0.2.3` publishes to `nuget.org` on merge and `Ranvier.View` PR 2 can bump `RanvierVersion` to `0.2.3` and run all new CE analyzer tests in `Ranvier.View` CI (`RELEASE-RUNBOOK.md:214-222`).
+### 7.2 Cross-Repo Release & Publish Sequencing (`RELEASE-RUNBOOK.md`, User-Decided)
+1. **PR 1 (`ranvier-org/Ranvier` -> `0.2.3`)**:
+   - Ships `Builders.fs` (`Ranvier.CE`), pointwise collection descriptors, Rocq `B21` proofs, Expecto + Fable + NativeAOT tests, benchmarks, and docs.
+   - Bumps the core package family (`Ranvier`, `Ranvier.CSharp`, `Ranvier.Elmish`, `Ranvier.Query`, `Ranvier.Wire`, `Ranvier.Mcp`, plus `docs/content/fable/index.md` and `docs/content/guide/installation.md`, matching commit `1fd09a3`, `from documentation`) from `0.2.2` to **`0.2.3`** (higher than every version on `nuget.org`, `measured here` via flat-container index).
+   - Once PR 1 passes `CI`, `Perf`, `Proofs site`, `differential`, and `Conventional commits`, squash-merge to `master`, wait for `publish.yml` to finish, and confirm `0.2.3` (including `.Traced` twins) in the `nuget.org` flat-container index (`RELEASE-RUNBOOK.md:32-35, 214-222`).
+2. **PR 2 (`ranvier-org/Ranvier.View` -> update to `Ranvier 0.2.3` + ship `Ranvier.Analyzers` rules & ShipIt release)**:
+   - Upgrades `Ranvier.View/Directory.Build.props` (`RanvierVersion`, `RanvierElmishVersion`, `RanvierWireVersion`, `RanvierQueryVersion` `0.2.0` -> `0.2.3`, `RanvierDomVersion` `0.1.0` -> `0.1.1`), verifies full `Ranvier.View` compatibility, and ships the `Ranvier.Analyzers` updates (`RAN010`–`RAN012`, `RAN015` extensions + new `RAN016`, `RAN017`, `RAN018` rules, docs pages, `DocsExamples.fs`, and `Budget.fs`).
+   - Squash-merges PR 2 to `Ranvier.View/main` with a `feat` conventional title, manages the resulting EasyBuild.ShipIt `release/main` PR (closing/reopening if `GITHUB_TOKEN` holds CI checks per `RELEASE-RUNBOOK.md:67-70, 133-159`), merges `release/main`, and verifies the published `Ranvier.View` and `Ranvier.Analyzers` packages (`verify-published`) on `nuget.org`.
 
 ---
 
