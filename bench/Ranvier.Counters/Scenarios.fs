@@ -1258,6 +1258,139 @@ module private R3 =
             Teardown = fun () -> subscription.Dispose ()
         }
 
+    /// <summary>
+    /// A <c>TimeProvider</c> on a manual clock, matching the Ranvier timed workload's clock: <c>Advance</c> moves time
+    /// 100 ms and fires every due timer.
+    /// </summary>
+    type private ManualTime() =
+        inherit TimeProvider()
+        let timers = ResizeArray<Threading.TimerCallback * obj * float ref>()
+        let mutable now = 0.
+
+        member _.Advance() =
+            now <- now + 100.
+
+            for i in 0 .. timers.Count - 1 do
+                let callback, state, due = timers[i]
+
+                if due.Value <= now then
+                    due.Value <- infinity
+                    callback.Invoke state
+
+        override _.GetUtcNow() =
+            DateTimeOffset.UnixEpoch.AddMilliseconds now
+
+        override _.TimestampFrequency = 1000L
+        override _.GetTimestamp() = int64 now
+
+        override _.CreateTimer(callback, state, dueTime, _period) =
+            let due = ref infinity
+            timers.Add (callback, state, due)
+
+            let arm (delay: TimeSpan) =
+                due.Value <-
+                    if delay = Threading.Timeout.InfiniteTimeSpan then
+                        infinity
+                    else
+                        now + delay.TotalMilliseconds
+
+            arm dueTime
+
+            { new Threading.ITimer with
+                member _.Change(delay, _) =
+                    arm delay
+                    true
+
+                member _.Dispose() =
+                    due.Value <- infinity
+
+                member _.DisposeAsync() =
+                    due.Value <- infinity
+                    ValueTask.CompletedTask
+            }
+
+    /// <summary>
+    /// The <c>Workloads.timed</c> shape: 64 subscriptions to one source through <c>Debounce</c>, <c>ThrottleFirst</c>,
+    /// <c>ThrottleLast</c> or <c>ThrottleFirstLast</c> by <c>mode</c>, on a manual clock that <c>admit</c> advances
+    /// after each write.
+    /// </summary>
+    let timed (mode: string) (admit: bool) (n: int) =
+        let clock = ManualTime ()
+        let source = new ReactiveProperty<int> (0)
+        let window = TimeSpan.FromMilliseconds 100.
+
+        let timedBy (input: Observable<int>) =
+            match mode with
+            | "first" -> ObservableExtensions.ThrottleFirst (input, window, clock)
+            | "last" -> ObservableExtensions.ThrottleLast (input, window, clock)
+            | "both" -> ObservableExtensions.ThrottleFirstLast (input, window, clock)
+            | _ -> ObservableExtensions.Debounce (input, window, clock)
+
+        let subscriptions = Array.init 64 (fun _ -> timedBy source |> subscribe)
+
+        source.Value <- 1
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        source.Value <- source.CurrentValue + 1
+
+                        if admit then
+                            clock.Advance ()
+            Teardown =
+                fun () ->
+                    for subscription in subscriptions do
+                        subscription.Dispose ()
+        }
+
+    /// <summary>
+    /// The <c>Ranvier.flight</c> shape: a <c>SelectAwait</c> over a trigger, by the <c>AwaitOperation</c> named
+    /// <c>operation</c>, each await a <c>TaskCompletionSource</c> the operation settles.
+    /// </summary>
+    let flight (operation: string) (n: int) =
+        let trigger = new ReactiveProperty<int> (0)
+        let pending = ResizeArray<TaskCompletionSource<int>>()
+        let latest = ref 0
+
+        let subscription =
+            ObservableSubscribeExtensions.Subscribe (
+                ObservableExtensions.SelectAwait (
+                    (trigger :> Observable<int>),
+                    Func<int, Threading.CancellationToken, ValueTask<int>>(fun _ _ ->
+                        let source = TaskCompletionSource<int>()
+                        pending.Add source
+                        ValueTask<int> source.Task),
+                    Enum.Parse<AwaitOperation> operation
+                ),
+                (fun v -> latest.Value <- v)
+            )
+
+        let settle (value: int) =
+            while pending.Count > 0 do
+                let round = pending.ToArray ()
+                pending.Clear ()
+
+                for source in round do
+                    source.SetResult value
+
+        settle 0
+        let next = ref 0
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        for _ in 1..2 do
+                            next.Value <- next.Value + 1
+                            trigger.Value <- next.Value
+
+                        settle next.Value
+
+                    sink <- latest.Value
+            Teardown = fun () -> subscription.Dispose ()
+        }
+
 /// <summary>
 /// System.Reactive (Rx.NET) implementations. A source is a <c>BehaviorSubject</c>; an equal write still pushes, so a
 /// reader that skips unchanged values applies <c>DistinctUntilChanged</c>.
@@ -1403,6 +1536,34 @@ module private Rx =
                     if seen.Value <> 2 * expected.Value then
                         failwith $"System.Reactive stream-burst folded %d{seen.Value / 2}, expected %d{expected.Value}"
             Teardown = fun () -> subscription.Dispose ()
+        }
+
+    /// <summary>
+    /// The <c>Workloads.timed</c> debounce shape: 64 subscriptions to one source through <c>Throttle</c>, Rx.NET's
+    /// debounce, on a <c>HistoricalScheduler</c> that <c>admit</c> advances 100 ms after each write.
+    /// </summary>
+    let timed (admit: bool) (n: int) =
+        let scheduler = System.Reactive.Concurrency.HistoricalScheduler ()
+        let source = new BehaviorSubject<int> (0)
+        let window = TimeSpan.FromMilliseconds 100.
+
+        let subscriptions =
+            Array.init 64 (fun _ -> subscribe (Linq.Throttle (source, window, scheduler)))
+
+        source.OnNext 1
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        source.OnNext (source.Value + 1)
+
+                        if admit then
+                            scheduler.AdvanceBy window
+            Teardown =
+                fun () ->
+                    for subscription in subscriptions do
+                        subscription.Dispose ()
         }
 
 /// <summary>
@@ -1783,14 +1944,24 @@ let all (scale: int) : Case list =
                     ("timed-capture-" + mode)
                     "capture a changed input in 64 timed nodes"
                     (1000 * scale)
-                    [ "Ranvier", workload (Workloads.timed mode false) ]
+                    [
+                        "Ranvier", workload (Workloads.timed mode false)
+                        "R3", R3.timed mode false
+                        if mode = "debounce" then
+                            "System.Reactive (Throttle)", Rx.timed false
+                    ]
 
             yield!
                 scenario
                     ("timed-admit-" + mode)
                     "capture and admit in 64 timed nodes"
                     (1000 * scale)
-                    [ "Ranvier", workload (Workloads.timed mode true) ]
+                    [
+                        "Ranvier", workload (Workloads.timed mode true)
+                        "R3", R3.timed mode true
+                        if mode = "debounce" then
+                            "System.Reactive (Throttle)", Rx.timed true
+                    ]
         yield!
             scenario
                 "create"
@@ -2061,6 +2232,10 @@ let all (scale: int) : Case list =
                     "Ranvier (FinishCurrent)", Ranvier.flight FinishCurrent
                     "Ranvier (Drop)", Ranvier.flight Drop
                     "Ranvier (DropWhilePending)", Ranvier.flight DropWhilePending
+                    "R3 (Switch)", R3.flight "Switch"
+                    "R3 (ThrottleFirstLast)", R3.flight "ThrottleFirstLast"
+                    "R3 (Sequential)", R3.flight "Sequential"
+                    "R3 (Drop)", R3.flight "Drop"
                 ]
         yield!
             scenario

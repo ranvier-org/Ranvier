@@ -138,9 +138,13 @@ than `create`, `update`, `chain`, `cutoff` and `dispose` appear only in the CI c
 | `select` | `createSelector`; each row compares the index | FSharp.Data.Adaptive `AVal.map2` per row; SignalsDotnet `Effect` per row; Fable.Ripple `Signal.effect` per row; Solid `createProjection`, or `createEffect` per row | .NET, Node.js |
 | `batch` | `Graph.Batch` | FSharp.Data.Adaptive `transact`; SignalsDotnet `Effect.AtomicOperation`; Fable.Ripple `Signal.batch`; Solid writes then one `flush` | .NET, Node.js |
 | `stream-burst-1`, `-16`, `-256` | `createStreamFold` | R3 and System.Reactive `Subject`, `Scan` and `Select` | .NET |
+| `timed-capture-*`, `timed-admit-*` | `debounceWith`, `throttleFirstWith`, `throttleLastWith`, `throttleWith` | R3 `Debounce`, `ThrottleFirst`, `ThrottleLast`, `ThrottleFirstLast`; System.Reactive `Throttle` (debounce only) | .NET |
+| `flight` | an async memo under `CancelPrevious`, `KeepLatest`, `Queue`, `Drop` | R3 `SelectAwait` under `Switch`, `ThrottleFirstLast`, `Sequential`, `Drop` | .NET |
 
 `select` moves the selection over 1000 rows, each read by one effect. `batch` writes 8 sources read by one effect
-inside one batch. The keyed scenarios write the whole list each operation, with fresh items.
+inside one batch. The keyed scenarios write the whole list each operation, with fresh items. The timed scenarios run every
+library on a manual clock that advances 100 ms per admitted write: Ranvier's `TimedClock`, an R3 `TimeProvider` built
+the same way, and System.Reactive's `HistoricalScheduler`.
 
 ## Reading the charts
 
