@@ -86,6 +86,18 @@ jobs:
       # The trace log and its queries compile in only with RanvierTrace, and their tests with them.
       - name: Test Ranvier.Tests, traced
         run: dotnet test tests/Ranvier.Tests -c Release -p:RanvierTrace=true
+
+  # The signal map tests build the docs map workspace end to end, a Fable compile included, in a job of their own.
+  docs-maps:
+    name: Docs map tests, traced
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
       # The signal maps compile the view projects of a Ranvier.View checkout and the bindings of a Ranvier.Anime checkout against this core.
       - name: Check out Ranvier.View beside the repository
         run: .github/scripts/view-sibling.sh
@@ -249,7 +261,7 @@ jobs:
   # build and test jobs were skipped for a documentation-only change.
   result:
     name: CI result
-    needs: [changes, scripts, dotnet, dotnet-traced, package-consumers, aot, packages, format, docs-menus, fable, fickl-archives]
+    needs: [changes, scripts, dotnet, dotnet-traced, docs-maps, package-consumers, aot, packages, format, docs-menus, fable, fickl-archives]
     if: always()
     runs-on: ubuntu-latest
     steps:

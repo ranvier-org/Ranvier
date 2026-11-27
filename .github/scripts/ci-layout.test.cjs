@@ -8,7 +8,8 @@ const jobs = Object.fromEntries([...workflow.slice(workflow.indexOf('\njobs:')).
 test('each core .NET gate runs in exactly one job', () => {
   const gates = {
     dotnet: ['Test Ranvier.Tests', 'Test Ranvier.CSharp.Tests', 'Test Ranvier.Wire.Tests', 'Test shared mutation observation', 'Check the vendored Thoth.Json'],
-    'dotnet-traced': ['Test Ranvier.Tests, traced', 'Test Ranvier.Docs.Maps.Tests, traced'],
+    'dotnet-traced': ['Test Ranvier.Tests, traced'],
+    'docs-maps': ['Test Ranvier.Docs.Maps.Tests, traced'],
     'package-consumers': ['Check package compatibility'],
   };
   for (const [id, names] of Object.entries(gates)) {
@@ -24,8 +25,10 @@ test('the untraced and traced test jobs each build one flavour of the core', () 
   const tests = id => jobs[id].split(/\r?\n/).filter(line => /run: dotnet (test|run) /.test(line));
   assert.ok(tests('dotnet').length > 0);
   for (const line of tests('dotnet')) assert.doesNotMatch(line, /RanvierTrace=true/, line);
-  assert.ok(tests('dotnet-traced').length > 0);
-  for (const line of tests('dotnet-traced')) assert.match(line, /-p:RanvierTrace=true/, line);
+  for (const id of ['dotnet-traced', 'docs-maps']) {
+    assert.ok(tests(id).length > 0, id);
+    for (const line of tests(id)) assert.match(line, /-p:RanvierTrace=true/, line);
+  }
 });
 
 test('one job packs for both package consumer checks', () => {
