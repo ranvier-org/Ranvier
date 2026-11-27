@@ -552,7 +552,7 @@ module Stage =
                     stage "perf data" {
                         run "git fetch origin perf-data"
                         run "git worktree add --detach .docs-perf-data origin/perf-data"
-                        run "node" ".github/scripts/perf-site-data.cjs .docs-perf-data/runs docs/static/perf-data/index.json"
+                        run "node" ".github/scripts/perf-site-data.cjs .docs-perf-data/runs docs/static/perf-data/index.json --repository ."
                         run "git" "worktree remove --force .docs-perf-data"
                     }
 
@@ -772,6 +772,46 @@ module private Perf =
     let private readJson file =
         JsonDocument.Parse (File.ReadAllText file)
 
+    /// <summary>The libraries the counter bench measures against Ranvier, on .NET and under Fable.</summary>
+    let private comparators = [ "FSharp.Data.Adaptive"; "R3"; "Fable.Ripple" ]
+
+    /// <summary>
+    /// The restored version of each comparator present in a side's builds: .NET packages from the worker's
+    /// <c>deps.json</c>, Fable packages from the <c>fable_modules</c> folders of the plain Fable build.
+    /// </summary>
+    let private comparatorVersions output =
+        use deps = readJson (combine output "worker/Ranvier.Counters.deps.json")
+
+        let dotnet =
+            deps.RootElement.GetProperty("libraries").EnumerateObject()
+            |> Seq.map (fun library -> library.Name.Split ('/', 2))
+            |> Seq.choose (function
+                | [| name; version |] when List.contains name comparators -> Some (name, version)
+                | _ -> None)
+            |> Seq.toList
+
+        let modules = combine output "fable/plain/fable_modules"
+
+        let fable =
+            if Directory.Exists modules then
+                Directory.GetDirectories modules
+                |> Array.choose (fun dir ->
+                    let m =
+                        Text.RegularExpressions.Regex.Match (Path.GetFileName dir, @"^(.+?)\.(\d.*)$")
+
+                    if
+                        m.Success
+                        && List.contains m.Groups[1].Value comparators
+                    then
+                        Some (m.Groups[1].Value, m.Groups[2].Value)
+                    else
+                        None)
+                |> Array.toList
+            else
+                []
+
+        dict (dotnet @ fable)
+
     /// <summary>
     /// The F#-to-JavaScript compiler command and version a revision's tool manifest declares: <c>fickl</c> when the
     /// manifest has it, otherwise <c>fable</c> (revisions before the switch to Fickl).
@@ -871,7 +911,9 @@ module private Perf =
                                     let compiler =
                                         help.Stdout.Split ('\n')
                                         |> Array.tryFind (fun line -> line.Contains "F# to JavaScript compiler")
-                                        |> Option.map (fun line -> line.Substring(0, line.IndexOf ':').Trim())
+                                        |> Option.map (fun line ->
+                                            let plain = Text.RegularExpressions.Regex.Replace (line, "\u001b\\[[0-9;]*m", "")
+                                            plain.Substring(0, plain.IndexOf ':').Trim())
                                         |> Option.defaultValue ""
 
                                     require (compiler.Contains manifestVersion) "Resolved Fable compiler differs from the side's tool manifest."
@@ -912,6 +954,7 @@ module private Perf =
                                                 Dotnet = string Environment.Version
                                                 Fable = compiler
                                                 FableLibrary = libraryVersions[0]
+                                                Comparators = comparatorVersions output
                                             |}
                                     )
 
@@ -1258,7 +1301,8 @@ module private Perf =
                                 "--out"
                                 absolute output
                             ]
-                            @ (runtimes |> List.collect (fun runtime -> [ "--runtime"; runtime ]))
+                            @ (runtimes
+                               |> List.collect (fun runtime -> [ "--runtime"; runtime ]))
                         )
                     )
                 }

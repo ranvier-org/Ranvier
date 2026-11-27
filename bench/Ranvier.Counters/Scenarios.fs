@@ -794,6 +794,58 @@ module private Adaptive =
             Teardown = noTeardown
         }
 
+    /// <summary>
+    /// The <c>Workloads.selection</c> shape without a selector: every row maps the selected index and its own
+    /// source, read by a callback.
+    /// </summary>
+    let selectionCompare (n: int) =
+        let selected = cval 0
+
+        let subscriptions =
+            Array.init Workloads.Rows (fun i ->
+                let row = cval i
+                let value = AVal.map2 (fun s r -> if s = i then r else 0) selected row
+                value.AddCallback (fun v -> sink <- v))
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        let next = (selected.Value + 37) % Workloads.Rows
+                        transact (fun () -> selected.Value <- next)
+            Teardown =
+                fun () ->
+                    for subscription in subscriptions do
+                        subscription.Dispose ()
+        }
+
+    /// <summary>The <c>Workloads.batchWrites</c> shape: every write of an operation inside one <c>transact</c>.</summary>
+    let batchWrites (n: int) =
+        let sources = Array.init Workloads.BatchWidth (fun i -> cval i)
+
+        let total =
+            AVal.custom (fun token ->
+                let mutable sum = 0
+
+                for source in sources do
+                    sum <- sum + source.GetValue token
+
+                sum)
+
+        let subscription = total.AddCallback (fun v -> sink <- v)
+
+        let write () =
+            for source in sources do
+                source.Value <- source.Value + 1
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        transact write
+            Teardown = fun () -> subscription.Dispose ()
+        }
+
 module private R3 =
 
     open R3
@@ -1078,6 +1130,25 @@ let all (scale: int) : Case list =
                 $"alternate a branch flip and a write of every active source of %d{Workloads.DynamicReaders} effects"
                 (500 * scale)
                 [ "Ranvier", workload Workloads.dynamicBranches ]
+        yield!
+            scenario
+                "select"
+                $"move the selection over %d{Workloads.Rows} rows, each read by one effect"
+                (50 * scale)
+                [
+                    "Ranvier", workload (Workloads.selection true)
+                    "Ranvier (compare)", workload (Workloads.selection false)
+                    "FSharp.Data.Adaptive (compare)", Adaptive.selectionCompare
+                ]
+        yield!
+            scenario
+                "batch"
+                $"write %d{Workloads.BatchWidth} sources read by one effect inside one batch"
+                (5000 * scale)
+                [
+                    "Ranvier", workload Workloads.batchWrites
+                    "FSharp.Data.Adaptive", Adaptive.batchWrites
+                ]
         yield!
             scenario
                 "async-resolve"

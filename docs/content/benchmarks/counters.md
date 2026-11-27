@@ -62,7 +62,8 @@ FSharp.Data.Adaptive 1.2.27, R3 1.3.1.
 ## Fable under Node.js
 
 Node.js v26.7.0 (`--expose-gc --single-threaded`), fable-library-js 5.18.0. Ranvier at `e13f159`,
-Fable.Ripple 1.0.0-beta.5. Bars are main-thread figures.
+Fable.Ripple 1.0.0-beta.5. Bars are main-thread figures. The CI charts label each commit with the Fable.Ripple
+version it measured.
 
 The CI counter history runs Node.js 26 with
 `--expose-gc --single-threaded --min-semi-space-size=32 --max-semi-space-size=32`. The semi-space
@@ -114,6 +115,25 @@ These scenarios postdate `e13f159` and appear only in the CI charts. Each measur
 process and the machine. When `control` moves on a runtime, the perf verdict reports that runtime's regressions as
 inconclusive.
 
+## Comparable APIs
+
+These scenarios measure the same shape on Ranvier and on a comparator library, each through that library's
+counterpart API. They appear only in the CI charts.
+
+| Scenario | Ranvier | Comparator | Runtimes |
+| --- | --- | --- | --- |
+| `chain-map` | `Signal.map` then `Memo.map` | Fable.Ripple `Signal.map` | Node.js |
+| `derive-effect` | an `Effect` that derives in its body | Fable.Ripple `Signal.effect` | Node.js |
+| `derive-on` | `createEffectOn` | Fable.Ripple `Signal.computed` read by `Signal.effect` | Node.js |
+| `work-status`, `work-value`, `work-form` | `createEffect`; `createEffectOn` | Fable.Ripple `Signal.effect`; `Signal.computed` read by `Signal.effect` | Node.js |
+| `shape-diamond` | `createMemo` branches and join | Fable.Ripple `Signal.computed` branches and join | Node.js |
+| `shape-dynamic` | `createEffect` | Fable.Ripple `Signal.effect` | Node.js |
+| `select` | `createSelector`; each row compares the index | Fable.Ripple, each row compares the index; FSharp.Data.Adaptive `AVal.map2` per row | .NET, Node.js |
+| `batch` | `Graph.Batch` | Fable.Ripple `Signal.batch`; FSharp.Data.Adaptive `transact` | .NET, Node.js |
+
+`select` moves the selection over 1000 rows, each read by one effect. `batch` writes 8 sources read by one effect
+inside one batch. R3 has no batch or selector and does not run these two.
+
 ## Reading the charts
 
 ### Interactive chart controls
@@ -132,6 +152,19 @@ commit/diff links in the sticky readout above the panels. Click a commit or pres
 it or re-anchor **From** there. Changes of at least 5% are highlighted (`−` green / `+` red); `▲`
 marks commits where Ranvier's library counters changed, and `◆` marks accepted regressions with
 their recorded reason.
+
+### Comparator versions
+
+Each commit carries the version of every comparator library it measured: FSharp.Data.Adaptive and R3 on .NET,
+Fable.Ripple under Fable. Bar labels, readouts and the provenance line name the version, as in
+`Fable.Ripple 1.0.0-beta.8 (compare)`, and the provenance line adds the commit's .NET, Node.js and Fable versions.
+A `▽` in the library's color, at the top of a trend panel, marks a commit whose comparator version differs from the
+previous commit's; the readout names both versions. **From** offers a **Comparator versions** group that anchors the
+window at the first commit of a version (`?from=cmp:Fable.Ripple@1.0.0-beta.8`).
+
+Comparator packages float to their newest release: `*` (newest stable) on .NET, `*-*` for Fable.Ripple, which
+publishes prereleases only. Measurements label the versions their builds restored. Records that predate those labels
+show the versions pinned by `bench/Ranvier.Counters` and `fable/Ranvier.Counters` at the commit.
 
 ### Comparison limits
 

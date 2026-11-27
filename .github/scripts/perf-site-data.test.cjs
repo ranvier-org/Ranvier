@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { buildIndex } = require('./perf-site-data.cjs');
+const { execFileSync } = require('node:child_process');
+const { buildIndex, packageVersions, declaredComparators } = require('./perf-site-data.cjs');
 
 function fixture(fn) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'perf-site-data-test-'));
@@ -149,6 +150,71 @@ test('exports accepted regressions with joined reasons and restricts them by gro
   assert.deepEqual(read('signals.json')[0].Accepted, [
     { Leg: 'arm64-counters', Runtime: 'dotnet', Scenario: 'chain', Engine: 'Ranvier', Metric: 'instructions', Reason: 'cycle check; guard added' },
   ]);
+}));
+
+test('labels comparators measured by the head side and fills the rest from declared pins', () => fixture((root, runs) => {
+  const sha = '7'.repeat(40);
+  const label = (Name, Value) => ({ Name, Value });
+  fs.writeFileSync(path.join(runs, `${sha}.json`), JSON.stringify({
+    ...record(sha, '2026-11-27T10:00:00Z'),
+    Runs: [{
+      Leg: 'arm64-counters',
+      Versions: [
+        label('base:Fable.Ripple', '1.0.0-beta.5'),
+        label('head:Fable.Ripple', '1.0.0-beta.8'),
+        label('head:R3', 'unavailable: versions.json missing'),
+        label('head:.NET', '10.0.14'),
+        label('head:Fable', '\u001b[37mFickl 0.13.0 (Fable 5.27.0)'),
+        label('Node.js', 'v26.13.0'),
+      ],
+    }],
+  }));
+  const output = path.join(root, 'index.json');
+  const asked = [];
+
+  buildIndex(runs, output, {}, { declared: commit => { asked.push(commit); return { R3: '1.3.1', 'Fable.Ripple': '1.0.0-beta.5' }; } });
+
+  const [commit] = JSON.parse(fs.readFileSync(output, 'utf8')).commits;
+  assert.deepEqual(asked, [sha]);
+  assert.deepEqual(commit.Comparators, [
+    { Name: 'R3', Version: '1.3.1', Source: 'declared' },
+    { Name: 'Fable.Ripple', Version: '1.0.0-beta.8', Source: 'measured' },
+  ]);
+  assert.deepEqual(commit.Toolchain, [
+    { Name: '.NET', Version: '10.0.14' },
+    { Name: 'Node.js', Version: 'v26.13.0' },
+    { Name: 'Fable', Version: 'Fickl 0.13.0 (Fable 5.27.0)' },
+  ]);
+}));
+
+test('reads PackageReference versions in either attribute order', () => {
+  assert.deepEqual(packageVersions(`
+    <PackageReference Include="R3" Version="1.3.1" />
+    <PackageReference Version="1.2.28" Include="FSharp.Data.Adaptive"/>
+    <PackageReference Include="Fable.Core" />`), { R3: '1.3.1', 'FSharp.Data.Adaptive': '1.2.28' });
+});
+
+test('reads declared comparator pins from the projects at a commit', () => fixture(root => {
+  const repository = path.join(root, 'repository');
+  const git = (...args) => execFileSync('git', ['-C', repository, ...args], { encoding: 'utf8' }).trim();
+  fs.mkdirSync(path.join(repository, 'bench', 'Ranvier.Counters'), { recursive: true });
+  git('init', '-q');
+  fs.writeFileSync(path.join(repository, 'bench', 'Ranvier.Counters', 'Ranvier.Counters.fsproj'),
+    '<Project><ItemGroup><PackageReference Include="FSharp.Data.Adaptive" Version="1.2.27" /><PackageReference Include="R3" Version="1.3.1" /></ItemGroup></Project>');
+  git('add', '-A');
+  git('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '-q', '-m', 'bench');
+  const pinned = git('rev-parse', 'HEAD');
+  fs.writeFileSync(path.join(repository, 'bench', 'Ranvier.Counters', 'Ranvier.Counters.fsproj'),
+    '<Project><ItemGroup><PackageReference Include="FSharp.Data.Adaptive" Version="*" /><PackageReference Include="R3" Version="1.3.2" /></ItemGroup></Project>');
+  git('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '-q', '-am', 'float');
+  const floating = git('rev-parse', 'HEAD');
+  const unknown = '0'.repeat(40);
+
+  assert.deepEqual(declaredComparators(repository, [pinned, floating, unknown]), new Map([
+    [pinned, { 'FSharp.Data.Adaptive': '1.2.27', R3: '1.3.1' }],
+    [floating, { R3: '1.3.2' }],
+    [unknown, {}],
+  ]));
 }));
 
 test('fails when the history contains no records', () => fixture((_root, runs) => {

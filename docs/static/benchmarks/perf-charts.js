@@ -47,6 +47,22 @@
     .filter(row => row.Runtime === runtime && row.Scenario === scenario && row.Engine === engine)
     .map(row => `${row.Name} ${number(row.Value)}`).join(', ');
   const ranvierVersion = commit => (commit.Packages || []).find(pkg => pkg.Name === 'Ranvier')?.Version || null;
+  // The version of an engine's library recorded for a commit; null for Ranvier and for unrecorded libraries.
+  const comparatorVersion = (commit, engine) => (commit?.Comparators || []).find(item => item.Name === family(engine))?.Version || null;
+  // The engine's name with its library version after the library, as in `Fable.Ripple 1.0.0-beta.8 (selector)`.
+  const versioned = (commit, engine) => {
+    const version = comparatorVersion(commit, engine);
+    return version ? `${family(engine)} ${version}${engine.slice(family(engine).length)}` : engine;
+  };
+  // The comparator version change at `commit`, after `previous`, for the engine's library: `{ from, to }`, or null.
+  const comparatorChange = (previous, commit, engine) => {
+    const from = comparatorVersion(previous, engine);
+    const to = comparatorVersion(commit, engine);
+    return previous && from && to && from !== to ? { from, to } : null;
+  };
+  const toolchainFor = (commit, runtime) => (commit?.Toolchain || [])
+    .filter(item => runtime === 'dotnet' ? item.Name === '.NET' : item.Name !== '.NET')
+    .map(item => `${item.Name} ${item.Version}`);
   // Scoped acceptance entries matching the selected runtime, scenario, engine, leg and metric.
   const acceptedFor = (commit, runtime, scenario, engine, metric = 'instructions') => (commit?.Accepted || [])
     .filter(row => row.Runtime === runtime
@@ -70,6 +86,20 @@
     return list.reverse();
   }
 
+  // The first commit of each recorded comparator version, ordered from newest to oldest.
+  function comparatorTransitions(commits) {
+    const latest = new Map();
+    const list = [];
+    commits.forEach((commit, index) => {
+      for (const { Name, Version } of commit.Comparators || []) {
+        if (latest.get(Name) === Version) continue;
+        list.push({ name: Name, from: latest.get(Name) ?? null, version: Version, index, commit });
+        latest.set(Name, Version);
+      }
+    });
+    return list.reverse();
+  }
+
   // Resolves a From selector value, count shorthand, version tag, or SHA prefix into a window anchor.
   function resolveFrom(commits, rawChoice) {
     const raw = typeof rawChoice === 'string' ? rawChoice.trim() : '';
@@ -88,6 +118,11 @@
     if (verMatch) {
       const index = commits.findIndex(commit => ranvierVersion(commit) === verMatch[1]);
       if (index >= 0) return { choice: `ver:${verMatch[1]}`, index };
+    }
+    const cmpMatch = /^cmp:(.+)@(.+)$/.exec(raw);
+    if (cmpMatch) {
+      const entry = comparatorTransitions(commits).find(item => item.name === cmpMatch[1] && item.version === cmpMatch[2]);
+      if (entry) return { choice: raw, index: entry.index };
     }
     if (/^[0-9a-f]{4,40}$/i.test(raw)) {
       const lower = raw.toLowerCase();
@@ -155,6 +190,14 @@
       select.append(versionGroup);
     }
 
+    const comparatorVersions = comparatorTransitions(commits);
+    if (comparatorVersions.length) {
+      const comparatorGroup = element('optgroup', { label: 'Comparator versions' });
+      for (const { name, version, commit } of comparatorVersions)
+        comparatorGroup.append(element('option', { value: `cmp:${name}@${version}` }, `Since ${name} ${version} (${short(commit)} · ${shortDate(commit)})`));
+      select.append(comparatorGroup);
+    }
+
     const commitGroup = element('optgroup', { label: 'Commits (newest first)' });
     for (let i = commits.length - 1; i >= 0; i--) {
       const item = commits[i];
@@ -202,7 +245,7 @@
     else span.textContent = text;
     container.append(span);
   }
-  function comparison(scenario, rows, relative, output, baselineValue, metric = 'instructions', counters = () => '') {
+  function comparison(scenario, rows, relative, output, baselineValue, metric = 'instructions', counters = () => '', label = engine => engine) {
     const panel = element('section', { class: 'rv-perf-panel' });
     const header = element('header');
     const sorted = [...rows].sort((a, b) => rank(a.Engine) - rank(b.Engine) || a.Engine.localeCompare(b.Engine));
@@ -220,14 +263,14 @@
       const amount = shown(row.Value);
       const valid = amount !== null;
       const value = !valid ? 'unavailable' : relativeAvailable ? `${ratio(amount / baseline)}×` : number(amount);
-      group.append(svgElement('text', { x: 0, y, class: 'rv-perf-svg-label' }, row.Engine));
+      group.append(svgElement('text', { x: 0, y, class: 'rv-perf-svg-label' }, label(row.Engine)));
       group.append(svgElement('text', { x: 640, y, 'text-anchor': 'end', class: 'rv-perf-svg-value' }, value));
       group.append(svgElement('line', { x1: 0, x2: 640, y1: y + 22, y2: y + 22, class: 'rv-perf-track' }));
       if (valid) group.append(svgElement('rect', { x: 0, y: y + 15, width: Math.max(amount === 0 ? 0 : 1.5, amount / max * 640), height: 14, rx: 2, fill: colour(row.Engine) }));
       group.append(svgElement('rect', { x: 0, y: y - 12, width: 640, height: 48, fill: 'transparent' }));
       const range = valid && processRange(row) ? ` (${processRange(row)})` : '';
       const library = counters(row.Engine);
-      inspectable(group, `${scenario} · ${row.Engine}: ${valid ? `${number(amount)} ${unit}${range}` : 'measurement unavailable'}${relativeAvailable && valid ? ` · ${ratio(amount / baseline)}× Ranvier` : ''}${library ? ` · ${library}` : ''}`, output);
+      inspectable(group, `${scenario} · ${label(row.Engine)}: ${valid ? `${number(amount)} ${unit}${range}` : 'measurement unavailable'}${relativeAvailable && valid ? ` · ${ratio(amount / baseline)}× Ranvier` : ''}${library ? ` · ${library}` : ''}`, output);
       svg.append(group);
     });
     panel.append(svg);
@@ -308,6 +351,8 @@
       [...legend.children].forEach((button, index) => button.setAttribute('aria-pressed', String(!hidden.has(families[index]))));
 
       provenance.replaceChildren(commitLink(selected), document.createTextNode(` · ${fullDate(selected)} · ${selected.Subject}`));
+      const versions = [...families.filter(name => comparatorVersion(selected, name)).map(name => versioned(selected, name)), ...toolchainFor(selected, runtime.select.value)];
+      if (versions.length) provenance.append(document.createTextNode(` · ${versions.join(' · ')}`));
       if (isHistory) {
         if (windowCommits.length < commits.length) provenance.append(document.createTextNode(` · Window: ${windowCommits.length} of ${commits.length} commits (from `), commitLink(windowCommits[0]), document.createTextNode(')'));
         if (selectedWindowIndex > 0) {
@@ -344,11 +389,11 @@
           update();
         });
         const current = visible.filter(row => row.Scenario === scenario.select.value);
-        if (current.length) body.append(comparison(scenario.select.value, current, mode.select.value === 'relative', detail, rows.find(row => row.Scenario === scenario.select.value && row.Engine === 'Ranvier')?.Value, measure, counters(scenario.select.value)));
+        if (current.length) body.append(comparison(scenario.select.value, current, mode.select.value === 'relative', detail, rows.find(row => row.Scenario === scenario.select.value && row.Engine === 'Ranvier')?.Value, measure, counters(scenario.select.value), engine => versioned(selected, engine)));
       } else {
         for (const name of available.filter(name => name.toLowerCase().includes(search.value.trim().toLowerCase()))) {
           const matching = visible.filter(row => row.Scenario === name);
-          if (matching.length) body.append(comparison(name, matching, mode.select.value === 'relative', detail, rows.find(row => row.Scenario === name && row.Engine === 'Ranvier')?.Value, measure, counters(name)));
+          if (matching.length) body.append(comparison(name, matching, mode.select.value === 'relative', detail, rows.find(row => row.Scenario === name && row.Engine === 'Ranvier')?.Value, measure, counters(name), engine => versioned(selected, engine)));
         }
       }
       if (!body.children.length) body.append(element('p', { class: 'rv-perf-empty' }, 'No matching measurements. Adjust the filters or show a library.'));
@@ -443,6 +488,15 @@
     }
     svg.append(svgElement('line', { x1: x(selected), x2: x(selected), y1: top, y2: bottom, class: 'rv-perf-selected' }));
     if (relative && high >= 1) svg.append(svgElement('line', { x1: left, x2: right, y1: y(1), y2: y(1), class: 'rv-perf-reference' }));
+    rawSeries.forEach(({ engine }) => {
+      commits.forEach((commit, index) => {
+        const changed = index > 0 && comparatorChange(commits[index - 1], commit, engine);
+        if (!changed) return;
+        const marker = svgElement('path', { d: `M${x(index)},${top + 1} l-5,-8 h10 Z`, fill: colour(engine), class: 'rv-perf-comparator-change' });
+        marker.append(svgElement('title', {}, `${family(engine)} ${changed.from} → ${changed.to} at ${short(commit)}`));
+        svg.append(marker);
+      });
+    });
     rawSeries.forEach(({ engine, raw, plotted: points }) => {
       let path = '', connected = false;
       points.forEach((value, index) => {
@@ -459,7 +513,7 @@
         const formatted = change ? `${number(raw[index])} ${unit} (${percent(value)})`
           : relative ? `${ratio(value)}× Ranvier`
           : `${number(value)} ${unit}`;
-        inspectable(dot, `${short(commits[index])} · ${commits[index].Subject} · ${engine}: ${formatted}`, detail);
+        inspectable(dot, `${short(commits[index])} · ${commits[index].Subject} · ${versioned(commits[index], engine)}: ${formatted}`, detail);
         dot.addEventListener('click', () => onSelect(index));
         dot.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(index); } });
         svg.append(dot);
@@ -632,6 +686,12 @@
       const startVer = ranvierVersion(firstCommit);
       const endVer = ranvierVersion(lastCommit);
       if (startVer && endVer && startVer !== endVer) provenance.append(document.createTextNode(` · v${startVer} → v${endVer}`));
+      for (const name of references) {
+        const changed = comparatorChange(firstCommit, lastCommit, name);
+        const version = comparatorVersion(lastCommit, name);
+        if (changed) provenance.append(document.createTextNode(` · ${name} ${changed.from} → ${changed.to}`));
+        else if (version) provenance.append(document.createTextNode(` · ${name} ${version}`));
+      }
       if (resolved.choice !== defaultFromChoice(commits)) {
         const resetButton = element('button', { type: 'button', class: 'rv-perf-action' }, 'Reset window');
         resetButton.addEventListener('click', () => {
@@ -834,6 +894,11 @@
       return counted(index - 1) && value !== counters[index - 1];
     });
     const acceptedList = windowCommits.map(commit => acceptedFor(commit, runtime, scenario, subject, metric));
+    // Reference libraries whose recorded version differs from the previous commit's, one entry per library.
+    const changesAt = index => others
+      .map(engine => ({ engine, change: comparatorChange(index === 0 ? priorCommit : windowCommits[index - 1], windowCommits[index], engine) }))
+      .filter(item => item.change)
+      .filter((item, position, list) => list.findIndex(other => family(other.engine) === family(item.engine)) === position);
 
     const variant = subject.includes(' (') ? subject.slice(subject.indexOf(' (') + 2, -1) : '';
     const name = variant ? `${scenario} · ${variant}` : scenario;
@@ -914,6 +979,10 @@
         const mx = hasCounter ? cx + 7 : cx;
         svg.append(svgElement('path', { d: `M${mx},${bottom + 2} l5,5 l-5,5 l-5,-5 Z`, class: 'rv-perf-accepted-mark' }));
       }
+      changesAt(index).forEach(({ engine }, position) => {
+        const mx = cx + position * 11;
+        svg.append(svgElement('path', { d: `M${mx},${top + 1} l-5,-8 h10 Z`, fill: colour(engine), class: 'rv-perf-comparator-change' }));
+      });
     });
 
     const subjectSeries = series[0]?.engine === subject ? series[0] : null;
@@ -983,10 +1052,10 @@
       series.forEach((item, seriesIndex) => {
         if (seriesIndex > 0) container.append(document.createTextNode(' · '));
         if (item.raw[index] === null) {
-          container.append(document.createTextNode(`${item.engine}: not recorded`));
+          container.append(document.createTextNode(`${versioned(windowCommits[index], item.engine)}: not recorded`));
           return;
         }
-        container.append(document.createTextNode(`${item.engine}: ${number(item.raw[index])} ${unit}`));
+        container.append(document.createTextNode(`${versioned(windowCommits[index], item.engine)}: ${number(item.raw[index])} ${unit}`));
         const notes = [];
         if (item.engine === subject) {
           const prev = prevRecordedInFull(index);
@@ -1020,6 +1089,8 @@
         const prefix = countersChanged[index] ? ' · ▲ library counters changed: ' : ' · library counters: ';
         container.append(document.createTextNode(`${prefix}${counters[index]}`));
       }
+      for (const { engine, change } of changesAt(index))
+        container.append(document.createTextNode(` · ▽ ${family(engine)} ${change.from} → ${change.to}`));
       const accepted = acceptedList[index];
       if (accepted.length) {
         const reason = accepted.map(item => item.Reason).filter(Boolean).join('; ') || 'accepted';

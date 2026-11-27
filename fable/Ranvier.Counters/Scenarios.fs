@@ -1,8 +1,8 @@
 /// <summary>
-/// The five workloads of <c>bench/Ranvier.Counters</c>, one implementation
-/// per engine, under Fable. Every engine builds the same shape: a root holds a
-/// shared source and its rows, and a row is a source of its own plus one
-/// reaction reading the row and the shared source.
+/// The workloads of <c>bench/Ranvier.Counters</c> under Fable, with a Fable.Ripple implementation of each workload
+/// that Fable.Ripple's API expresses. Engines of a scenario build the same shape; in the row workloads a root holds a
+/// shared source and its rows, and a row is a source of its own plus one reaction reading the row and the shared
+/// source.
 /// </summary>
 module FableCounters.Scenarios
 
@@ -467,6 +467,258 @@ module private Ripple =
             Teardown = noTeardown
         }
 
+    /// <summary>
+    /// The <c>Ranvier.chainMap</c> shape: four <c>Signal.map</c> steps over a source.
+    /// </summary>
+    let chainMap (n: int) =
+        let source = Var.create 0
+
+        let tail =
+            (source :> Signal<int>)
+            |> Signal.map (fun v -> v + 1)
+            |> Signal.map (fun v -> v + 1)
+            |> Signal.map (fun v -> v + 1)
+            |> Signal.map (fun v -> v + 1)
+
+        sink <- tail.Value
+        let next = ref 0
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        next.Value <- next.Value + 1
+                        source.Value <- next.Value
+                        sink <- tail.Value
+            Teardown = noTeardown
+        }
+
+    /// <summary>
+    /// The <c>Ranvier.derivedCutoff</c> shape. <c>split</c> derives the value in a <c>Signal.computed</c> read by the
+    /// effect; otherwise the effect derives it in its body.
+    /// </summary>
+    let derivedCutoff (split: bool) (n: int) =
+        let source = Var.create 1
+
+        let (), handle =
+            Signal.root (fun () ->
+                if split then
+                    let derived = Signal.computed (fun () -> source.Value >>> 30)
+
+                    Signal.effect (fun () -> sink <- derived.Value)
+                    |> ignore
+                else
+                    Signal.effect (fun () -> sink <- source.Value >>> 30)
+                    |> ignore)
+
+        let next = ref 1
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        next.Value <- next.Value + 1
+                        source.Value <- next.Value
+            Teardown = fun () -> handle.Dispose ()
+        }
+
+    /// <summary>
+    /// The <c>Ranvier.labelled</c> shape. <c>split</c> derives the row's value in a <c>Signal.computed</c> read by the
+    /// formatting effect.
+    /// </summary>
+    let private labelled (derive: int -> int) (split: bool) (n: int) =
+        let rowSources, handle =
+            Signal.root (fun () ->
+                Array.init RowCount (fun i ->
+                    let row = Var.create i
+
+                    if split then
+                        let derived = Signal.computed (fun () -> derive row.Value)
+
+                        Signal.effect (fun () -> label <- String.Concat ("row ", string derived.Value))
+                        |> ignore
+                    else
+                        Signal.effect (fun () -> label <- String.Concat ("row ", string (derive row.Value)))
+                        |> ignore
+
+                    row))
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        for i in 0..UpdateStride .. RowCount - 1 do
+                            let row = rowSources[i]
+                            row.Value <- row.Peek () + 1
+            Teardown = fun () -> handle.Dispose ()
+        }
+
+    let status = labelled (fun v -> v / 10)
+
+    let value = labelled id
+
+    /// <summary>
+    /// The <c>Ranvier.form</c> shape. <c>split</c> derives validity in a <c>Signal.computed</c>; otherwise an effect
+    /// writes it to a <c>Var</c>. One downstream effect reads validity.
+    /// </summary>
+    let form (split: bool) (n: int) =
+        let forms = RowCount / FormFields
+
+        let fieldSources, handle =
+            Signal.root (fun () ->
+                Array.init forms (fun f ->
+                    let fields = Array.init FormFields (fun i -> Var.create ((f + i) % 50))
+
+                    let validate () =
+                        let mutable sum = 0
+                        let mutable filled = true
+
+                        for field in fields do
+                            let v = field.Value
+                            sum <- sum + v
+                            filled <- filled && v > 0
+
+                        filled && sum < 300
+
+                    let valid: Signal<bool> =
+                        if split then
+                            Signal.computed validate
+                        else
+                            let valid = Var.create false
+
+                            Signal.effect (fun () -> valid.Value <- validate ())
+                            |> ignore
+
+                            valid :> Signal<bool>
+
+                    Signal.effect (fun () -> sink <- if valid.Value then 1 else 0)
+                    |> ignore
+
+                    fields))
+
+        let next = ref 0
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        next.Value <- (next.Value + 1) % FormFields
+
+                        for fields in fieldSources do
+                            let field = fields[next.Value]
+                            field.Value <- (field.Peek () + 1) % 50
+            Teardown = fun () -> handle.Dispose ()
+        }
+
+    /// <summary>The <c>Workloads.wideDiamond</c> shape with <c>Signal.computed</c> branches and join.</summary>
+    let wideDiamond (n: int) =
+        let source = Var.create 0
+
+        let (), handle =
+            Signal.root (fun () ->
+                let branches =
+                    Array.init Workloads.DiamondWidth (fun j -> Signal.computed (fun () -> source.Value + j))
+
+                let sum =
+                    Signal.computed (fun () ->
+                        let mutable total = 0
+
+                        for branch in branches do
+                            total <- total + branch.Value
+
+                        total)
+
+                Signal.effect (fun () -> sink <- sum.Value)
+                |> ignore)
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        source.Value <- source.Peek () + 1
+            Teardown = fun () -> handle.Dispose ()
+        }
+
+    /// <summary>The <c>Workloads.dynamicBranches</c> shape with one <c>Signal.effect</c> per reader.</summary>
+    let dynamicBranches (n: int) =
+        let condition = Var.create true
+        let a = Array.init Workloads.DynamicReaders Var.create
+        let b = Array.init Workloads.DynamicReaders Var.create
+
+        let (), handle =
+            Signal.root (fun () ->
+                for i in 0 .. Workloads.DynamicReaders - 1 do
+                    Signal.effect (fun () -> sink <- if condition.Value then a[i].Value else b[i].Value)
+                    |> ignore)
+
+        {
+            Run =
+                fun () ->
+                    for op in 1..n do
+                        if op % 2 = 1 then
+                            condition.Value <- not (condition.Peek ())
+                        else
+                            let active = if condition.Peek () then a else b
+
+                            for source in active do
+                                source.Value <- source.Peek () + 1
+            Teardown = fun () -> handle.Dispose ()
+        }
+
+    /// <summary>
+    /// The <c>Workloads.selection</c> shape. <c>read</c> builds the row's selection test from the selected index.
+    /// </summary>
+    let private selectionWith (read: Var<int> -> (int -> bool)) (n: int) =
+        let rows = Array.init Workloads.Rows Var.create
+        let selected = Var.create 0
+
+        let (), handle =
+            Signal.root (fun () ->
+                let isSelected = read selected
+
+                for i in 0 .. Workloads.Rows - 1 do
+                    Signal.effect (fun () -> sink <- if isSelected i then rows[i].Value else 0)
+                    |> ignore)
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        selected.Value <- (selected.Peek () + 37) % Workloads.Rows
+            Teardown = fun () -> handle.Dispose ()
+        }
+
+    /// <summary>Every row compares the selected index.</summary>
+    let selectionCompare = selectionWith (fun selected i -> selected.Value = i)
+
+
+    /// <summary>The <c>Workloads.batchWrites</c> shape: every write of an operation inside one <c>Signal.batch</c>.</summary>
+    let batchWrites (n: int) =
+        let sources = Array.init Workloads.BatchWidth Var.create
+
+        let (), handle =
+            Signal.root (fun () ->
+                Signal.effect (fun () ->
+                    let mutable total = 0
+
+                    for source in sources do
+                        total <- total + source.Value
+
+                    sink <- total)
+                |> ignore)
+
+        let write () =
+            for source in sources do
+                source.Value <- source.Peek () + 1
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        Signal.batch write
+            Teardown = fun () -> handle.Dispose ()
+        }
+
 let private workload (prepare: int -> Workloads.Workload) (n: int) : Prepared =
     let prepared = prepare n
 
@@ -535,20 +787,31 @@ let all (scale: int) : Case list =
         yield!
             scenario "update-on" $"write every %d{UpdateStride}th of %d{RowCount} createEffectOn rows" (50 * scale) [ "Ranvier", Ranvier.update true ]
         yield! scenario "dispose-on" $"dispose one root of %d{RowCount} createEffectOn rows" (8 * scale) [ "Ranvier", Ranvier.dispose true ]
-        yield! scenario "chain-map" "write the source of 4 mapped memos, read the tail" (5000 * scale) [ "Ranvier", Ranvier.chainMap ]
+        yield!
+            scenario
+                "chain-map"
+                "write the source of 4 mapped memos, read the tail"
+                (5000 * scale)
+                [ "Ranvier", Ranvier.chainMap; "Fable.Ripple", Ripple.chainMap ]
         yield! scenario "chain-on" "write the source of 4 createMemoOn memos, read the tail" (5000 * scale) [ "Ranvier", Ranvier.chainMemoOn ]
         yield!
             scenario
                 "derive-effect"
                 "write a new value whose derived value is unchanged, Effect"
                 (50000 * scale)
-                [ "Ranvier", Ranvier.derivedCutoff false ]
+                [
+                    "Ranvier", Ranvier.derivedCutoff false
+                    "Fable.Ripple", Ripple.derivedCutoff false
+                ]
         yield!
             scenario
                 "derive-on"
                 "write a new value whose derived value is unchanged, createEffectOn"
                 (50000 * scale)
-                [ "Ranvier", Ranvier.derivedCutoff true ]
+                [
+                    "Ranvier", Ranvier.derivedCutoff true
+                    "Fable.Ripple (computed + effect)", Ripple.derivedCutoff true
+                ]
         yield!
             scenario
                 "work-status"
@@ -557,6 +820,8 @@ let all (scale: int) : Case list =
                 [
                     "Ranvier (createEffect)", Ranvier.status false
                     "Ranvier (createEffectOn)", Ranvier.status true
+                    "Fable.Ripple (effect)", Ripple.status false
+                    "Fable.Ripple (computed + effect)", Ripple.status true
                 ]
         yield!
             scenario
@@ -566,6 +831,8 @@ let all (scale: int) : Case list =
                 [
                     "Ranvier (createEffect)", Ranvier.value false
                     "Ranvier (createEffectOn)", Ranvier.value true
+                    "Fable.Ripple (effect)", Ripple.value false
+                    "Fable.Ripple (computed + effect)", Ripple.value true
                 ]
         yield!
             scenario
@@ -575,6 +842,8 @@ let all (scale: int) : Case list =
                 [
                     "Ranvier (createEffect)", Ranvier.form false
                     "Ranvier (createEffectOn)", Ranvier.form true
+                    "Fable.Ripple (effect)", Ripple.form false
+                    "Fable.Ripple (computed)", Ripple.form true
                 ]
         for name, unit, edit in
             [
@@ -608,13 +877,38 @@ let all (scale: int) : Case list =
                 "shape-diamond"
                 $"write a source read by %d{Workloads.DiamondWidth} memos joined by one"
                 (5000 * scale)
-                [ "Ranvier", workload Workloads.wideDiamond ]
+                [
+                    "Ranvier", workload Workloads.wideDiamond
+                    "Fable.Ripple", Ripple.wideDiamond
+                ]
         yield!
             scenario
                 "shape-dynamic"
                 $"alternate a branch flip and a write of every active source of %d{Workloads.DynamicReaders} effects"
                 (500 * scale)
-                [ "Ranvier", workload Workloads.dynamicBranches ]
+                [
+                    "Ranvier", workload Workloads.dynamicBranches
+                    "Fable.Ripple", Ripple.dynamicBranches
+                ]
+        yield!
+            scenario
+                "select"
+                $"move the selection over %d{Workloads.Rows} rows, each read by one effect"
+                (50 * scale)
+                [
+                    "Ranvier", workload (Workloads.selection true)
+                    "Ranvier (compare)", workload (Workloads.selection false)
+                    "Fable.Ripple (compare)", Ripple.selectionCompare
+                ]
+        yield!
+            scenario
+                "batch"
+                $"write %d{Workloads.BatchWidth} sources read by one effect inside one batch"
+                (5000 * scale)
+                [
+                    "Ranvier", workload Workloads.batchWrites
+                    "Fable.Ripple", Ripple.batchWrites
+                ]
         yield!
             scenario
                 "async-resolve"

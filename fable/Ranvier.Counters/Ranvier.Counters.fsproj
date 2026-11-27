@@ -33,7 +33,9 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\Ranvier\Ranvier.fsproj" />
         <PackageReference Include="Fable.Core" Version="5.3.0" />
-        <PackageReference Include="Fable.Ripple" Version="1.0.0-beta.5" />
+        <!-- Comparators float to their newest release, prereleases included; each run records the version it
+             restored. -->
+        <PackageReference Include="Fable.Ripple" Version="*-*" />
     </ItemGroup>
 
 </Project>

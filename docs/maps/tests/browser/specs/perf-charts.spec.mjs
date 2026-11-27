@@ -161,6 +161,49 @@ test("trends filter, sort, pin, URL sync, step deltas, counters and accepted not
   expect(problems).toEqual([]);
 });
 
+test("trends and comparisons label comparator versions and mark version changes", async ({ page, problems }) => {
+  const startMs = Date.parse("2026-10-01T12:00:00Z");
+  const synthetic = Array.from({ length: 40 }, (_, i) => ({
+    Commit: `${i.toString(16).padStart(7, "0")}${"b".repeat(33)}`,
+    Date: new Date(startMs + i * 86_400_000).toISOString(),
+    Subject: `commit ${i}`,
+    Packages: [{ Name: "Ranvier", Version: "0.1.0" }],
+    Comparators: [{ Name: "R3", Version: i >= 30 ? "1.3.2" : "1.3.1", Source: i >= 30 ? "measured" : "declared" }],
+    Toolchain: [{ Name: ".NET", Version: "10.0.14" }],
+    Medians: [
+      { Leg: "arm64-counters", Runtime: "dotnet", Scenario: "chain", Engine: "Ranvier", Metric: "instructions", Value: 2500 },
+      { Leg: "arm64-counters", Runtime: "dotnet", Scenario: "chain", Engine: "R3", Metric: "instructions", Value: i >= 30 ? 5000 : 6000 },
+    ],
+  }));
+  await page.route("**/perf-data/signals.json", async route => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ commits: synthetic }) });
+  });
+
+  await page.goto("benchmarks/signals/#perf-trends");
+  await expect(page.locator(".rv-perf-provenance")).toContainText("R3 1.3.1 → 1.3.2");
+  const panel = page.locator(".rv-perf-spark").first();
+  await expect(panel.locator(".rv-perf-comparator-change")).toHaveCount(1);
+
+  // Pressing End then ArrowLeft x 9 inspects commit 30, the first commit of R3 1.3.2.
+  await panel.locator("svg").focus();
+  await page.keyboard.press("End");
+  for (let k = 0; k < 9; k++) await page.keyboard.press("ArrowLeft");
+  const inspect = page.locator(".rv-perf-inspect--sticky");
+  await expect(inspect).toContainText("commit 30");
+  await expect(inspect).toContainText("R3 1.3.2: 5,000 instr/op");
+  await expect(inspect).toContainText("▽ R3 1.3.1 → 1.3.2");
+
+  const fromSelect = page.getByLabel("From", { exact: true });
+  await fromSelect.selectOption("cmp:R3@1.3.2");
+  await expect(page.locator(".rv-perf-provenance")).toContainText("Showing 10 of 40 commits");
+  expect(new URL(page.url()).searchParams.get("from")).toBe("cmp:R3@1.3.2");
+
+  await page.getByRole("tab", { name: "Library comparison" }).first().click();
+  await expect(page.locator(".rv-perf-svg-label", { hasText: "R3 1.3.2" }).first()).toBeVisible();
+  await expect(page.locator("[data-perf-tabs] .rv-perf-provenance").first()).toContainText("R3 1.3.2 · .NET 10.0.14");
+  expect(problems).toEqual([]);
+});
+
 test("counters history respects From window and supports Change since From", async ({ page, problems }) => {
   const synthetic = makeSyntheticHistory(40);
   await page.route("**/perf-data/index.json", async route => {

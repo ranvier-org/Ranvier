@@ -100,6 +100,7 @@
 .rv-perf-spread { opacity: .18; }
 .rv-perf-counter-change { fill: var(--perf-muted); }
 .rv-perf-accepted-mark { fill: var(--rv-pending); }
+.rv-perf-comparator-change { stroke: var(--perf-ink); stroke-width: .6; stroke-opacity: .55; }
 .rv-perf-commit { cursor: pointer; }
 .rv-perf-commit:hover { fill: var(--perf-ink); text-decoration: underline; }
 .rv-perf-commit:focus-visible { fill: var(--perf-ink); text-decoration: underline; outline: 2px solid var(--perf-ink); outline-offset: 3px; }

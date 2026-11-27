@@ -84,7 +84,7 @@ jobs:
           cache-dependency-path: |
             docs/maps/tests/browser/package-lock.json
       - name: Collect performance history
-        run: node .github/scripts/perf-site-data.cjs perf-data/runs docs/static/perf-data/index.json
+        run: node .github/scripts/perf-site-data.cjs perf-data/runs docs/static/perf-data/index.json --repository .
       # The signal maps compile the view projects of a Ranvier.View checkout against this core.
       - name: Check out Ranvier.View beside the repository
         run: .github/scripts/view-sibling.sh
