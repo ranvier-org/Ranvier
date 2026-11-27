@@ -271,6 +271,77 @@ let dynamicBranches (n: int) =
     }
 
 /// <summary>
+/// <c>Rows</c> rows, each a source read by one effect while the row is selected. With <c>selector</c>, every row
+/// reads its selection from one <c>createSelector</c>; otherwise every row compares the selected index. An operation
+/// moves the selection.
+/// </summary>
+let selection (selector: bool) (n: int) =
+    let graph = newGraph ()
+
+    let owner, selected =
+        graph.CreateRoot (fun owner ->
+            use _ = graph.Activate ()
+            let rows = Array.init Rows createSignal
+            let selected = createSignal 0
+
+            if selector then
+                let isSelected = createSelector (fun () -> selected.Value)
+
+                for i in 0 .. Rows - 1 do
+                    createEffect (fun () -> sink <- if isSelected.Get i then rows[i].Value else 0)
+            else
+                for i in 0 .. Rows - 1 do
+                    createEffect (fun () -> sink <- if selected.Value = i then rows[i].Value else 0)
+
+            owner, selected)
+
+    {
+        Run =
+            fun () ->
+                for _ in 1..n do
+                    selected.Value <- (selected.Peek + 37) % Rows
+        Teardown = teardown owner graph
+    }
+
+[<Literal>]
+let BatchWidth = 8
+
+/// <summary>
+/// <c>BatchWidth</c> sources read by one effect that sums them. An operation writes every source inside one
+/// <c>Graph.Batch</c>.
+/// </summary>
+let batchWrites (n: int) =
+    let graph = newGraph ()
+
+    let owner, sources =
+        graph.CreateRoot (fun owner ->
+            use _ = graph.Activate ()
+            let sources = Array.init BatchWidth createSignal
+
+            createEffect (fun () ->
+                let mutable total = 0
+
+                for source in sources do
+                    total <- total + source.Value
+
+                sink <- total)
+
+            owner, sources)
+
+    let write =
+        Func<unit>(fun () ->
+            for source in sources do
+                source.Value <- source.Peek + 1)
+
+    {
+        Run =
+            fun () ->
+                for _ in 1..n do
+                    graph.Batch write
+        Teardown = teardown owner graph
+    }
+
+/// <summary>
 /// <c>Widgets</c> boundaries, each summing <c>SourcesPerWidget</c> async sources held in signals and read by one
 /// effect. <c>boundary</c> wraps a body in <c>createSuspense</c> or <c>createBoundary</c>.
 /// </summary>

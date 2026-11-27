@@ -67,7 +67,16 @@ let nodePanels (sources: string[]) (rows: Report.NodeRow[]) =
 
 /// <summary>Engines in color-slot order. An engine keeps its slot in every chart.</summary>
 let private engineOrder =
-    [| "Ranvier"; "FSharp.Data.Adaptive"; "R3"; "Fable.Ripple" |]
+    [|
+        "Ranvier"
+        "FSharp.Data.Adaptive"
+        "R3"
+        "Fable.Ripple"
+        "Solid"
+        "System.Reactive"
+        "SignalsDotnet"
+        "DynamicData"
+    |]
 
 let private lightSlots =
     [|

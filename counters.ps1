@@ -81,6 +81,9 @@ $savedCounters = $env:RanvierCounters
 try {
     Invoke-Checked dotnet @('tool', 'restore')
 
+    # The harness imports the newest release of each npm package its package.json names.
+    Invoke-Checked npm @('install', '--prefix', $fableProject, '--no-package-lock', '--ignore-scripts', '--no-audit', '--no-fund')
+
     # Fickl cracks the project with MSBuild, which reads RanvierCounters from the
     # environment.
     Remove-Item Env:RanvierCounters -ErrorAction SilentlyContinue

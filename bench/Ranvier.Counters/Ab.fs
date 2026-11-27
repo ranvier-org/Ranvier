@@ -422,6 +422,29 @@ let private versions (side: Side) =
                 Label.Name = side.Name + ":" + name
                 Value = text
             })
+        |> fun labels ->
+            let mutable found = Unchecked.defaultof<JsonElement>
+
+            let comparators =
+                if
+                    json.RootElement.TryGetProperty ("Comparators", &found)
+                    && found.ValueKind = JsonValueKind.Object
+                then
+                    let entries = found
+                    entries.EnumerateObject () |> Seq.toList
+                else
+                    []
+
+            labels
+            @ (comparators
+               |> List.filter (fun library ->
+                   library.Value.ValueKind = JsonValueKind.String
+                   && nonempty (library.Value.GetString ()))
+               |> List.map (fun library ->
+                   {
+                       Label.Name = side.Name + ":" + library.Name
+                       Value = library.Value.GetString ()
+                   }))
 
 let private matching (timing: ProcessFigures) (instrumented: ProcessFigures) =
     let keys f =

@@ -131,6 +131,12 @@ let private settle (case: Case) =
         prepared.Teardown ()
         runs <- runs + 1
 
+/// <summary>The measurement group of a case: 0 for Ranvier, 1 for a comparator library, 2 for the control.</summary>
+let private group (case: Case) =
+    if case.Engine.StartsWith "Ranvier" then 0
+    elif case.Engine = "Control" then 2
+    else 1
+
 /// <summary>
 /// Runs <c>ops</c> operations of <c>case</c>, between the markers numbered <c>region</c> when
 /// <c>handshake</c> holds.
@@ -210,11 +216,10 @@ let main argv =
         && (options.Scenario = ""
             || case.Scenario = options.Scenario)
 
-    // Measures the selected cases, numbering their regions from 2 * first.
-    let measureAll (first: int) (cases: Case list) =
+    // Measures the cases in list order, numbering their regions from 2 * first; each result carries its position.
+    let measureAll (first: int) (cases: (int * Case) list) =
         cases
-        |> List.filter selected
-        |> List.mapi (fun offset case ->
+        |> List.mapi (fun offset (position, case) ->
             let index = first + offset
 
             for _ in 1 .. options.Warmup do
@@ -238,6 +243,7 @@ let main argv =
 
             Node.setTierUp true
 
+            position,
             {|
                 Scenario = case.Scenario
                 Engine = case.Engine
@@ -267,10 +273,31 @@ let main argv =
         |> List.distinct
         |> List.iter (Node.writeLine 1)
     else
-        let measured = measureAll 0 (Scenarios.all options.Scale)
+        // Ranvier's declared cases run before the appended module loads; the appended Ranvier cases, the comparator
+        // libraries' cases and the control follow. Results keep the declared order, appended cases last.
+        let declared =
+            Scenarios.all options.Scale
+            |> List.filter selected
+            |> List.indexed
+
+        let ranvier, comparators =
+            declared
+            |> List.partition (fun (_, case) -> group case = 0)
+
+        let measured = measureAll 0 ranvier
+
+        let appended =
+            loadAppended options.Scale
+            |> List.filter selected
+            |> List.mapi (fun offset case -> declared.Length + offset, case)
 
         let results =
-            Array.append measured (measureAll measured.Length (loadAppended options.Scale))
+            comparators @ appended
+            |> List.sortBy (snd >> group)
+            |> measureAll measured.Length
+            |> Array.append measured
+            |> Array.sortBy fst
+            |> Array.map snd
 
         let run =
             {|

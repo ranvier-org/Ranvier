@@ -1,7 +1,7 @@
 {
-  "signals": ["chain", "cutoff"],
-  "memos": ["chain", "shape-diamond"],
-  "effects": ["work-", "mvu-dispatch", "editable-"],
+  "signals": ["chain", "cutoff", "batch"],
+  "memos": ["chain", "shape-diamond", "select"],
+  "effects": ["work-", "mvu-dispatch", "editable-", "derive-", "shape-dynamic"],
   "lifetimes": ["create", "dispose"],
   "projections": ["project-", "keyed-"],
   "suspension": ["flight", "fail-recompute", "async-"],
