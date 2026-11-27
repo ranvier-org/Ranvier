@@ -50,6 +50,9 @@ try {
                 if ($nuspec.SelectNodes("//*[local-name()='dependency' and @id='Fable.Package.SDK']").Count -ne 0) {
                     throw "$id must not depend on the Fable packaging SDK at runtime"
                 }
+                if ($nuspec.SelectNodes("//*[local-name()='dependency' and @id='Fable.Core']").Count -ne 0) {
+                    throw "$id must not declare Fable.Core as a package dependency"
+                }
                 $dependencies = $nuspec.SelectNodes("//*[local-name()='dependency' and @id='FSharp.Core']")
                 if ($dependencies.Count -ne 2) { throw "$id must declare FSharp.Core for both targets" }
                 foreach ($dependency in $dependencies) {

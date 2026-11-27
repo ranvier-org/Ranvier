@@ -3,14 +3,18 @@ namespace Ranvier.Query
 open System
 open System.Threading
 open System.Threading.Tasks
+#if FABLE_COMPILER
 open Fable.Core
+#endif
 open Ranvier
 
 /// <summary>Client-owned remote writes and their atomic query reconciliation.</summary>
 [<AutoOpen>]
 module QueryMutationExtensions =
     /// <summary>Settles cancellation using each target's completion-source spelling.</summary>
+#if FABLE_COMPILER
     [<Emit("$0.SetCancelled()")>]
+#endif
     let private cancelResult (source: TaskCompletionSource<'T>) =
         source.SetCanceled ()
 

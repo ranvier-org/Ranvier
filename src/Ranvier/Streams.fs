@@ -92,6 +92,8 @@ type internal IStreamKeyStarter<'S> =
     abstract CommitNextKey: unit -> unit
     abstract StartUntracked: requester: IStreamRequester * gen: int * token: CancellationToken -> IStreamRun<'S>
     abstract Phase1Exception: exn
+    abstract Adopt: companion: IDisposable -> unit
+    abstract DisposeAdopted: unit -> unit
 
 #if FABLE_COMPILER
 type internal FoldDelegate<'S, 'T> = 'S -> 'T -> 'S
@@ -319,6 +321,7 @@ type internal StreamKeyStarter<'K, 'S, 'T>
     let mutable lastKey = Platform.zero<'K>()
     let mutable candidateKey = Platform.zero<'K>()
     let mutable phase1Ex: exn = Platform.nil ()
+    let mutable adopted: IDisposable = Platform.nil ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private _.CompareKeyGuarded(nextKey: 'K) : StreamPhase1Result =
@@ -360,6 +363,22 @@ type internal StreamKeyStarter<'K, 'S, 'T>
             StreamRun<'S, 'T>(graph, seed, fold, requester, gen, source, token) :> IStreamRun<'S>
 
         member _.Phase1Exception = phase1Ex
+
+        member _.Adopt(companion: IDisposable) =
+            let replaced = adopted
+            adopted <- companion
+
+            if
+                not (Platform.isNull replaced)
+                && not (obj.ReferenceEquals (replaced, companion))
+            then
+                replaced.Dispose ()
+
+        member _.DisposeAdopted() =
+            if not (Platform.isNull adopted) then
+                let companion = adopted
+                adopted <- Platform.nil ()
+                companion.Dispose ()
 
 /// <summary>How a publication reaches the stream memo's readers when its state moved.</summary>
 type internal StreamNotice =
@@ -1289,11 +1308,21 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
         member _.TraceGraph = box graph
 #endif
 
+    member internal _.Adopt(companion: IDisposable) =
+        if disposed then
+            companion.Dispose ()
+        elif isSplit then
+            keyStarter.Adopt companion
+
     interface IReactive<'S> with
         member _.Graph = graph
 
         member this.ReadTracked() =
             this.Value
+
+    interface ITryReactive<'S> with
+        member this.ReadTryTracked() =
+            this.TryValue
 
     interface INode with
         member _.Id = id
@@ -1524,6 +1553,10 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
                         link <- null
 
                     sources.Clear (this :> IComputation)
+
+                    if isSplit then
+                        keyStarter.DisposeAdopted ()
+
                     this.Stop StreamEnd.Disposed
 
                     if StatusBits.isPending status then

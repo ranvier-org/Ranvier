@@ -10776,6 +10776,13 @@ type IReactive<'T> =
     /// <summary>Tracked read of the current value, raising <c>NotReadyException</c> when pending or the failure when errored.</summary>
     abstract ReadTracked: unit -> 'T
 
+/// <summary>Common non-throwing tracked-read contract shared by reactive value nodes.</summary>
+[<System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type ITryReactive<'T> =
+    inherit IReactive<'T>
+    /// <summary>Tracked non-throwing read returning <c>Ready</c>, <c>Pending</c>, or <c>Failed</c>.</summary>
+    abstract ReadTryTracked: unit -> Reading<'T>
+
 /// <summary>
 /// A settable source.
 /// </summary>
@@ -11371,6 +11378,10 @@ type Signal<'T> private (graph: Graph, initial: 'T, equal: IEqualityComparer<'T>
         member this.ReadTracked() =
             this.Value
 
+    interface ITryReactive<'T> with
+        member this.ReadTryTracked() =
+            this.TryValue
+
 /// <summary>
 /// A source whose value arrives later.
 /// </summary>
@@ -11754,6 +11765,10 @@ type AsyncSource<'T>(graph: Graph) =
 
         member this.ReadTracked() =
             this.Value
+
+    interface ITryReactive<'T> with
+        member this.ReadTryTracked() =
+            this.TryValue
 
 #if FABLE_COMPILER
 type internal Map2Delegate<'A, 'B, 'C> = 'A -> 'B -> 'C
@@ -13635,6 +13650,10 @@ type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: '
         member this.ReadTracked() =
             this.Value
 
+    interface ITryReactive<'T> with
+        member this.ReadTryTracked() =
+            this.TryValue
+
     interface INode with
         member _.Id = node.NodeId
 
@@ -14475,10 +14494,12 @@ type internal EffectOn<'T> private (g: Graph, compute: unit -> 'T, act: 'T -> un
     inherit Node(g.NextId (), g, NodeFlags.InitEffectOn)
     let mutable last = Unchecked.defaultof<'T>
     let mutable error: exn = Platform.nil ()
+    let mutable adopted: IDisposable = Platform.nil ()
 #else
     inherit Node(g.NextId (), NodeKind.EffectOn, g, Freshness.Clean)
     let mutable last = Unchecked.defaultof<'T>
     let mutable error: exn = Platform.nil ()
+    let mutable adopted: IDisposable = Platform.nil ()
     let mutable hasActed = false
     let mutable acting = false
 #endif
@@ -14933,9 +14954,26 @@ type internal EffectOn<'T> private (g: Graph, compute: unit -> 'T, act: 'T -> un
             finally
                 recorder.LeaveDerived ())
 
+    member internal this.Adopt(companion: IDisposable) =
+        if this.IsDisposed then
+            companion.Dispose ()
+        else
+            let replaced = adopted
+            adopted <- companion
+
+            if not (Platform.isNull replaced) then
+                replaced.Dispose ()
+
+    member private _.DisposeAdopted() =
+        if not (Platform.isNull adopted) then
+            let companion = adopted
+            adopted <- Platform.nil ()
+            companion.Dispose ()
+
     /// <summary>Detaches from the sources and disposes the action's scope. Idempotent.</summary>
     member this.Dispose() =
         this.DisposeFromUser ()
+        this.DisposeAdopted ()
 
     member _.Error = error
 
@@ -14966,7 +15004,7 @@ type internal EffectOn<'T> private (g: Graph, compute: unit -> 'T, act: 'T -> un
 
     interface IDisposable with
         member this.Dispose() =
-            this.DisposeFromUser ()
+            this.Dispose ()
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -15040,6 +15078,8 @@ type internal IAsyncKeyPhase<'U> =
     abstract ResetKey: unit -> unit
     abstract LaunchBody: host: Graph * previous: Previous<'U> * token: CancellationToken -> Task<'U>
     abstract Phase1Exception: exn
+    abstract Adopt: companion: IDisposable -> unit
+    abstract DisposeAdopted: unit -> unit
 
 /// <summary>Typed state of a two-phase <c>AsyncMemo&lt;'U&gt;</c> created by <c>createAsyncOn*</c>.</summary>
 [<Sealed>]
@@ -15052,6 +15092,7 @@ type internal AsyncOnState<'K, 'U>(read: unit -> 'K, compute: 'K -> Previous<'U>
     let mutable lastKey = Platform.zero<'K>()
     let mutable candidateKey = Platform.zero<'K>()
     let mutable phase1Ex: exn = Platform.nil ()
+    let mutable adopted: IDisposable = Platform.nil ()
 #if !FABLE_COMPILER
     let mutable activeKey = Unchecked.defaultof<'K>
 
@@ -15108,6 +15149,22 @@ type internal AsyncOnState<'K, 'U>(read: unit -> 'K, compute: 'K -> Previous<'U>
 #endif
 
         member _.Phase1Exception = phase1Ex
+
+        member _.Adopt(companion: IDisposable) =
+            let replaced = adopted
+            adopted <- companion
+
+            if
+                not (Platform.isNull replaced)
+                && not (obj.ReferenceEquals (replaced, companion))
+            then
+                replaced.Dispose ()
+
+        member _.DisposeAdopted() =
+            if not (Platform.isNull adopted) then
+                let companion = adopted
+                adopted <- Platform.nil ()
+                companion.Dispose ()
 
 /// <summary>
 /// A derived computation whose value arrives later: the body runs synchronously and returns a <c>Task</c>. This library's
@@ -16736,6 +16793,12 @@ type AsyncMemo<'T>
         else
             this.RefreshActive ()
 
+    member internal _.Adopt(companion: IDisposable) =
+        if disposed then
+            companion.Dispose ()
+        elif isSplit then
+            keyPhase.Adopt companion
+
     interface IOwned with
         member this.Release() =
             link <- Platform.nil ()
@@ -16775,6 +16838,10 @@ type AsyncMemo<'T>
 
         member this.ReadTracked() =
             this.Value
+
+    interface ITryReactive<'T> with
+        member this.ReadTryTracked() =
+            this.TryValue
 
     interface INode with
         member _.Id = id
@@ -16869,6 +16936,9 @@ type AsyncMemo<'T>
                         link <- Platform.nil ()
 
                     this.DetachSources ()
+
+                    if isSplit then
+                        keyPhase.DisposeAdopted ()
 
                     if not (Platform.isNull (box scope)) then
                         scopeDirty <- false
@@ -17680,6 +17750,10 @@ type Boundary<'T>
 
         member this.ReadTracked() =
             this.Value
+
+    interface ITryReactive<'T> with
+        member this.ReadTryTracked() =
+            this.TryValue
 
     interface INode with
         member _.Id = id

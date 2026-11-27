@@ -637,6 +637,10 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
         member this.ReadTracked() =
             this.Value
 
+    interface ITryReactive<'T> with
+        member this.ReadTryTracked() =
+            this.TryValue
+
 #if RANVIER_TRACE
     interface ITimedTrace with
         member _.TimingGraph = box graph

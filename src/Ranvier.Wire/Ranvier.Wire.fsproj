@@ -11,7 +11,7 @@
     <Description>The JSON wire codec of Ranvier's transports: the same wire text on .NET (including NativeAOT) and Fable, decoding that reports an error instead of raising, and depth and item limits.</Description>
     <PackageTags>json;codec;wire;rpc;fable;fsharp</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <Version>0.2.3</Version>
+    <Version>0.2.4</Version>
     <AssemblyVersion>0.0.0.0</AssemblyVersion>
     <RanvierAotClean>true</RanvierAotClean>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -41,11 +41,6 @@
     <None Include="Vendor/Thoth.Json/LICENSE.txt" Pack="true" PackagePath="licenses/Thoth.Json/" />
     <None Include="README.md" Pack="true" PackagePath="\" />
     <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="\" Visible="false" />
-  </ItemGroup>
-  <ItemGroup>
-    <!-- A package dependency on both targets, as in src/Ranvier. Only the Fable build uses it: Helpers.fs,
-         Backend.fs and the vendored JavaScript backend call its JS interop behind `#if FABLE_COMPILER`. -->
-    <PackageReference Include="Fable.Core" Version="5.3.0" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
     <PackageReference Include="System.Text.Json" Version="9.0.0" />
