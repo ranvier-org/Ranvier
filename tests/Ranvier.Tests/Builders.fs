@@ -5467,4 +5467,749 @@ let tests =
                 Expect.isTrue (isInvalidOperation rowBadEx) "row and! outside g.Run enforces factoryRow scope"
                 Expect.stringContains rowBadEx.Message "factory body" "error cites factoryRow instead of missing ambient graph"
             }
+
+            testCaseAsync "0.2.4 scope and constructor CEs: signal, cleanup, batched, untracked, root, graph, owner, and dispatch"
+            <| async {
+                let mod10 =
+                    { new IEqualityComparer<int> with
+                        member _.Equals(a, b) =
+                            a % 10 = b % 10
+
+                        member _.GetHashCode x = x % 10
+                    }
+
+                // 1. signal outside active graph throws before running side effects
+                let mutable straySignalSideEffect = false
+
+                let noGraphEx =
+                    Expect.throwsC
+                        (fun () ->
+                            signal {
+                                straySignalSideEffect <- true
+                                return 1
+                            }
+                            |> ignore)
+                        id
+
+                Expect.isTrue (isInvalidOperation noGraphEx) "signal outside active graph throws InvalidOperationException"
+                Expect.isFalse straySignalSideEffect "signal body is not evaluated when Graph.Current is absent"
+
+                use g1 = new Graph ()
+                use g2 = new Graph ()
+                let log = ResizeArray<string>()
+
+                // 2. implicit graph { ... } coexisting with g1.Run(fun () -> ...), signal (+ comparer), cleanup, batched, untracked, root, owner
+                let sPlain, sCmp =
+                    g1 {
+                        let sA =
+                            signal {
+                                use _d = new TrackedDisposable ("sig", log)
+                                let mutable acc = 0
+
+                                for i in 1..4 do
+                                    acc <- acc + i
+
+                                return acc
+                            }
+
+                        let sB =
+                            signal {
+                                comparer mod10
+                                return 3
+                            }
+
+                        return (sA, sB)
+                    }
+
+                Expect.equal sPlain.Value 10 "signal { ... } computes initial value 10"
+                Expect.sequenceEqual log [ "disp:sig" ] "use inside signal { ... } disposes deterministically"
+
+                let viaRunMethod = g1.Run (fun () -> sPlain.Value + sCmp.Value)
+                Expect.equal viaRunMethod 13 "g1.Run(fun () -> ...) coexists with implicit g1 { ... } CE"
+
+                // Nested g1 { ... g2 { ... } ... } restores Graph.Current
+                g1 {
+                    Expect.isTrue (obj.ReferenceEquals (Graph.Current, g1)) "outer g1 active"
+
+                    let innerSame = g2 { return obj.ReferenceEquals (Graph.Current, g2) }
+
+                    Expect.isTrue innerSame "inner g2 active"
+                    Expect.isTrue (obj.ReferenceEquals (Graph.Current, g1)) "outer g1 restored after inner g2 { ... }"
+                }
+
+                // signal { comparer } suppresses equal writes
+                let cmpSeen = ResizeArray<int>()
+
+                let rootScope =
+                    g1 {
+                        return
+                            root {
+                                effect {
+                                    let! v = sCmp
+                                    cmpSeen.Add v
+                                }
+
+                                cleanup {
+                                    use _c = new TrackedDisposable ("root-clean-use", log)
+                                    log.Add "root-disposed"
+                                }
+                            }
+                    }
+
+                Expect.sequenceEqual cmpSeen [ 3 ] "initial effect run inside root { ... }"
+                sCmp.Value <- 13
+                Expect.sequenceEqual cmpSeen [ 3 ] "signal { comparer mod10 } suppresses equal write 13"
+                sCmp.Value <- 14
+                Expect.sequenceEqual cmpSeen [ 3; 14 ] "signal { comparer mod10 } wakes on unequal write 14"
+
+                rootScope.Dispose ()
+                sCmp.Value <- 25
+                Expect.sequenceEqual cmpSeen [ 3; 14 ] "disposing root { ... } stops enclosed effect"
+
+                Expect.isTrue
+                    (log.Contains "root-disposed"
+                     && log.Contains "disp:root-clean-use")
+                    "cleanup { ... } ran on root disposal"
+
+                // root { let! o = root.owner; return ... } + nested root reentrancy + implicit owner { ... }
+                let outerVal, outerOwner, innerOwner =
+                    g1 {
+                        return
+                            root {
+                                let! oOuter = root.owner
+
+                                let inner =
+                                    root {
+                                        let! oInner = root.owner
+                                        return oInner
+                                    }
+
+                                let! oOuterAfter = root.owner
+                                Expect.isTrue (obj.ReferenceEquals (oOuter, oOuterAfter)) "nested root preserves outer root.owner"
+                                return (sPlain.Value + 5, oOuter, inner)
+                            }
+                    }
+
+                Expect.equal outerVal 15 "root { return ... } returns computed value"
+                Expect.isFalse (obj.ReferenceEquals (outerOwner, innerOwner)) "inner and outer owners are distinct"
+
+                let ownerLog = ResizeArray<string>()
+
+                g1 {
+                    innerOwner {
+                        cleanup { ownerLog.Add "inner-owner-clean" }
+
+                        effect {
+                            let! v = sPlain
+                            ownerLog.Add $"inner-eff:{v}"
+                        }
+                    }
+                }
+
+                Expect.sequenceEqual ownerLog [ "inner-eff:10" ] "owner { ... } attaches effect to innerOwner"
+                innerOwner.Dispose ()
+                sPlain.Value <- 11
+                Expect.sequenceEqual ownerLog [ "inner-eff:10"; "inner-owner-clean" ] "disposing innerOwner runs cleanup and stops effect"
+                outerOwner.Dispose ()
+
+                // batched { ... } and untracked { ... } + cleanup/owner pure violation
+                let bA = g1 { return! signal { return 1 } }
+                let bB = g1 { return signal { return 2 } }
+                let bEffRuns = ResizeArray<int>()
+
+                use bScope =
+                    g1 {
+                        return
+                            root {
+                                effect {
+                                    let! a = bA
+                                    let snapB = untracked { return bB.Value * 10 }
+
+                                    bEffRuns.Add (a + snapB)
+                                }
+                            }
+                    }
+
+                Expect.sequenceEqual bEffRuns [ 21 ] "initial untracked snapshot (1 + 20)"
+                bB.Value <- 5
+                Expect.sequenceEqual bEffRuns [ 21 ] "untracked { ... } suppressed dependency on bB"
+
+                let batchSum =
+                    g1 {
+                        return
+                            batched {
+                                bA.Value <- 2
+                                bB.Value <- 7
+                                bA.Value <- 3
+                                return bA.Peek + bB.Peek
+                            }
+                    }
+
+                Expect.equal batchSum 10 "batched { return ... } returns value after coalesced writes"
+                Expect.sequenceEqual bEffRuns [ 21; 73 ] "batched { ... } coalesced writes into a single effect run (3 + 70)"
+                bScope.Dispose ()
+
+                // Pure violation checks for cleanup { ... } and owner { ... }
+                use spareOwner = g1 { return root { () } }
+
+                let badPureCleanup =
+                    memo {
+                        let! x = bA
+                        // fsharpanalyzer: ignore-line-next RAN010
+                        cleanup { ignore x }
+                        return x
+                    }
+
+                let badPureOwner =
+                    memo {
+                        let! x = bA
+                        // fsharpanalyzer: ignore-line-next RAN010
+                        spareOwner { ignore x }
+                        return x
+                    }
+
+                Expect.isTrue (isInvalidOperation (Expect.throwsC (fun () -> badPureCleanup.Value |> ignore) id)) "cleanup inside pure memo raises"
+
+                Expect.isTrue
+                    (isInvalidOperation (Expect.throwsC (fun () -> badPureOwner.Value |> ignore) id))
+                    "owner { ... } inside pure memo raises"
+
+                // 3. Unified dispatch g { ... } across all 4 Run shapes + background thread marshaling
+                let dManual =
+                    new Graph (
+                        GraphOptions.Default.WithDispatcher
+                            { new IGraphDispatcher with
+                                member _.Post _ = ()
+                            }
+                    )
+
+                use _dManualCleanup = dManual
+                let dSig = dManual { return! signal { return 0 } }
+                let dSeen = ResizeArray<int>()
+
+                let _ =
+                    dManual {
+                        effect {
+                            let! v = dSig
+                            dSeen.Add v
+                        }
+                    }
+
+                Expect.sequenceEqual dSeen [ 0 ] "dispatch target effect initial"
+
+                // Inline on owning thread (outside dManual { ... }): batched works inside dispatch!
+                dispatch dManual {
+                    batched {
+                        dSig.Value <- 1
+                        dSig.Value <- 2
+                    }
+                }
+
+                Expect.sequenceEqual dSeen [ 0; 2 ] "unit dispatch { ... } runs inline on graph thread and supports batched"
+
+                let! unitTaskRes =
+                    dispatch dManual {
+                        dSig.Value <- 3
+                        return ()
+                    }
+                    |> Async.AwaitTask
+
+                Expect.equal unitTaskRes () "dispatch { return () } returns Task<unit>"
+                Expect.sequenceEqual dSeen [ 0; 2; 3 ] "dispatch { return () } applied write"
+
+                let! valTaskRes =
+                    dispatch dManual {
+                        dSig.Value <- 4
+                        return dSig.Value * 10
+                    }
+                    |> Async.AwaitTask
+
+                Expect.equal valTaskRes 40 "dispatch { return expr } returns Task<'T>"
+
+                use preCancelled = new CancellationTokenSource ()
+                preCancelled.Cancel ()
+
+                let cancelledUnitTask =
+                    dispatch dManual {
+                        cancellation preCancelled.Token
+                        dSig.Value <- 999
+                    }
+
+                let cancelledValTask =
+                    dispatch dManual {
+                        cancellation preCancelled.Token
+                        return 999
+                    }
+
+                let! uOutcome =
+                    Platform.outcomeOf cancelledUnitTask
+                    |> Async.AwaitTask
+
+                let! vOutcome =
+                    Platform.outcomeOf cancelledValTask
+                    |> Async.AwaitTask
+
+                let isCanceled =
+                    function
+                    | Platform.FlightOutcome.Canceled _ -> true
+                    | _ -> false
+
+                Expect.isTrue (isCanceled uOutcome) "dispatch { cancellation ct; ... } cancels Task<unit> when token pre-cancelled"
+                Expect.isTrue (isCanceled vOutcome) "dispatch { cancellation ct; return ... } cancels Task<'T> when token pre-cancelled"
+                Expect.equal dSig.Value 4 "cancelled dispatch blocks did not run"
+
+#if !FABLE_COMPILER
+                // Off-thread queueing + FIFO Pump (use dedicated Thread + Join so TaskScheduler never inlines on graph thread)
+                let mutable innerDispTask = Unchecked.defaultof<Task<int>>
+
+                let bgThread =
+                    Thread (
+                        ThreadStart (fun () ->
+                            dispatch dManual {
+                                batched {
+                                    dSig.Value <- 50
+                                    dSig.Value <- 60
+                                }
+                            }
+
+                            innerDispTask <-
+                                dispatch dManual {
+                                    dSig.Value <- dSig.Value + 7
+                                    return dSig.Value
+                                })
+                    )
+
+                bgThread.Start ()
+                bgThread.Join ()
+
+                Expect.equal dManual.PendingWork 2 "background dispatch queued 2 items"
+                Expect.equal dSig.Value 4 "not applied before Pump"
+                let pumped = dManual.Pump ()
+                Expect.equal pumped 2 "Pump drained both items"
+                let finalVal = innerDispTask.GetAwaiter().GetResult()
+                Expect.equal finalVal 67 "queued dispatch { return ... } resolved after Pump"
+                Expect.sequenceEqual dSeen [ 0; 2; 3; 4; 60; 67 ] "batched item coalesced 50->60, then second dispatch flushed 67"
+#endif
+            }
+
+            testCaseAsync "0.2.4 timing headers (debounce, throttle*, clock) on memo, effect, asyncMemo, and stream + early disposal"
+            <| async {
+                let mod10 =
+                    { new IEqualityComparer<int> with
+                        member _.Equals(a, b) =
+                            a % 10 = b % 10
+
+                        member _.GetHashCode x = x % 10
+                    }
+
+                use g = new Graph ()
+                let clk = ManualClock ()
+                let d100 = TimeSpan.FromMilliseconds 100.
+
+                // Validation on negative duration / null clock
+                Expect.throwsT<ArgumentOutOfRangeException>
+                    (fun () ->
+                        g {
+                            let s = signal { return 1 }
+
+                            return
+                                memo {
+                                    debounce (TimeSpan.FromMilliseconds -1.)
+                                    let! x = s
+                                    return x
+                                }
+                        }
+                        |> ignore)
+                    "negative debounce duration throws ArgumentOutOfRangeException"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        g {
+                            let s = signal { return 1 }
+
+                            return
+                                memo {
+                                    debounce d100
+                                    clock (Unchecked.defaultof<TimedClock>)
+                                    let! x = s
+                                    return x
+                                }
+                        }
+                        |> ignore)
+                    "null clock throws ArgumentNullException"
+
+                // 1. memo { debounce; clock } with multi-statement Phase 2, and! + withComparer, option, and return! tail (resolving source.Graph directly)
+                let mSrcA = Signal (g, 1)
+                let mSrcB = Signal (g, 10)
+                let mutable mPhase2Runs = 0
+
+                let mDebounced =
+                    memo {
+                        debounce d100
+                        clock clk
+                        let! a = mSrcA |> withComparer mod10
+                        and! b = mSrcB
+                        mPhase2Runs <- mPhase2Runs + 1
+                        let sum = a + b
+                        return sum * 2
+                    }
+
+                Expect.equal mDebounced.Value 22 "initial timed memo value published immediately ((1 + 10) * 2)"
+                Expect.equal mPhase2Runs 1 "Phase 2 ran once initially"
+
+                // Equal key under mod10 does not arm or run Phase 2
+                mSrcA.Value <- 11
+                clk.AdvanceTo 200.
+                Expect.equal mDebounced.Value 22 "equal key under mod10 stays cut off"
+                Expect.equal mPhase2Runs 1 "Phase 2 still 1 after equal mod10 key"
+
+                // Rapid burst on mSrcB at t=200, 250, 290 extends deadline to 390; Phase 2 does NOT run during burst!
+                mSrcB.Value <- 20
+                clk.AdvanceTo 250.
+                mSrcB.Value <- 30
+                clk.AdvanceTo 290.
+                mSrcB.Value <- 40
+                clk.AdvanceTo 350.
+                Expect.equal mDebounced.Value 22 "debounced memo holds 22 before quiet deadline 390"
+                Expect.equal mPhase2Runs 1 "Phase 2 did NOT execute for intermediate burst captures"
+
+                clk.AdvanceTo 390.
+                Expect.equal mDebounced.Value 102 "debounced memo publishes ((11 + 40) * 2) = 102 at deadline"
+                Expect.equal mPhase2Runs 2 "Phase 2 executed once for settled burst"
+
+                // Early Dispose() disposes adopted Timed node and detaches upstream sources
+                mSrcB.Value <- 50
+                mDebounced.Dispose ()
+                Expect.equal mSrcA.ObserverCount 0 "disposing timed memo detaches mSrcA"
+                Expect.equal mSrcB.ObserverCount 0 "disposing timed memo detaches mSrcB"
+                clk.AdvanceTo 600.
+                Expect.equal mPhase2Runs 2 "no Phase 2 run after timed memo disposal"
+
+                // memo { option; throttleLast; clock } + memo { debounce; clock; return! }
+                let optSrc = Signal (g, 1)
+
+                let mOptTimed =
+                    memo {
+                        option
+                        throttleLast d100
+                        clock clk
+                        let! x = optSrc
+                        return Some (x / 10)
+                    }
+
+                let optRef0 = mOptTimed.Value
+                optSrc.Value <- 2
+                clk.AdvanceTo 650.
+                Expect.isTrue (obj.ReferenceEquals (optRef0, mOptTimed.Value)) "throttleLast holds initial before window ends"
+                clk.AdvanceTo 700.
+                Expect.isTrue (obj.ReferenceEquals (optRef0, mOptTimed.Value)) "option deduplicates Some wrapper when inner int matches (0 = 0)"
+                optSrc.Value <- 25
+                clk.AdvanceTo 800.
+                Expect.equal mOptTimed.Value.Value 2 "throttleLast admits new inner value 2 at window end"
+                mOptTimed.Dispose ()
+
+                let tailSel = Signal (g, false)
+                let tailLeft = Signal (g, 100)
+                let tailRight = Signal (g, 200)
+                let mLeft = memo { let! x = tailLeft in return x + 1 }
+                let mRight = memo { let! x = tailRight in return x + 2 }
+
+                let mTailTimed =
+                    memo {
+                        debounce d100
+                        clock clk
+                        let! flag = tailSel
+                        return! (if flag then mRight else mLeft)
+                    }
+
+                Expect.equal mTailTimed.Value 101 "timed return! tail initial"
+                tailSel.Value <- true
+                clk.AdvanceTo 850.
+                Expect.equal mTailTimed.Value 101 "timed return! holds mLeft before debounce expires"
+                tailLeft.Value <- 110
+                Expect.equal mTailTimed.Value 111 "active inner memo updates live while outer switch is held"
+                clk.AdvanceTo 950.
+                Expect.equal mTailTimed.Value 202 "timed return! switches to mRight after debounce expires"
+                mTailTimed.Dispose ()
+                Expect.equal tailSel.ObserverCount 0 "disposing timed return! tail detaches outer key"
+
+                // 2. effect { node; throttle / throttleFirst } + early Dispose()
+                let effSrc = Signal (g, 0)
+                let effFirstLog = ResizeArray<int>()
+                let effBothLog = ResizeArray<int>()
+
+                let effFirstNode =
+                    effect {
+                        node
+                        throttleFirst d100
+                        clock clk
+                        let! v = effSrc
+                        effFirstLog.Add v
+                    }
+
+                effect {
+                    throttle d100
+                    clock clk
+                    let! v = effSrc
+                    effBothLog.Add v
+                }
+
+                Expect.sequenceEqual effFirstLog [ 0 ] "throttleFirst effect initial"
+                Expect.sequenceEqual effBothLog [ 0 ] "throttle effect initial"
+                effSrc.Value <- 1
+                Expect.sequenceEqual effFirstLog [ 0; 1 ] "throttleFirst admits leading 1"
+                Expect.sequenceEqual effBothLog [ 0; 1 ] "throttle admits leading 1"
+                clk.AdvanceTo 1000.
+                effSrc.Value <- 2
+                effSrc.Value <- 3
+                Expect.sequenceEqual effFirstLog [ 0; 1 ] "throttleFirst drops 2 and 3 during cooldown (950..1050)"
+                Expect.sequenceEqual effBothLog [ 0; 1 ] "throttle holds trailing 3 during cooldown"
+                clk.AdvanceTo 1050.
+                Expect.sequenceEqual effFirstLog [ 0; 1 ] "throttleFirst has no trailing edge"
+                Expect.sequenceEqual effBothLog [ 0; 1; 3 ] "throttle admits trailing 3 at cooldown end"
+
+                (effFirstNode :?> IDisposable).Dispose()
+                Expect.equal effSrc.ObserverCount 1 "disposing effFirstNode detaches its companion Timed node while second effect stays"
+
+                // 3. asyncMemo { debounce; clock; policy CancelPrevious }
+                let amSrc = Signal (g, 1)
+                let amFlights = ResizeArray<Flight<int> * CancellationToken>()
+
+                let amTimed =
+                    asyncMemo {
+                        policy FlightPolicy.CancelPrevious
+                        debounce d100
+                        clock clk
+                        let! ct = asyncMemo.cancellationToken
+                        let! prev = asyncMemo.previous
+                        let! k = amSrc
+                        let f = Flight<int>()
+                        amFlights.Add (f, ct)
+                        let! v = f.Task
+                        let! p = prev.Settled
+                        return k * 10 + v + ValueOption.defaultValue 0 p
+                    }
+
+                Expect.equal amTimed.TryValue Pending "timed asyncMemo starts initial flight immediately"
+                Expect.equal amFlights.Count 1 "flight 0 started"
+                (fst amFlights[0]).Settle 5
+                do! drained ()
+                Expect.equal amTimed.Value 15 "flight 0 settled (1*10 + 5)"
+
+                // Rapid key burst at 1050..1120 starts ZERO flights until 1220!
+                amSrc.Value <- 2
+                clk.AdvanceTo 1090.
+                amSrc.Value <- 3
+                clk.AdvanceTo 1120.
+                amSrc.Value <- 4
+                clk.AdvanceTo 1180.
+                Expect.equal amFlights.Count 1 "zero intermediate flights launched during debounce burst"
+                Expect.equal amTimed.Value 15 "settled value 15 preserved during debounce wait"
+
+                clk.AdvanceTo 1220.
+                Expect.equal amTimed.TryValue Pending "flight 1 launched once debounce expired at 1220"
+                Expect.equal amFlights.Count 2 "exactly one flight launched for final burst value 4"
+                (fst amFlights[1]).Settle 6
+                do! drained ()
+                Expect.equal amTimed.Value 61 "flight 1 settled (4*10 + 6 + prev 15)"
+
+                amTimed.Dispose ()
+                Expect.equal amSrc.ObserverCount 0 "disposing timed asyncMemo detaches companion Timed node"
+
+                // 4. stream { fold; debounce; clock }
+                let stSrc = Signal (g, "room-a")
+                let stFeed = ManualStream<int>()
+                let stTokens = ResizeArray<string * CancellationToken>()
+
+                let stTimed =
+                    stream {
+                        fold 0 (+)
+                        debounce d100
+                        clock clk
+                        let! ct = stream.cancellationToken
+                        let! room = stSrc
+                        stTokens.Add (room, ct)
+                        return stFeed.Source
+                    }
+
+                Expect.equal stTimed.TryValue Pending "timed stream starts initial subscription immediately"
+                stFeed.Push 10
+                Expect.equal stTimed.Value 10 "initial stream fold 10"
+
+                stSrc.Value <- "room-b"
+                clk.AdvanceTo 1260.
+                stSrc.Value <- "room-c"
+                stFeed.Push 5
+                Expect.equal stTimed.Value 15 "active stream keeps folding while debounce holds key burst"
+                Expect.equal stTokens.Count 1 "still on initial subscription"
+                Expect.isFalse (snd stTokens[0]).IsCancellationRequested "initial token not cancelled before debounce deadline"
+
+                clk.AdvanceTo 1360.
+                Expect.equal stTimed.TryValue Pending "timed stream pending for restarted subscription at debounce deadline"
+                Expect.isTrue (snd stTokens[0]).IsCancellationRequested "initial subscription cancelled at debounce deadline"
+                Expect.equal stTokens.Count 2 "second subscription started for final key room-c"
+                Expect.equal (fst stTokens[1]) "room-c" "admitted final key room-c"
+                stFeed.Push 7
+                Expect.equal stTimed.Value 7 "restarted fold from seed 0 + 7"
+
+                stTimed.Dispose ()
+                Expect.equal stSrc.ObserverCount 0 "disposing timed stream detaches companion Timed node"
+            }
+
+            testCase "0.2.4 reactive helpers: tryRead, per-arm debounced*/throttled* pipes, and Editable.isEdited / Editable.upstream"
+            <| fun _ ->
+                let mod10 =
+                    { new IEqualityComparer<int> with
+                        member _.Equals(a, b) =
+                            a % 10 = b % 10
+
+                        member _.GetHashCode x = x % 10
+                    }
+
+                use g = new Graph ()
+                let clk = ManualClock ()
+                let d100 = TimeSpan.FromMilliseconds 100.
+
+                // 1. tryRead over AsyncSource, throwing Memo, and Signal under JsIdentityPolicy (including and!)
+                let asyncSrc = AsyncSource<BoxPayload> g
+                let flagSig = Signal (g, false)
+
+                let boomMemo =
+                    memo {
+                        let! fail = flagSig
+
+                        if fail then
+                            invalidOp "boom-memo"
+
+                        return 42
+                    }
+
+                let mutable statusRuns = 0
+
+                let statusBadge =
+                    memo {
+                        let! rAsync = tryRead asyncSrc
+                        and! rMemo = tryRead boomMemo
+                        statusRuns <- statusRuns + 1
+
+                        let left =
+                            match rAsync with
+                            | Pending -> "P"
+                            | Failed ex -> "F:" + ex.Message
+                            | Ready boxVal -> $"R:{boxVal.Id}:{boxVal.Label}"
+
+                        let right =
+                            match rMemo with
+                            | Pending -> "P"
+                            | Failed ex -> "F:" + ex.Message
+                            | Ready n -> $"R:{n}"
+
+                        return left + "|" + right
+                    }
+
+                Expect.equal statusBadge.Value "P|R:42" "tryRead observes Pending + Ready"
+                Expect.equal statusBadge.Status Status.None "enclosing memo using tryRead stays Ready (Status.None) while asyncSrc is Pending"
+                Expect.equal statusRuns 1 "ran once initially"
+
+                let payload1 = BoxPayload (1, "first")
+                asyncSrc.Settle payload1
+                Expect.equal statusBadge.Value "R:1:first|R:42" "tryRead observes settled Ready"
+                Expect.equal statusRuns 2 "ran on Pending -> Ready"
+
+                // Re-reading or waking with identical reference cuts off under ReadingKeyComparer + JsIdentityPolicy!
+                flagSig.Value <- true
+                Expect.equal statusBadge.Value "R:1:first|F:boom-memo" "tryRead catches Failed memo without faulting statusBadge"
+                Expect.equal statusBadge.Status Status.None "statusBadge itself is not faulted"
+                Expect.equal statusRuns 3 "ran on Ready -> Failed"
+
+                flagSig.Value <- false
+                Expect.equal statusBadge.Value "R:1:first|R:42" "tryRead observes recovery to Ready"
+                Expect.equal statusRuns 4 "ran on Failed -> Ready"
+
+                // 2. Per-arm debounced* / throttled* pipes in and! (inheriting withComparer)
+                let fastArm = Signal (g, 100)
+                let slowArm = Signal (g, 1)
+
+                let perArmMemo =
+                    memo {
+                        let! fast = fastArm
+
+                        and! slow =
+                            slowArm
+                            |> withComparer mod10
+                            |> debouncedWith { Clock = clk; Comparer = None } d100
+
+                        return fast + slow
+                    }
+
+                Expect.equal perArmMemo.Value 101 "per-arm debounced initial"
+                fastArm.Value <- 200
+                Expect.equal perArmMemo.Value 201 "fastArm updates immediately without waiting for slowArm's debounce"
+
+                slowArm.Value <- 11
+                clk.AdvanceTo 100.
+                Expect.equal perArmMemo.Value 201 "debouncedWith inherited withComparer mod10 and ignored equal 11"
+
+                slowArm.Value <- 5
+                clk.AdvanceTo 150.
+                Expect.equal perArmMemo.Value 201 "slowArm held before 200 ms deadline"
+                clk.AdvanceTo 200.
+                Expect.equal perArmMemo.Value 205 "slowArm published 5 at 200 ms deadline"
+
+                // Also smoke default clock pipe signatures (zero duration = timer-free immediate path)
+                let zeroPipeMemo =
+                    g {
+                        let s = signal { return 3 }
+                        let t1 = s |> debounced TimeSpan.Zero
+                        let t2 = t1 |> throttled TimeSpan.Zero
+                        let t3 = t2 |> throttledFirst TimeSpan.Zero
+                        let t4 = t3 |> throttledLast TimeSpan.Zero
+
+                        let t5 =
+                            t4
+                            |> throttledWith TimedOptions.defaults TimeSpan.Zero
+
+                        let t6 =
+                            t5
+                            |> throttledFirstWith TimedOptions.defaults TimeSpan.Zero
+
+                        let t7 =
+                            t6
+                            |> throttledLastWith TimedOptions.defaults TimeSpan.Zero
+
+                        return memo { let! v = t7 in return v * 2 }
+                    }
+
+                Expect.equal zeroPipeMemo.Value 6 "all 8 debounced*/throttled* pipe helpers compose cleanly"
+
+                // 3. Editable.isEdited and Editable.upstream in CE binds
+                let upstreamSeed = Signal (g, 10)
+
+                let draftVal, draftInspector =
+                    g {
+                        let d =
+                            draft {
+                                let! u = upstreamSeed
+                                return u * 2
+                            }
+
+                        let inspector =
+                            memo {
+                                let! cur = d
+                                and! edited = Editable.isEdited d
+                                and! up = Editable.upstream d
+                                let edStr = if edited then "true" else "false"
+                                return $"{cur}|edited={edStr}|upstream={up}"
+                            }
+
+                        return (d, inspector)
+                    }
+
+                Expect.equal draftInspector.Value "20|edited=false|upstream=20" "initial draft inspector"
+                draftVal.Value <- 77
+                Expect.equal draftInspector.Value "77|edited=true|upstream=20" "Editable.isEdited wakes on local edit"
+                upstreamSeed.Value <- 15
+                Expect.equal draftInspector.Value "77|edited=true|upstream=30" "Editable.upstream wakes when seed moves under active draft"
+                draftVal.Reset ()
+                Expect.equal draftInspector.Value "30|edited=false|upstream=30" "Reset updates value and Editable.isEdited"
         ]

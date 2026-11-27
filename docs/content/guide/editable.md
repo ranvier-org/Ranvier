@@ -38,7 +38,7 @@ graph.Run (fun () ->
 
 The [`editable` builder](computation-expressions.md#editable-values-drafts-and-boundaries) binds the seed's
 inputs explicitly. Use `editable.previous` or `editable.previousOr seed` to keep part of the previous upstream
-value.
+value, and bind `Editable.isEdited field` or `Editable.upstream field` in downstream computation expressions.
 
 ### When an edit is dropped
 

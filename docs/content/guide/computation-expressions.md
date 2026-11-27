@@ -9,14 +9,22 @@ release. For the public pre-CE equivalents and the internal runtime paths each b
 
 | Builder | Result | Header operations |
 | --- | --- | --- |
-| `memo` | `Memo<'T>` | `owning` and/or `comparer cmp`, or `option` alone |
-| `effect` | `unit` by default, `INode` with `node` | `node` |
-| `asyncMemo` | `AsyncMemo<'T>` | `owning`, `policy flightPolicy` |
-| `stream` | `StreamMemo<'Item>`, or `StreamMemo<'State>` when folding | `fold seed folder` |
+| `signal` | `Signal<'T>` | `comparer cmp` |
+| `memo` | `Memo<'T>` | `owning` and/or `comparer cmp`, or `option` alone; `debounce`/`throttle*`, `clock` |
+| `effect` | `unit` by default, `INode` with `node` | `node`; `debounce`/`throttle*`, `clock` |
+| `asyncMemo` | `AsyncMemo<'T>` | `owning`, `policy flightPolicy`; `debounce`/`throttle*`, `clock` |
+| `stream` | `StreamMemo<'Item>`, or `StreamMemo<'State>` when folding | `fold seed folder`; `debounce`/`throttle*`, `clock` |
 | `editable` | `Editable<'T>` whose edit is replaced by a changed seed | None |
 | `draft` | `Editable<'T>` whose edit survives a changed seed | None |
 | `boundary` | `Boundary<'T>` | `pending fallback` and/or `failed recover`, optional `comparer cmp` |
 | `row` | `unit -> 'T` for a projection factory | None |
+| `cleanup` | `unit` (registers cleanup on current scope) | None |
+| `batched` | `unit` or `'T` (defers effects across writes) | None |
+| `untracked` | `unit` or `'T` (reads without subscribing) | None |
+| `root` | `Owner` when `unit`, or `'T` when returning a value | None (`let! o = root.owner`) |
+| `graph { ... }` | `unit` or `'T` (implicit CE on `Graph`) | None |
+| `owner { ... }` | `unit` or `'T` (implicit CE on `Owner`) | None |
+| `dispatch graph` | `unit`, `Task<unit>` or `Task<'T>` | `cancellation ct` |
 
 ## Choose the inputs
 
@@ -180,6 +188,84 @@ let show (result: AsyncMemo<string>) =
 
 Context tokens are inert values outside a bind. Each builder accepts only its own tokens. For example, binding
 `memo.previous` in `draft` is a compile-time error.
+
+To subscribe to an `Editable<'T>`'s edit state or seed value without suspending on local edits, bind
+`Editable.isEdited edit` (`IReactive<bool>`) or `Editable.upstream edit` (`IReactive<'T>`).
+
+## Non-throwing `tryRead` and Phase-1 timing
+
+Wrap any reactive source in `tryRead source` to bind `Reading<'T>` (`Ready v`, `Pending`, or `Failed ex`) via
+`.TryValue` without suspending or faulting the enclosing computation:
+
+```fsharp
+let statusBadge (request: AsyncMemo<string>) =
+    memo {
+        match! tryRead request with
+        | Pending -> return "Loading..."
+        | Failed ex -> return $"Error: {ex.Message}"
+        | Ready text -> return text
+    }
+```
+
+Add `debounce delay`, `throttle interval`, `throttleFirst interval`, or `throttleLast interval` (with optional
+`clock customClock`) to the header of a `memo`, `effect`, `asyncMemo`, or `stream` rooted in a static Phase-1 key
+(a single `let!` or `and!`-merged binds). Phase 1 captures upstream changes eagerly, while Phase 2 (including
+async flights and stream restarts) runs only when the timing gate admits an unequal key:
+
+```fsharp
+let searchResults (http: System.Net.Http.HttpClient) (query: Signal<string>) =
+    asyncMemo {
+        policy FlightPolicy.CancelPrevious
+        debounce (System.TimeSpan.FromMilliseconds 250.)
+        let! ct = asyncMemo.cancellationToken
+        let! term = query
+        return! http.GetStringAsync($"/api/search?q={term}", ct)
+    }
+```
+
+When only one arm of an `and!` bind should be timed, pipe that arm through `debounced`, `debouncedWith`,
+`throttled`, `throttledWith`, `throttledFirst`, `throttledFirstWith`, `throttledLast`, or `throttledLastWith`
+(each resolves `source.Graph` and inherits any preceding `withComparer` when `options.Comparer` is `None`).
+
+## Signals, scopes, batching and dispatch
+
+`Ranvier.CE` also provides lightweight blocks for signal initialization, scope management and cross-thread
+dispatch:
+
+```fsharp
+let setup (g: Graph) =
+    g {
+        let count = signal { return 0 }
+
+        use scope =
+            root {
+                effect {
+                    let! current = count
+                    cleanup { printfn "leaving %d" current }
+                    printfn "entered %d" current
+                }
+            }
+
+        batched {
+            count.Value <- 1
+            count.Value <- 2
+        }
+
+        let snap = untracked { return count.Value }
+        scope.Dispose()
+        return snap
+    }
+```
+
+- `signal { ... }` creates a `Signal<'T>` on `Graph.Current` (add `comparer cmp` for custom write cutoff).
+- `g { ... }` activates `g: Graph` for the block (`g.Run(fun () -> ...)` remains available alongside it).
+- `owner { ... }` attaches nodes and cleanups created in the block to `owner: Owner` (`runWithOwner`).
+- `root { ... }` returns the created `Owner` directly for a `unit` body (`use scope = root { ... }`), or `'T`
+  when binding `let! o = root.owner` and ending with `return`.
+- `cleanup { ... }` registers a `unit` cleanup block on the current scope (`onCleanup`).
+- `batched { ... }` and `untracked { ... }` wrap `batch` and `untrack` without shadowing the functions in `Ranvier`.
+- `dispatch g { ... }` routes a `unit` body to `g.Dispatch` (`unit`), and routes `return expr`, `return ()`, or a
+  `cancellation ct` header to `g.DispatchAsync` (`Task<'T>` / `Task<unit>`).
 
 ## Pointwise collection reads
 

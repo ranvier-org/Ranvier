@@ -20,9 +20,17 @@ type BoundPhase = struct end
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
 type IsLeaf = struct end
 
-/// <summary>Phantom leaf marker indicating an <c>effect</c> step requiring dynamic <c>Effect</c>.</summary>
+/// <summary>Phantom key marker indicating a step rooted in a single or <c>and!</c>-merged static Phase-1 key.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type NotLeaf = struct end
+type StaticKey = struct end
+
+/// <summary>Phantom key marker indicating a step requiring dynamic dependency tracking.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type DynamicKey = struct end
+
+/// <summary>Phantom leaf marker indicating a step past Phase-2 leaf status, parameterized by static vs dynamic key.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type NotLeaf<'Key> = struct end
 
 /// <summary>Phantom scope mode marker for pure memo computation expressions.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
@@ -145,6 +153,126 @@ type FoldMode<'S, 'T> =
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
 type StreamCancellationToken = struct end
 
+/// <summary>Phantom marker indicating no timing header operation (<c>debounce</c>/<c>throttle*</c>) was supplied.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type NoTiming = struct end
+
+/// <summary>Phantom marker indicating no explicit <c>clock</c> header operation was supplied after a timing header.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type NoClock = struct end
+
+/// <summary>Phantom marker indicating an explicit <c>clock</c> header operation was supplied after a timing header.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type HasClock = struct end
+
+/// <summary>Runtime configuration value for an internal Phase-1 <c>Timed&lt;'K&gt;</c> gate.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type TimedConfig =
+    val Mode: int
+    val Duration: TimeSpan
+    val Clock: TimedClock
+
+    new(mode: int, duration: TimeSpan, clock: TimedClock) =
+        {
+            Mode = mode
+            Duration = duration
+            Clock = clock
+        }
+
+/// <summary>Phantom-tagged timing header descriptor carrying mode, duration, and clock.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type TimedSpec<'Clk> =
+    val Config: TimedConfig
+
+    new(mode: int, duration: TimeSpan, clock: TimedClock) =
+        {
+            Config = TimedConfig (mode, duration, clock)
+        }
+
+/// <summary>Context token bound inside <c>root</c> via <c>let! o = root.owner</c> to obtain the created <c>Owner</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type RootOwnerToken = struct end
+
+/// <summary>Unit body marker for <c>root</c> returning the created <c>Owner</c> directly.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type RootFire = struct end
+
+/// <summary>Explicit return carrier for <c>root</c> returning <c>'T</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type RootResult<'T> =
+    val Value: 'T
+    new(value: 'T) = { Value = value }
+
+/// <summary>Explicit return carrier for <c>signal</c> returning <c>'T</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type SignalResult<'T> =
+    val Value: 'T
+    new(value: 'T) = { Value = value }
+
+/// <summary>Header descriptor configured via <c>comparer</c> inside <c>signal</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type SignalHeader<'Cmp> =
+    val Cmp: 'Cmp
+    new(cmp: 'Cmp) = { Cmp = cmp }
+
+/// <summary>Configured <c>signal</c> body preserving explicit comparer selection.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type ConfiguredSignal<'Cmp, 'T> =
+    val Header: SignalHeader<'Cmp>
+    val Body: unit -> SignalResult<'T>
+    new(header: SignalHeader<'Cmp>, body: unit -> SignalResult<'T>) = { Header = header; Body = body }
+
+/// <summary>Delayed body wrapper for implicit <c>Graph</c> computation expressions.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type GraphDelayed<'T> =
+    val InvokeFn: unit -> 'T
+    new(invokeFn: unit -> 'T) = { InvokeFn = invokeFn }
+
+    member inline this.Invoke() : 'T =
+        this.InvokeFn ()
+
+/// <summary>Delayed body wrapper for implicit <c>Owner</c> computation expressions.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type OwnerDelayed<'T> =
+    val InvokeFn: unit -> 'T
+    new(invokeFn: unit -> 'T) = { InvokeFn = invokeFn }
+
+    member inline this.Invoke() : 'T =
+        this.InvokeFn ()
+
+/// <summary>Fire-and-forget <c>unit</c> body marker for <c>dispatch</c> routing to <c>Graph.Dispatch</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type DispatchFire = struct end
+
+/// <summary>Explicit return carrier for <c>dispatch</c> routing to <c>Graph.DispatchAsync</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type DispatchResult<'T> =
+    val Value: 'T
+    new(value: 'T) = { Value = value }
+
+/// <summary>Phantom marker indicating no <c>cancellation</c> header operation on <c>dispatch</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type NoCancel = struct end
+
+/// <summary>Phantom marker carrying a <c>CancellationToken</c> from <c>cancellation</c> on <c>dispatch</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type WithCancel =
+    val Token: CancellationToken
+    new(token: CancellationToken) = { Token = token }
+
+/// <summary>Header descriptor configured via <c>cancellation</c> inside <c>dispatch</c>.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type DispatchHeader<'Tok> =
+    val Tok: 'Tok
+    new(tok: 'Tok) = { Tok = tok }
+
+/// <summary>Configured <c>dispatch</c> step preserving cancellation header and body step flavor.</summary>
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type ConfiguredDispatch<'Tok, 'Step> =
+    val Header: DispatchHeader<'Tok>
+    val Body: unit -> 'Step
+    new(header: DispatchHeader<'Tok>, body: unit -> 'Step) = { Header = header; Body = body }
+
 #if FABLE_COMPILER
 module private CeEvalSlot =
     let mutable evalDepth = 0
@@ -157,6 +285,7 @@ module private CeEvalSlot =
     let mutable isOwning = false
     let mutable optionDedup: obj = null
     let mutable isProbing = false
+    let mutable rootOwner: Owner = Unchecked.defaultof<Owner>
 #endif
 
 /// <summary>Tracks reentrant reactive computation-expression evaluation state on the current thread.</summary>
@@ -270,6 +399,13 @@ type InternalCeState =
         let prev = CeEvalSlot.isProbing
         CeEvalSlot.isProbing <- value
         prev
+
+    static member CurrentRootOwner: Owner = CeEvalSlot.rootOwner
+
+    static member SwapRootOwner(owner: Owner) : Owner =
+        let prev = CeEvalSlot.rootOwner
+        CeEvalSlot.rootOwner <- owner
+        prev
 #else
     [<ThreadStatic; Microsoft.FSharp.Core.DefaultValue>]
     static val mutable private evalDepth: int
@@ -300,6 +436,9 @@ type InternalCeState =
 
     [<ThreadStatic; Microsoft.FSharp.Core.DefaultValue>]
     static val mutable private isProbing: bool
+
+    [<ThreadStatic; Microsoft.FSharp.Core.DefaultValue>]
+    static val mutable private rootOwner: Owner
 
     [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
     static member private GetIsEvaluating() : bool =
@@ -428,6 +567,14 @@ type InternalCeState =
         let prev = InternalCeState.isProbing
         InternalCeState.isProbing <- value
         prev
+
+    static member CurrentRootOwner: Owner = InternalCeState.rootOwner
+
+    [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
+    static member SwapRootOwner(owner: Owner) : Owner =
+        let prev = InternalCeState.rootOwner
+        InternalCeState.rootOwner <- owner
+        prev
 #endif
 
 #if FABLE_COMPILER
@@ -446,7 +593,7 @@ type internal ICustomKeyReactive =
 /// <summary>Composite Phase-1 key comparer for <c>and!</c>-merged struct tuples where at least one arm carries <c>withComparer</c>.</summary>
 [<Sealed; NoEquality; NoComparison>]
 type internal PairKeyComparer<'A, 'B>(eqA: IEqualityComparer<'A>, eqB: IEqualityComparer<'B>) =
-    static member inline private HashEncoded<'X>(eq: IEqualityComparer<'X>, x: 'X) : int =
+    static member inline internal HashEncoded<'X>(eq: IEqualityComparer<'X>, x: 'X) : int =
 #if FABLE_COMPILER
         if Platform.isNull (box eq) then
             LanguagePrimitives.PhysicalHash (box x)
@@ -837,6 +984,82 @@ type MergedReactive<'A, 'B> =
             let a = this.source1.ReadTracked ()
             let b = this.source2.ReadTracked ()
             struct (a, b)
+#endif
+
+/// <summary>Phase-1 key comparer for <c>Reading&lt;'T&gt;</c> comparing <c>Ready</c> payloads under the graph's encoded comparer.</summary>
+[<Sealed; NoEquality; NoComparison>]
+type internal ReadingKeyComparer<'T>(innerEq: IEqualityComparer<'T>) =
+    interface IEqualityComparer<Reading<'T>> with
+        member _.Equals(r1, r2) =
+            match r1, r2 with
+            | Ready a, Ready b -> ComparerSentinel.equals innerEq a b
+            | Pending, Pending -> true
+            | Failed e1, Failed e2 -> obj.ReferenceEquals (box e1, box e2)
+            | _ -> false
+
+        member _.GetHashCode(r) =
+            match r with
+            | Pending -> 1
+            | Failed ex ->
+                if Platform.isNull (box ex) then
+                    2
+                else
+                    LanguagePrimitives.PhysicalHash (box ex)
+            | Ready v ->
+                (PairKeyComparer<'T, int>.HashEncoded(innerEq, v)
+                 * 397)
+                ^^^ 3
+
+/// <summary>Non-throwing Phase-1 reactive descriptor over <c>ITryReactive&lt;'T&gt;.ReadTryTracked</c>.</summary>
+#if FABLE_COMPILER
+[<Sealed; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type ReadingReactive<'T>(source: ITryReactive<'T>) =
+    inherit CustomKeyReactiveBase()
+
+    do
+        if isNull (box source) then
+            nullArg (nameof source)
+
+    let keyCmp =
+        ReadingKeyComparer<'T>(source.Graph.EncodedComparer<'T>()) :> IEqualityComparer<Reading<'T>>
+
+    override _.CustomKeyComparerObj = box keyCmp
+
+    override _.BuildComponentComparerObj() =
+        box keyCmp
+
+    interface IReactive<Reading<'T>> with
+        member _.Graph = source.Graph
+
+        member _.ReadTracked() =
+            source.ReadTryTracked ()
+#else
+[<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
+type ReadingReactive<'T> =
+    val private source: ITryReactive<'T>
+    val private keyCmp: IEqualityComparer<Reading<'T>>
+
+    /// <summary>Creates a non-throwing <c>Reading&lt;'T&gt;</c> descriptor validating non-null <c>source</c>.</summary>
+    new(source: ITryReactive<'T>) =
+        if isNull (box source) then
+            nullArg (nameof source)
+
+        {
+            source = source
+            keyCmp = ReadingKeyComparer<'T>(source.Graph.EncodedComparer<'T>()) :> IEqualityComparer<Reading<'T>>
+        }
+
+    interface ICustomKeyReactive with
+        member this.CustomKeyComparerObj = box this.keyCmp
+
+        member this.BuildComponentComparerObj() =
+            box this.keyCmp
+
+    interface IReactive<Reading<'T>> with
+        member this.Graph = this.source.Graph
+
+        member this.ReadTracked() =
+            this.source.ReadTryTracked ()
 #endif
 
 /// <summary>Combined row input carrier used exclusively by <c>RowBuilder.MergeSources</c>.</summary>
@@ -1304,10 +1527,15 @@ type CeRuntime =
 
         graph.Entered ("Creating a node", fun () -> StreamMemo<'S>.Create<'T>(graph, seed, folder, start, false))
 
-    static member CreateAsyncFromReactive<'K, 'U>
-        (source: IReactive<'K>, build: 'K -> Previous<'U> -> CancellationToken -> Task<'U>, owning: bool, policy: FlightPolicy voption)
-        : AsyncMemo<'U> =
-        let g = source.Graph
+    static member CreateAsyncFromKeyRead<'K, 'U>
+        (
+            g: Graph,
+            readKey: unit -> 'K,
+            keyCmp: IEqualityComparer<'K> voption,
+            build: 'K -> Previous<'U> -> CancellationToken -> Task<'U>,
+            owning: bool,
+            policy: FlightPolicy voption
+        ) : AsyncMemo<'U> =
         let mode = if owning then ScopeMode.Owning else ScopeMode.PureAsync
 
         g.Entered (
@@ -1318,10 +1546,82 @@ type CeRuntime =
                     | ValueSome p -> p
                     | ValueNone -> g.Options.FlightPolicy
 
-                match CeRuntime.TryCustomKeyComparer source with
-                | ValueSome kc -> AsyncMemo<'U>.CreateOn(g, source.ReadTracked, build, mode, pol, keyComparer = kc)
-                | ValueNone -> AsyncMemo<'U>.CreateOn(g, source.ReadTracked, build, mode, pol)
+                match keyCmp with
+                | ValueSome kc -> AsyncMemo<'U>.CreateOn(g, readKey, build, mode, pol, keyComparer = kc)
+                | ValueNone -> AsyncMemo<'U>.CreateOn(g, readKey, build, mode, pol)
         )
+
+    static member CreateAsyncFromReactive<'K, 'U>
+        (source: IReactive<'K>, build: 'K -> Previous<'U> -> CancellationToken -> Task<'U>, owning: bool, policy: FlightPolicy voption)
+        : AsyncMemo<'U> =
+        CeRuntime.CreateAsyncFromKeyRead (source.Graph, source.ReadTracked, CeRuntime.TryCustomKeyComparer source, build, owning, policy)
+
+    static member CreateTimedSource<'K>(source: IReactive<'K>, timing: TimedConfig) : Timed<'K> =
+        let g = source.Graph
+
+        let cmpOpt =
+            match CeRuntime.TryCustomKeyComparer source with
+            | ValueSome kc -> Some kc
+            | ValueNone -> None
+
+        let opts: TimedOptions<'K> =
+            {
+                Clock = timing.Clock
+                Comparer = cmpOpt
+            }
+
+        let mode = LanguagePrimitives.EnumOfValue<int, TimedMode> timing.Mode
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let node = new Timed<'K> (g, opts, timing.Duration, mode, source.ReadTracked)
+                node.Start ()
+                node
+        )
+
+    static member PipeTimed<'T>(options: TimedOptions<'T>, duration: TimeSpan, modeCode: int, source: IReactive<'T>) : Timed<'T> =
+        if isNull (box source) then
+            nullArg (nameof source)
+
+        let effectiveOptions =
+            match options.Comparer with
+            | Some _ -> options
+            | None ->
+                match CeRuntime.TryCustomKeyComparer source with
+                | ValueSome kc -> { options with Comparer = Some kc }
+                | ValueNone -> options
+
+        let g = source.Graph
+        let mode = LanguagePrimitives.EnumOfValue<int, TimedMode> modeCode
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let node = new Timed<'T> (g, effectiveOptions, duration, mode, source.ReadTracked)
+                node.Start ()
+                node
+        )
+
+    static member CreateTimedAsync<'K, 'U>
+        (
+            source: IReactive<'K>,
+            build: 'K -> Previous<'U> -> CancellationToken -> Task<'U>,
+            owning: bool,
+            policy: FlightPolicy voption,
+            timing: TimedConfig
+        ) : AsyncMemo<'U> =
+        let timed = CeRuntime.CreateTimedSource (source, timing)
+
+        try
+            let am =
+                CeRuntime.CreateAsyncFromKeyRead (source.Graph, (fun () -> timed.Value), CeRuntime.TryCustomKeyComparer source, build, owning, policy)
+
+            am.Adopt (timed :> IDisposable)
+            am
+        with _ ->
+            timed.Dispose ()
+            reraise ()
 
     static member TryAsMemo<'T>(source: IReactive<'T>) : Memo<'T> voption =
         match source with
@@ -1485,6 +1785,118 @@ type CeRuntime =
         else
             CombinatorMemos.createReactiveBind (g, source.ReadTracked, binder, keyCmp, cmp)
 
+    static member CreateTimedMemo<'K, 'U>
+        (source: IReactive<'K>, mapping: 'K -> 'U, owning: bool, cmp: IEqualityComparer<'U> voption, dedupObj: obj, timing: TimedConfig)
+        : Memo<'U> =
+        let timed = CeRuntime.CreateTimedSource (source, timing)
+
+        try
+            let memo =
+                CeRuntime.CreateStaticMemo (
+                    source.Graph,
+                    (fun () -> timed.Value),
+                    mapping,
+                    owning,
+                    cmp,
+                    CeRuntime.TryCustomKeyComparer source,
+                    dedupObj
+                )
+
+            memo.Adopt (timed :> IDisposable)
+            memo
+        with _ ->
+            timed.Dispose ()
+            reraise ()
+
+    static member CreateTimedTail<'K, 'U>
+        (source: IReactive<'K>, binder: 'K -> Memo<'U>, cmp: IEqualityComparer<'U> voption, timing: TimedConfig)
+        : Memo<'U> =
+        let timed = CeRuntime.CreateTimedSource (source, timing)
+
+        try
+            let memo =
+                CombinatorMemos.createReactiveBind (source.Graph, (fun () -> timed.Value), binder, CeRuntime.TryCustomKeyComparer source, cmp)
+
+            memo.Adopt (timed :> IDisposable)
+            memo
+        with _ ->
+            timed.Dispose ()
+            reraise ()
+
+    static member EvalMemoStaticContinuation<'K, 'U>(owning: bool, graph: Graph, key: 'K, cont: 'K -> 'U) : 'U =
+        let savedDepth = InternalCeState.EnterEval ()
+        let savedReactive = InternalCeState.SwapReactiveBind true
+        let savedOwning = InternalCeState.SwapOwning owning
+        let savedObs = InternalCeState.SwapEffectObserver (graph, box graph.CurrentObserver)
+        let savedPending = InternalCeState.SwapPhase1Pending null
+        let savedPrev = InternalCeState.SuspendPrevious ()
+        let savedProbing = InternalCeState.SwapProbing false
+
+        try
+            CeRuntime.RunUntrackedMemoBind (owning, graph, cont, key)
+        finally
+            InternalCeState.SwapProbing savedProbing |> ignore
+            InternalCeState.RestorePrevious savedPrev
+
+            InternalCeState.SwapPhase1Pending savedPending
+            |> ignore
+
+            InternalCeState.RestoreEffectObserver savedObs
+            InternalCeState.SwapOwning savedOwning |> ignore
+
+            InternalCeState.SwapReactiveBind savedReactive
+            |> ignore
+
+            InternalCeState.ExitEval savedDepth
+
+    static member RunRootFire(step: unit -> RootFire) : Owner =
+        Graph.Current.RunRoot (fun owner ->
+            let saved = InternalCeState.SwapRootOwner owner
+
+            try
+                step () |> ignore
+                owner
+            finally
+                InternalCeState.SwapRootOwner saved |> ignore)
+
+    static member RunRootResult<'T>(step: unit -> RootResult<'T>) : 'T =
+        Graph.Current.RunRoot (fun owner ->
+            let saved = InternalCeState.SwapRootOwner owner
+
+            try
+                (step ()).Value
+            finally
+                InternalCeState.SwapRootOwner saved |> ignore)
+
+    static member CreateSignal<'T>(d: unit -> 'T) : Signal<'T> =
+        let g = Graph.Current
+        Signal<'T>(g, d ())
+
+    static member CreateSignalWithCmp<'T>(cmp: IEqualityComparer<'T>, d: unit -> 'T) : Signal<'T> =
+        let g = Graph.Current
+        Signal<'T>.CreateWithComparer(g, d (), cmp)
+
+    static member RunInGraph<'T>(graph: Graph, body: unit -> 'T) : 'T =
+        let cur = CeRuntime.TryGetAmbientGraph ()
+
+        if obj.ReferenceEquals (cur, graph) then
+            body ()
+        else
+            use _ = graph.Activate ()
+            body ()
+
+    static member DispatchUnit(graph: Graph, step: unit -> DispatchFire) : unit =
+        graph.Post (fun () -> CeRuntime.RunInGraph (graph, fun () -> step () |> ignore))
+
+    static member DispatchResult<'T>(graph: Graph, step: unit -> DispatchResult<'T>) : Task<'T> =
+        graph.DispatchAsync (Func<'T>(fun () -> CeRuntime.RunInGraph (graph, fun () -> (step ()).Value)))
+
+    static member DispatchUnitWithCancel(graph: Graph, ct: CancellationToken, step: unit -> DispatchFire) : Task<unit> =
+        graph.DispatchAsync (Func<unit>(fun () -> CeRuntime.RunInGraph (graph, fun () -> step () |> ignore)), ct)
+
+    static member DispatchResultWithCancel<'T>(graph: Graph, ct: CancellationToken, step: unit -> DispatchResult<'T>) : Task<'T> =
+        graph.DispatchAsync (Func<'T>(fun () -> CeRuntime.RunInGraph (graph, fun () -> (step ()).Value)), ct)
+
     static member ReadEffectTracked<'K>(source: IReactive<'K>) : 'K =
         CeRuntime.ReadCeTracked source
 
@@ -1519,6 +1931,41 @@ type CeRuntime =
             )
 
         if asNode then node else Unchecked.defaultof<INode>
+
+    static member ValidateTimingDuration(duration: TimeSpan, paramName: string) : unit =
+        if duration < TimeSpan.Zero then
+            raise (ArgumentOutOfRangeException paramName)
+
+    static member ValidateClock(clock: TimedClock) : unit =
+        if Platform.isNull (box clock) then
+            nullArg (nameof clock)
+
+    static member RequireStaticTimed(timing: TimedConfig voption) : unit =
+        if timing.IsSome then
+            invalidOp
+                "Timing operations ('debounce', 'throttle', 'throttleFirst', 'throttleLast') require an unconditional Phase-1 reactive 'let!' bind."
+
+    static member CreateTimedEffectOn<'K>(source: IReactive<'K>, act: 'K -> unit, asNode: bool, timing: TimedConfig) : INode =
+        let timed = CeRuntime.CreateTimedSource (source, timing)
+
+        try
+            let g = source.Graph
+
+            let eff =
+                g.Entered (
+                    "Creating a node",
+                    fun () ->
+                        match CeRuntime.TryCustomKeyComparer source with
+                        | ValueSome kc -> EffectOn<'K>.CreateWithComparer(g, (fun () -> timed.Value), act, kc)
+                        | ValueNone -> EffectOn<'K>.Create(g, (fun () -> timed.Value), act)
+                )
+
+            eff.Adopt (timed :> IDisposable)
+
+            if asNode then eff :> INode else Unchecked.defaultof<INode>
+        with _ ->
+            timed.Dispose ()
+            reraise ()
 
     static member CreateDynamicEffect(graph: Graph, eval: unit -> unit, asNode: bool) : INode =
         let runBody () =
@@ -1658,10 +2105,10 @@ type CeRuntime =
 
 /// <summary>Factory delegate carrier for <c>MemoBuilder</c> static/dynamic dispatch.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type MemoStep<'Phase, 'Prev, 'U> =
+type MemoStep<'Leaf, 'Phase, 'Prev, 'U> =
     | MemoInline of inlineVal: 'U
     | MemoDynamic of dynGraph: Graph * dynEval: (unit -> 'U)
-    | MemoStatic of staticGraph: Graph * staticFactory: (bool -> IEqualityComparer<'U> voption -> obj -> Memo<'U>)
+    | MemoStatic of staticGraph: Graph * staticFactory: (bool -> IEqualityComparer<'U> voption -> obj -> TimedConfig voption -> Memo<'U>)
 
     member inline this.TryGraph =
         match this with
@@ -1677,55 +2124,64 @@ type MemoStep<'Phase, 'Prev, 'U> =
 
 /// <summary>Return-from tail carrier compiling pure dynamic child binds onto <c>SplitBind</c>.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type MemoTail<'Phase, 'U> =
+type MemoTail<'Leaf, 'Phase, 'U> =
     | TailReady of readyMemo: Memo<'U>
     | TailDynamic of tailGraph: Graph * tailEval: (unit -> Memo<'U>)
-    | TailStatic of tailGraph: Graph * tailFactory: (IEqualityComparer<'U> voption -> Memo<'U>)
+    | TailStatic of tailGraph: Graph * tailFactory: (IEqualityComparer<'U> voption -> TimedConfig voption -> Memo<'U>)
 
     member this.EvalMemo() =
         match this with
         | TailReady m -> m
         | TailDynamic (_, f) -> f ()
-        | TailStatic (_, f) -> f ValueNone
+        | TailStatic (_, f) -> f ValueNone ValueNone
 
-/// <summary>Header descriptor configured via <c>owning</c>, <c>comparer</c>, and <c>option</c> inside <c>memo</c>.</summary>
+/// <summary>Header descriptor configured via <c>owning</c>, <c>comparer</c>, <c>option</c>, and timing operations inside <c>memo</c>.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type MemoHeader<'Mode, 'Cmp> =
+type MemoHeader<'Mode, 'Cmp, 'Timing> =
     val Cmp: 'Cmp
-    new(cmp: 'Cmp) = { Cmp = cmp }
+    val Timing: 'Timing
+    new(cmp: 'Cmp, timing: 'Timing) = { Cmp = cmp; Timing = timing }
 
-/// <summary>Configured <c>memo</c> step preserving static header capabilities and phase.</summary>
+/// <summary>Configured <c>memo</c> step preserving static header capabilities, leaf state, and phase.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type ConfiguredMemo<'Mode, 'Cmp, 'Phase, 'Prev, 'U> =
-    val Header: MemoHeader<'Mode, 'Cmp>
-    val Body: unit -> MemoStep<'Phase, 'Prev, 'U>
-    new(header: MemoHeader<'Mode, 'Cmp>, body: unit -> MemoStep<'Phase, 'Prev, 'U>) = { Header = header; Body = body }
+type ConfiguredMemo<'Mode, 'Cmp, 'Timing, 'Leaf, 'Phase, 'Prev, 'U> =
+    val Header: MemoHeader<'Mode, 'Cmp, 'Timing>
+    val Body: unit -> MemoStep<'Leaf, 'Phase, 'Prev, 'U>
+    new(header: MemoHeader<'Mode, 'Cmp, 'Timing>, body: unit -> MemoStep<'Leaf, 'Phase, 'Prev, 'U>) = { Header = header; Body = body }
 
-/// <summary>Configured <c>memo</c> <c>return!</c> tail preserving header capabilities and phase.</summary>
+/// <summary>Configured <c>memo</c> <c>return!</c> tail preserving header capabilities, leaf state, and phase.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type ConfiguredMemoTail<'Mode, 'Cmp, 'Phase, 'U> =
-    val Header: MemoHeader<'Mode, 'Cmp>
-    val Body: unit -> MemoTail<'Phase, 'U>
-    new(header: MemoHeader<'Mode, 'Cmp>, body: unit -> MemoTail<'Phase, 'U>) = { Header = header; Body = body }
+type ConfiguredMemoTail<'Mode, 'Cmp, 'Timing, 'Leaf, 'Phase, 'U> =
+    val Header: MemoHeader<'Mode, 'Cmp, 'Timing>
+    val Body: unit -> MemoTail<'Leaf, 'Phase, 'U>
+    new(header: MemoHeader<'Mode, 'Cmp, 'Timing>, body: unit -> MemoTail<'Leaf, 'Phase, 'U>) = { Header = header; Body = body }
 
 /// <summary>Static builder support for <c>MemoBuilder</c> <c>BoundPhase</c> execution.</summary>
 [<AbstractClass; Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
 type MemoRunner =
-    static member EvalBound<'Prev, 'U>(d: unit -> MemoStep<BoundPhase, 'Prev, 'U>, owning: bool, cmp: IEqualityComparer<'U> voption) : Memo<'U> =
+    static member EvalBound<'Leaf, 'Prev, 'U>
+        (d: unit -> MemoStep<'Leaf, BoundPhase, 'Prev, 'U>, owning: bool, cmp: IEqualityComparer<'U> voption, timing: TimedConfig voption)
+        : Memo<'U> =
         CeRuntime.SuspendNested (fun () ->
             match CeRuntime.ProbeBound d with
-            | MemoStatic (_, factory) -> factory owning cmp null
+            | MemoStatic (_, factory) -> factory owning cmp null timing
             | MemoDynamic (g, _) ->
+                CeRuntime.RequireStaticTimed timing
                 let graph = if Platform.isNull (box g) then Graph.Current else g
                 CeRuntime.CreateDynamicMemo (graph, (fun () -> (d ()).EvalValue()), owning, cmp)
             | MemoInline _ ->
+                CeRuntime.RequireStaticTimed timing
                 let graph = Graph.Current
                 CeRuntime.CreateDynamicMemo (graph, (fun () -> (d ()).EvalValue()), owning, cmp))
 
-    static member EvalCold<'Prev, 'U>(d: unit -> MemoStep<ColdPhase, 'Prev, 'U>, owning: bool, cmp: IEqualityComparer<'U> voption) : Memo<'U> =
+    static member EvalCold<'Leaf, 'Prev, 'U>
+        (d: unit -> MemoStep<'Leaf, ColdPhase, 'Prev, 'U>, owning: bool, cmp: IEqualityComparer<'U> voption)
+        : Memo<'U> =
         CeRuntime.CreateDynamicMemo (Graph.Current, (fun () -> (d ()).EvalValue()), owning, cmp)
 
-    static member EvalBoundOption<'A>(d: unit -> MemoStep<BoundPhase, NoPrev, 'A option>) : Memo<'A option> =
+    static member EvalBoundOption<'Leaf, 'A>
+        (d: unit -> MemoStep<'Leaf, BoundPhase, NoPrev, 'A option>, timing: TimedConfig voption)
+        : Memo<'A option> =
         CeRuntime.SuspendNested (fun () ->
             let dedup = OptionDeduplicator<'A>() :> IOptionDeduplicator<'A option>
 
@@ -1733,28 +2189,36 @@ type MemoRunner =
             |> ignore
 
             match CeRuntime.ProbeBound d with
-            | MemoStatic (_, factory) -> factory false ValueNone (box dedup)
+            | MemoStatic (_, factory) -> factory false ValueNone (box dedup) timing
             | MemoDynamic (g, _) ->
+                CeRuntime.RequireStaticTimed timing
                 let graph = if Platform.isNull (box g) then Graph.Current else g
                 CeRuntime.CreateDynamicOptionMemo (graph, fun () -> (d ()).EvalValue())
-            | MemoInline _ -> CeRuntime.CreateDynamicOptionMemo (Graph.Current, fun () -> (d ()).EvalValue()))
+            | MemoInline _ ->
+                CeRuntime.RequireStaticTimed timing
+                CeRuntime.CreateDynamicOptionMemo (Graph.Current, fun () -> (d ()).EvalValue()))
 
-    static member EvalColdOption<'A>(d: unit -> MemoStep<ColdPhase, NoPrev, 'A option>) : Memo<'A option> =
+    static member EvalColdOption<'Leaf, 'A>(d: unit -> MemoStep<'Leaf, ColdPhase, NoPrev, 'A option>) : Memo<'A option> =
         CeRuntime.CreateDynamicOptionMemo (Graph.Current, fun () -> (d ()).EvalValue())
 
-    static member EvalBoundTail<'U>(d: unit -> MemoTail<BoundPhase, 'U>, cmp: IEqualityComparer<'U> voption) : Memo<'U> =
+    static member EvalBoundTail<'Leaf, 'U>
+        (d: unit -> MemoTail<'Leaf, BoundPhase, 'U>, cmp: IEqualityComparer<'U> voption, timing: TimedConfig voption)
+        : Memo<'U> =
         CeRuntime.SuspendNested (fun () ->
             match CeRuntime.ProbeBound d with
-            | TailStatic (_, factory) -> factory cmp
+            | TailStatic (_, factory) -> factory cmp timing
             | TailDynamic (g, _) ->
+                CeRuntime.RequireStaticTimed timing
                 let graph = if Platform.isNull (box g) then Graph.Current else g
 
                 match cmp with
                 | ValueSome c -> Memo<'U>.CreateWithComparer(graph, (fun _ -> (d ()).EvalMemo().Value), ScopeMode.Owning, c)
                 | ValueNone -> Memo<'U>.CreateUnit(graph, (fun () -> (d ()).EvalMemo().Value), ScopeMode.Owning)
-            | TailReady m -> m)
+            | TailReady m ->
+                CeRuntime.RequireStaticTimed timing
+                m)
 
-    static member EvalColdTail<'U>(d: unit -> MemoTail<ColdPhase, 'U>, cmp: IEqualityComparer<'U> voption) : Memo<'U> =
+    static member EvalColdTail<'Leaf, 'U>(d: unit -> MemoTail<'Leaf, ColdPhase, 'U>, cmp: IEqualityComparer<'U> voption) : Memo<'U> =
         let graph = Graph.Current
 
         match cmp with
@@ -1762,25 +2226,31 @@ type MemoRunner =
             graph.Entered ("Creating a node", fun () -> Memo<'U>.CreateWithComparer(graph, (fun _ -> (d ()).EvalMemo().Value), ScopeMode.Owning, c))
         | ValueNone -> graph.Entered ("Creating a node", fun () -> Memo<'U>.CreateUnit(graph, (fun () -> (d ()).EvalMemo().Value), ScopeMode.Owning))
 
-    static member UsingStep<'D, 'P, 'POut, 'Prev, 'U when 'D :> IDisposable>
-        (resource: 'D, body: 'D -> MemoStep<'P, 'Prev, 'U>)
-        : MemoStep<'POut, 'Prev, 'U> =
+    static member UsingStep<'D, 'InLeaf, 'P, 'OutLeaf, 'POut, 'Prev, 'U when 'D :> IDisposable>
+        (resource: 'D, body: 'D -> MemoStep<'InLeaf, 'P, 'Prev, 'U>)
+        : MemoStep<'OutLeaf, 'POut, 'Prev, 'U> =
         if InternalCeState.IsProbing then
             CeRuntime.DisposeResource resource
             MemoDynamic (Unchecked.defaultof<Graph>, fun () -> CeRuntime.ProbeDisposed ())
         else
             MemoDynamic (Unchecked.defaultof<Graph>, fun () -> CeRuntime.RunUsing (resource, fun () -> (body resource).EvalValue()))
 
-    static member BindSource<'K, 'Prev, 'U>(source: IReactive<'K>, f: 'K -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    static member BindSource<'K, 'Key, 'Prev, 'U>(source: IReactive<'K>, f: 'K -> 'U) : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadCeTracked source
             MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, source.Graph, f, key))
         else
             let g = source.Graph
 
-            MemoStatic (g, fun owning cmp dedup -> CeRuntime.CreateMemoFromReactive (source, f, owning, cmp, dedup))
+            MemoStatic (
+                g,
+                fun owning cmp dedup timing ->
+                    match timing with
+                    | ValueSome cfg -> CeRuntime.CreateTimedMemo (source, f, owning, cmp, dedup, cfg)
+                    | ValueNone -> CeRuntime.CreateMemoFromReactive (source, f, owning, cmp, dedup)
+            )
 
-    static member BindSignal<'K, 'Prev, 'U>(source: Signal<'K>, f: 'K -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    static member BindSignal<'K, 'Key, 'Prev, 'U>(source: Signal<'K>, f: 'K -> 'U) : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadTrackedOn (source.Graph, fun () -> source.Value)
             MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, source.Graph, f, key))
@@ -1789,14 +2259,17 @@ type MemoRunner =
 
             MemoStatic (
                 g,
-                fun owning cmp dedup ->
-                    if not owning && cmp.IsNone && isNull dedup then
-                        CombinatorMemos.createSignalMap f source
-                    else
-                        CeRuntime.CreateStaticMemo (g, (fun () -> source.Value), f, owning, cmp, ValueNone, dedup)
+                fun owning cmp dedup timing ->
+                    match timing with
+                    | ValueSome cfg -> CeRuntime.CreateTimedMemo (source :> IReactive<'K>, f, owning, cmp, dedup, cfg)
+                    | ValueNone ->
+                        if not owning && cmp.IsNone && isNull dedup then
+                            CombinatorMemos.createSignalMap f source
+                        else
+                            CeRuntime.CreateStaticMemo (g, (fun () -> source.Value), f, owning, cmp, ValueNone, dedup)
             )
 
-    static member BindMemo<'K, 'Prev, 'U>(source: Memo<'K>, f: 'K -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    static member BindMemo<'K, 'Key, 'Prev, 'U>(source: Memo<'K>, f: 'K -> 'U) : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadTrackedOn (source.Graph, fun () -> source.Value)
             MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, source.Graph, f, key))
@@ -1805,14 +2278,19 @@ type MemoRunner =
 
             MemoStatic (
                 g,
-                fun owning cmp dedup ->
-                    if not owning && cmp.IsNone && isNull dedup then
-                        CombinatorMemos.createMemoMap f source
-                    else
-                        CeRuntime.CreateStaticMemo (g, (fun () -> source.Value), f, owning, cmp, ValueNone, dedup)
+                fun owning cmp dedup timing ->
+                    match timing with
+                    | ValueSome cfg -> CeRuntime.CreateTimedMemo (source :> IReactive<'K>, f, owning, cmp, dedup, cfg)
+                    | ValueNone ->
+                        if not owning && cmp.IsNone && isNull dedup then
+                            CombinatorMemos.createMemoMap f source
+                        else
+                            CeRuntime.CreateStaticMemo (g, (fun () -> source.Value), f, owning, cmp, ValueNone, dedup)
             )
 
-    static member BindMergedSignals<'A, 'B, 'Prev, 'U>(source: MergedSignals<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    static member BindMergedSignals<'A, 'B, 'Key, 'Prev, 'U>
+        (source: MergedSignals<'A, 'B>, f: struct ('A * 'B) -> 'U)
+        : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         let g = (source :> IReactive<struct ('A * 'B)>).Graph
 
         if InternalCeState.IsEvaluating then
@@ -1821,14 +2299,19 @@ type MemoRunner =
         else
             MemoStatic (
                 g,
-                fun owning cmp dedup ->
-                    if not owning && cmp.IsNone && isNull dedup then
-                        CombinatorMemos.createSignalMap2 (fun a b -> f (struct (a, b))) source.Source1 source.Source2
-                    else
-                        CeRuntime.CreateStaticMemo (g, (source :> IReactive<struct ('A * 'B)>).ReadTracked, f, owning, cmp, ValueNone, dedup)
+                fun owning cmp dedup timing ->
+                    match timing with
+                    | ValueSome cfg -> CeRuntime.CreateTimedMemo (source :> IReactive<struct ('A * 'B)>, f, owning, cmp, dedup, cfg)
+                    | ValueNone ->
+                        if not owning && cmp.IsNone && isNull dedup then
+                            CombinatorMemos.createSignalMap2 (fun a b -> f (struct (a, b))) source.Source1 source.Source2
+                        else
+                            CeRuntime.CreateStaticMemo (g, (source :> IReactive<struct ('A * 'B)>).ReadTracked, f, owning, cmp, ValueNone, dedup)
             )
 
-    static member BindMergedMemos<'A, 'B, 'Prev, 'U>(source: MergedMemos<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    static member BindMergedMemos<'A, 'B, 'Key, 'Prev, 'U>
+        (source: MergedMemos<'A, 'B>, f: struct ('A * 'B) -> 'U)
+        : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         let g = (source :> IReactive<struct ('A * 'B)>).Graph
 
         if InternalCeState.IsEvaluating then
@@ -1837,25 +2320,64 @@ type MemoRunner =
         else
             MemoStatic (
                 g,
-                fun owning cmp dedup ->
-                    if not owning && cmp.IsNone && isNull dedup then
-                        CombinatorMemos.createMemoMap2 (fun a b -> f (struct (a, b))) source.Source1 source.Source2
-                    else
-                        CeRuntime.CreateStaticMemo (g, (source :> IReactive<struct ('A * 'B)>).ReadTracked, f, owning, cmp, ValueNone, dedup)
+                fun owning cmp dedup timing ->
+                    match timing with
+                    | ValueSome cfg -> CeRuntime.CreateTimedMemo (source :> IReactive<struct ('A * 'B)>, f, owning, cmp, dedup, cfg)
+                    | ValueNone ->
+                        if not owning && cmp.IsNone && isNull dedup then
+                            CombinatorMemos.createMemoMap2 (fun a b -> f (struct (a, b))) source.Source1 source.Source2
+                        else
+                            CeRuntime.CreateStaticMemo (g, (source :> IReactive<struct ('A * 'B)>).ReadTracked, f, owning, cmp, ValueNone, dedup)
             )
 
-    static member BindMergedReactive<'A, 'B, 'Prev, 'U>(source: MergedReactive<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    static member BindMergedReactive<'A, 'B, 'Key, 'Prev, 'U>
+        (source: MergedReactive<'A, 'B>, f: struct ('A * 'B) -> 'U)
+        : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         let g = (source :> IReactive<struct ('A * 'B)>).Graph
 
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadCeTracked source
             MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, g, f, key))
         else
-            MemoStatic (g, fun owning cmp dedup -> CeRuntime.CreateMemoFromMergedReactive (source, f, owning, cmp, dedup))
+            MemoStatic (
+                g,
+                fun owning cmp dedup timing ->
+                    match timing with
+                    | ValueSome cfg -> CeRuntime.CreateTimedMemo (source :> IReactive<struct ('A * 'B)>, f, owning, cmp, dedup, cfg)
+                    | ValueNone -> CeRuntime.CreateMemoFromMergedReactive (source, f, owning, cmp, dedup)
+            )
 
-    static member BindReactive<'K, 'Phase, 'Prev, 'U>
-        (source: IReactive<'K>, continuation: 'K -> MemoStep<'Phase, 'Prev, 'U>)
-        : MemoStep<BoundPhase, 'Prev, 'U> =
+    static member BindReactiveStatic<'K, 'Key, 'U>
+        (source: IReactive<'K>, continuation: 'K -> MemoStep<IsLeaf, ColdPhase, NoPrev, 'U>)
+        : MemoStep<NotLeaf<'Key>, BoundPhase, NoPrev, 'U> =
+        let run () =
+            let key = CeRuntime.ReadCeTracked source
+            let saved = InternalCeState.SwapReactiveBind true
+
+            try
+                CeRuntime.RunUntrackedContinuation (false, InternalCeState.IsOwning, source.Graph, key, fun k -> (continuation k).EvalValue())
+            finally
+                InternalCeState.SwapReactiveBind saved |> ignore
+
+        if InternalCeState.IsEvaluating then
+            MemoInline (run ())
+        else
+            let g = source.Graph
+
+            let evalStatic (k: 'K) : 'U =
+                CeRuntime.SuspendNested (fun () -> (continuation k).EvalValue())
+
+            MemoStatic (
+                g,
+                fun owning cmp dedup timing ->
+                    match timing with
+                    | ValueSome cfg -> CeRuntime.CreateTimedMemo (source, evalStatic, owning, cmp, dedup, cfg)
+                    | ValueNone -> CeRuntime.CreateMemoFromReactive (source, evalStatic, owning, cmp, dedup)
+            )
+
+    static member BindReactive<'K, 'AnyLeaf, 'Phase, 'Prev, 'U>
+        (source: IReactive<'K>, continuation: 'K -> MemoStep<'AnyLeaf, 'Phase, 'Prev, 'U>)
+        : MemoStep<NotLeaf<DynamicKey>, BoundPhase, 'Prev, 'U> =
         let run () =
             let key = CeRuntime.ReadCeTracked source
             let saved = InternalCeState.SwapReactiveBind true
@@ -1870,9 +2392,9 @@ type MemoRunner =
         else
             MemoDynamic (source.Graph, run)
 
-    static member BindPrevVal<'T, 'Phase, 'InnerPrev, 'U>
-        (probeValue: 'T, readPrev: unit -> 'T, continuation: 'T -> MemoStep<'Phase, 'InnerPrev, 'U>)
-        : MemoStep<'Phase, WithPrev, 'U> =
+    static member BindPrevVal<'T, 'InLeaf, 'Phase, 'InnerPrev, 'U>
+        (probeValue: 'T, readPrev: unit -> 'T, continuation: 'T -> MemoStep<'InLeaf, 'Phase, 'InnerPrev, 'U>)
+        : MemoStep<NotLeaf<DynamicKey>, 'Phase, WithPrev, 'U> =
         if InternalCeState.IsEvaluating then
             MemoInline ((continuation (readPrev ())).EvalValue())
         else
@@ -1886,7 +2408,7 @@ type MemoRunner =
 
             MemoDynamic (g, fun () -> (continuation (readPrev ())).EvalValue())
 
-    static member BindReturnPrevVal<'T, 'Phase, 'U>(prev: 'T, f: 'T -> 'U) : MemoStep<'Phase, WithPrev, 'U> =
+    static member BindReturnPrevVal<'T, 'Leaf, 'Phase, 'U>(prev: 'T, f: 'T -> 'U) : MemoStep<'Leaf, 'Phase, WithPrev, 'U> =
         if InternalCeState.HasReactiveBind then
             MemoInline (CeRuntime.RunUntrackedMemoBind (InternalCeState.IsOwning, Graph.Current, f, prev))
         else
@@ -1897,7 +2419,7 @@ type MemoRunner =
 type EffectStep<'Leaf, 'Phase> =
     | EffectUnit
     | EffectDynamicFn of effGraph: Graph * effEval: (unit -> unit)
-    | EffectStatic of effOnGraph: Graph * effFactory: (bool -> INode) * effDynEval: (unit -> unit)
+    | EffectStatic of effOnGraph: Graph * effFactory: (bool -> TimedConfig voption -> INode) * effDynEval: (unit -> unit)
 
     member this.EvalUnit() =
         match this with
@@ -1905,27 +2427,33 @@ type EffectStep<'Leaf, 'Phase> =
         | EffectDynamicFn (_, f) -> f ()
         | EffectStatic (_, _, f) -> f ()
 
-/// <summary>Header descriptor configured via <c>node</c> inside <c>effect</c>.</summary>
+/// <summary>Header descriptor configured via <c>node</c> and timing operations inside <c>effect</c>.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type EffectHeader<'Out> = struct end
+type EffectHeader<'Out, 'Timing> =
+    val Timing: 'Timing
+    new(timing: 'Timing) = { Timing = timing }
 
-/// <summary>Configured <c>effect</c> step preserving output handle flavor, leaf state, and phase.</summary>
+/// <summary>Configured <c>effect</c> step preserving output handle flavor, timing config, leaf state, and phase.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type ConfiguredEffect<'Out, 'Leaf, 'Phase> =
+type ConfiguredEffect<'Out, 'Timing, 'Leaf, 'Phase> =
+    val Header: EffectHeader<'Out, 'Timing>
     val Body: unit -> EffectStep<'Leaf, 'Phase>
-    new(body: unit -> EffectStep<'Leaf, 'Phase>) = { Body = body }
+    new(header: EffectHeader<'Out, 'Timing>, body: unit -> EffectStep<'Leaf, 'Phase>) = { Header = header; Body = body }
 
 /// <summary>Static runtime helpers for <c>EffectBuilder</c>.</summary>
 [<AbstractClass; Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
 type EffectRunner =
-    static member EvalBound<'Leaf>(d: unit -> EffectStep<'Leaf, BoundPhase>, asNode: bool) : INode =
+    static member EvalBound<'Leaf>(d: unit -> EffectStep<'Leaf, BoundPhase>, asNode: bool, timing: TimedConfig voption) : INode =
         CeRuntime.SuspendNested (fun () ->
             match CeRuntime.ProbeBound d with
-            | EffectStatic (_, factory, _) -> factory asNode
+            | EffectStatic (_, factory, _) -> factory asNode timing
             | EffectDynamicFn (g, _) ->
+                CeRuntime.RequireStaticTimed timing
                 let graph = if Platform.isNull (box g) then Graph.Current else g
                 CeRuntime.CreateDynamicEffect (graph, (fun () -> (d ()).EvalUnit()), asNode)
-            | EffectUnit -> CeRuntime.CreateDynamicEffect (Graph.Current, (fun () -> (d ()).EvalUnit()), asNode))
+            | EffectUnit ->
+                CeRuntime.RequireStaticTimed timing
+                CeRuntime.CreateDynamicEffect (Graph.Current, (fun () -> (d ()).EvalUnit()), asNode))
 
     static member EvalCold<'Leaf>(d: unit -> EffectStep<'Leaf, ColdPhase>, asNode: bool) : INode =
         CeRuntime.SuspendNested (fun () -> CeRuntime.CreateDynamicEffect (Graph.Current, (fun () -> (d ()).EvalUnit()), asNode))
@@ -2175,7 +2703,7 @@ type AsyncEval<'U> =
 [<EditorBrowsable(EditorBrowsableState.Never)>]
 type IAsyncStaticFactory<'U> =
     abstract Graph: Graph
-    abstract Create: owning: bool * policy: FlightPolicy voption -> AsyncMemo<'U>
+    abstract Create: owning: bool * policy: FlightPolicy voption * timing: TimedConfig voption -> AsyncMemo<'U>
     abstract WithContext: extract: (Previous<'U> -> CancellationToken -> IAsyncStaticFactory<'U>) -> IAsyncStaticFactory<'U>
 
 /// <summary>Static factory implementation dispatching single or merged reactive <c>asyncMemo</c> blocks to <c>AsyncMemo.CreateOn</c>.</summary>
@@ -2187,8 +2715,10 @@ type AsyncOnFactory<'K, 'U>(source: IReactive<'K>, buildWithKey: 'K -> Previous<
     interface IAsyncStaticFactory<'U> with
         member _.Graph = source.Graph
 
-        member _.Create(owning, policy) =
-            CeRuntime.CreateAsyncFromReactive (source, buildWithKey, owning, policy)
+        member _.Create(owning, policy, timing) =
+            match timing with
+            | ValueSome cfg -> CeRuntime.CreateTimedAsync (source, buildWithKey, owning, policy, cfg)
+            | ValueNone -> CeRuntime.CreateAsyncFromReactive (source, buildWithKey, owning, policy)
 
         member _.WithContext(extract) =
             AsyncOnFactory<'K, 'U>(
@@ -2220,18 +2750,19 @@ type AsyncStep<'Leaf, 'Phase, 'U> =
         | AsyncDynamic (_, f) -> f prev ct
         | AsyncStatic (_, f) -> f prev ct
 
-/// <summary>Header descriptor configured via <c>owning</c> and <c>policy</c> inside <c>asyncMemo</c>.</summary>
+/// <summary>Header descriptor configured via <c>owning</c>, <c>policy</c>, and timing operations inside <c>asyncMemo</c>.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type AsyncHeader<'Mode, 'Pol> =
+type AsyncHeader<'Mode, 'Pol, 'Timing> =
     val Pol: 'Pol
-    new(pol: 'Pol) = { Pol = pol }
+    val Timing: 'Timing
+    new(pol: 'Pol, timing: 'Timing) = { Pol = pol; Timing = timing }
 
-/// <summary>Configured <c>asyncMemo</c> step preserving header mode, flight policy, leaf state, and phase.</summary>
+/// <summary>Configured <c>asyncMemo</c> step preserving header mode, flight policy, timing config, leaf state, and phase.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type ConfiguredAsync<'Mode, 'Pol, 'Leaf, 'Phase, 'U> =
-    val Header: AsyncHeader<'Mode, 'Pol>
+type ConfiguredAsync<'Mode, 'Pol, 'Timing, 'Leaf, 'Phase, 'U> =
+    val Header: AsyncHeader<'Mode, 'Pol, 'Timing>
     val Body: unit -> AsyncStep<'Leaf, 'Phase, 'U>
-    new(header: AsyncHeader<'Mode, 'Pol>, body: unit -> AsyncStep<'Leaf, 'Phase, 'U>) = { Header = header; Body = body }
+    new(header: AsyncHeader<'Mode, 'Pol, 'Timing>, body: unit -> AsyncStep<'Leaf, 'Phase, 'U>) = { Header = header; Body = body }
 
 /// <summary>Static builder support for <c>AsyncMemoBuilder</c> two-phase execution.</summary>
 [<AbstractClass; Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
@@ -2305,14 +2836,18 @@ type AsyncRunner =
         | AsyncStatic (factory, _) -> factory
         | _ -> invalidOp "Unexpected non-static AsyncStep during context extraction."
 
-    static member EvalBound<'Leaf, 'U>(d: unit -> AsyncStep<'Leaf, BoundPhase, 'U>, owning: bool, policy: FlightPolicy voption) : AsyncMemo<'U> =
+    static member EvalBound<'Leaf, 'U>
+        (d: unit -> AsyncStep<'Leaf, BoundPhase, 'U>, owning: bool, policy: FlightPolicy voption, timing: TimedConfig voption)
+        : AsyncMemo<'U> =
         CeRuntime.SuspendNested (fun () ->
             match CeRuntime.ProbeBound d with
-            | AsyncStatic (factory, _) -> factory.Create (owning, policy)
+            | AsyncStatic (factory, _) -> factory.Create (owning, policy, timing)
             | AsyncDynamic (g, _) ->
+                CeRuntime.RequireStaticTimed timing
                 let graph = if Platform.isNull (box g) then Graph.Current else g
                 AsyncRunner.CreateDynamicAsync (graph, (fun prev ct -> (d ()).EvalAsync(prev, ct)), owning, policy)
             | AsyncInline _ ->
+                CeRuntime.RequireStaticTimed timing
                 let graph = Graph.Current
                 AsyncRunner.CreateDynamicAsync (graph, (fun prev ct -> (d ()).EvalAsync(prev, ct)), owning, policy))
 
@@ -2611,7 +3146,7 @@ type AsyncRunner =
             if not handoff then
                 CeRuntime.DisposeResource enumerator
 
-    static member BindReturnReactive<'K, 'U>(source: IReactive<'K>, f: 'K -> 'U) : AsyncStep<NotLeaf, BoundPhase, 'U> =
+    static member BindReturnReactive<'K, 'Key, 'U>(source: IReactive<'K>, f: 'K -> 'U) : AsyncStep<NotLeaf<'Key>, BoundPhase, 'U> =
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadCeTracked source
             AsyncInline (CeRuntime.RunAsyncUntrackedArg (InternalCeState.IsOwning, source.Graph, f, key))
@@ -2625,9 +3160,9 @@ type AsyncRunner =
 
             AsyncStatic (AsyncOnFactory<'K, 'U>(source, build) :> IAsyncStaticFactory<'U>, evalDyn)
 
-    static member BindReactiveStatic<'K, 'U>
+    static member BindReactiveStatic<'K, 'Key, 'U>
         (source: IReactive<'K>, continuation: 'K -> AsyncStep<IsLeaf, ColdPhase, 'U>)
-        : AsyncStep<NotLeaf, BoundPhase, 'U> =
+        : AsyncStep<NotLeaf<'Key>, BoundPhase, 'U> =
         let evalDyn (prev: Previous<'U>) (ct: CancellationToken) : AsyncEval<'U> =
             let key = CeRuntime.ReadCeTracked source
             CeRuntime.RunAsyncUntrackedContinuation (InternalCeState.IsOwning, source.Graph, key, fun k -> (continuation k).EvalAsync(prev, ct))
@@ -2642,7 +3177,7 @@ type AsyncRunner =
 
     static member BindReactiveDynamic<'K, 'AnyLeaf, 'ContPhase, 'U>
         (source: IReactive<'K>, continuation: 'K -> AsyncStep<'AnyLeaf, 'ContPhase, 'U>)
-        : AsyncStep<NotLeaf, BoundPhase, 'U> =
+        : AsyncStep<NotLeaf<DynamicKey>, BoundPhase, 'U> =
         let evalDyn (prev: Previous<'U>) (ct: CancellationToken) : AsyncEval<'U> =
             let key = CeRuntime.ReadCeTracked source
             let saved = InternalCeState.SwapReactiveBind true
@@ -2856,8 +3391,8 @@ type StreamEval<'T> =
 [<EditorBrowsable(EditorBrowsableState.Never)>]
 type IStreamStaticFactory<'T> =
     abstract Graph: Graph
-    abstract CreateLatest: unit -> StreamMemo<'T>
-    abstract CreateFold: seed: 'S * folder: ('S -> 'T -> 'S) -> StreamMemo<'S>
+    abstract CreateLatest: timing: TimedConfig voption -> StreamMemo<'T>
+    abstract CreateFold: seed: 'S * folder: ('S -> 'T -> 'S) * timing: TimedConfig voption -> StreamMemo<'S>
     abstract WithContext: extract: (CancellationToken -> IStreamStaticFactory<'T>) -> IStreamStaticFactory<'T>
 
 /// <summary>Static factory implementation dispatching single or merged reactive <c>stream</c> blocks to <c>CreateOn</c>/<c>CreateFoldOn</c>.</summary>
@@ -2869,27 +3404,67 @@ type StreamOnFactory<'K, 'T>(source: IReactive<'K>, build: 'K -> CancellationTok
     interface IStreamStaticFactory<'T> with
         member _.Graph = source.Graph
 
-        member _.CreateLatest() =
+        member _.CreateLatest(timing) =
             let g = source.Graph
 
-            g.Entered (
-                "Creating a node",
-                fun () ->
-                    match CeRuntime.TryCustomKeyComparer source with
-                    | ValueSome kc -> StreamMemo<'T>.CreateOn(g, source.ReadTracked, build, keyComparer = kc)
-                    | ValueNone -> StreamMemo<'T>.CreateOn(g, source.ReadTracked, build)
-            )
+            match timing with
+            | ValueSome cfg ->
+                let timed = CeRuntime.CreateTimedSource (source, cfg)
 
-        member _.CreateFold<'S>(seed: 'S, folder: 'S -> 'T -> 'S) =
+                try
+                    let sm =
+                        g.Entered (
+                            "Creating a node",
+                            fun () ->
+                                match CeRuntime.TryCustomKeyComparer source with
+                                | ValueSome kc -> StreamMemo<'T>.CreateOn(g, (fun () -> timed.Value), build, keyComparer = kc)
+                                | ValueNone -> StreamMemo<'T>.CreateOn(g, (fun () -> timed.Value), build)
+                        )
+
+                    sm.Adopt (timed :> IDisposable)
+                    sm
+                with _ ->
+                    timed.Dispose ()
+                    reraise ()
+            | ValueNone ->
+                g.Entered (
+                    "Creating a node",
+                    fun () ->
+                        match CeRuntime.TryCustomKeyComparer source with
+                        | ValueSome kc -> StreamMemo<'T>.CreateOn(g, source.ReadTracked, build, keyComparer = kc)
+                        | ValueNone -> StreamMemo<'T>.CreateOn(g, source.ReadTracked, build)
+                )
+
+        member _.CreateFold<'S>(seed: 'S, folder: 'S -> 'T -> 'S, timing) =
             let g = source.Graph
 
-            g.Entered (
-                "Creating a node",
-                fun () ->
-                    match CeRuntime.TryCustomKeyComparer source with
-                    | ValueSome kc -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, source.ReadTracked, build, keyComparer = kc)
-                    | ValueNone -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, source.ReadTracked, build)
-            )
+            match timing with
+            | ValueSome cfg ->
+                let timed = CeRuntime.CreateTimedSource (source, cfg)
+
+                try
+                    let sm =
+                        g.Entered (
+                            "Creating a node",
+                            fun () ->
+                                match CeRuntime.TryCustomKeyComparer source with
+                                | ValueSome kc -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, (fun () -> timed.Value), build, keyComparer = kc)
+                                | ValueNone -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, (fun () -> timed.Value), build)
+                        )
+
+                    sm.Adopt (timed :> IDisposable)
+                    sm
+                with _ ->
+                    timed.Dispose ()
+                    reraise ()
+            | ValueNone ->
+                g.Entered (
+                    "Creating a node",
+                    fun () ->
+                        match CeRuntime.TryCustomKeyComparer source with
+                        | ValueSome kc -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, source.ReadTracked, build, keyComparer = kc)
+                        | ValueNone -> StreamMemo<'S>.CreateFoldOn(g, seed, folder, source.ReadTracked, build)
+                )
 
         member _.WithContext(extract) =
             StreamOnFactory<'K, 'T>(
@@ -2932,41 +3507,50 @@ type StreamStep<'Leaf, 'Phase, 'T> =
         | StreamEvalSource src -> src
         | StreamEvalUnit -> invalidOp "Stream computation expression did not return a StreamSource."
 
-/// <summary>Header descriptor configured via <c>fold</c> inside <c>stream</c>.</summary>
+/// <summary>Header descriptor configured via <c>fold</c> and timing operations inside <c>stream</c>.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type StreamHeader<'Mode> =
+type StreamHeader<'Mode, 'Timing> =
     val Mode: 'Mode
-    new(mode: 'Mode) = { Mode = mode }
+    val Timing: 'Timing
+    new(mode: 'Mode, timing: 'Timing) = { Mode = mode; Timing = timing }
 
-/// <summary>Configured <c>stream</c> step preserving latest vs fold mode, leaf state, and phase.</summary>
+/// <summary>Configured <c>stream</c> step preserving latest vs fold mode, timing config, leaf state, and phase.</summary>
 [<Struct; NoEquality; NoComparison; EditorBrowsable(EditorBrowsableState.Never)>]
-type ConfiguredStream<'Mode, 'Leaf, 'Phase, 'T> =
-    val Header: StreamHeader<'Mode>
+type ConfiguredStream<'Mode, 'Timing, 'Leaf, 'Phase, 'T> =
+    val Header: StreamHeader<'Mode, 'Timing>
     val Body: unit -> StreamStep<'Leaf, 'Phase, 'T>
-    new(header: StreamHeader<'Mode>, body: unit -> StreamStep<'Leaf, 'Phase, 'T>) = { Header = header; Body = body }
+    new(header: StreamHeader<'Mode, 'Timing>, body: unit -> StreamStep<'Leaf, 'Phase, 'T>) = { Header = header; Body = body }
 
 /// <summary>Static builder support for <c>StreamBuilder</c> execution.</summary>
 [<AbstractClass; Sealed; EditorBrowsable(EditorBrowsableState.Never)>]
 type StreamRunner =
-    static member EvalBoundLatest<'Leaf, 'T>(d: unit -> StreamStep<'Leaf, BoundPhase, 'T>) : StreamMemo<'T> =
+    static member EvalBoundLatest<'Leaf, 'T>(d: unit -> StreamStep<'Leaf, BoundPhase, 'T>, timing: TimedConfig voption) : StreamMemo<'T> =
         CeRuntime.SuspendNested (fun () ->
             match CeRuntime.ProbeBound d with
-            | StreamStatic (factory, _) -> factory.CreateLatest ()
+            | StreamStatic (factory, _) -> factory.CreateLatest timing
             | StreamDynamic (g, _) ->
+                CeRuntime.RequireStaticTimed timing
                 let graph = if Platform.isNull (box g) then Graph.Current else g
                 CeRuntime.CreateDynamicStreamLatest (graph, fun ct -> (d ()).EvalSource(ct))
             | StreamReady _
-            | StreamUnit -> CeRuntime.CreateDynamicStreamLatest (Graph.Current, fun ct -> (d ()).EvalSource(ct)))
+            | StreamUnit ->
+                CeRuntime.RequireStaticTimed timing
+                CeRuntime.CreateDynamicStreamLatest (Graph.Current, fun ct -> (d ()).EvalSource(ct)))
 
-    static member EvalBoundFold<'S, 'Leaf, 'T>(d: unit -> StreamStep<'Leaf, BoundPhase, 'T>, seed: 'S, folder: 'S -> 'T -> 'S) : StreamMemo<'S> =
+    static member EvalBoundFold<'S, 'Leaf, 'T>
+        (d: unit -> StreamStep<'Leaf, BoundPhase, 'T>, seed: 'S, folder: 'S -> 'T -> 'S, timing: TimedConfig voption)
+        : StreamMemo<'S> =
         CeRuntime.SuspendNested (fun () ->
             match CeRuntime.ProbeBound d with
-            | StreamStatic (factory, _) -> factory.CreateFold<'S>(seed, folder)
+            | StreamStatic (factory, _) -> factory.CreateFold<'S>(seed, folder, timing)
             | StreamDynamic (g, _) ->
+                CeRuntime.RequireStaticTimed timing
                 let graph = if Platform.isNull (box g) then Graph.Current else g
                 CeRuntime.CreateDynamicStreamFold (graph, seed, folder, fun ct -> (d ()).EvalSource(ct))
             | StreamReady _
-            | StreamUnit -> CeRuntime.CreateDynamicStreamFold (Graph.Current, seed, folder, fun ct -> (d ()).EvalSource(ct)))
+            | StreamUnit ->
+                CeRuntime.RequireStaticTimed timing
+                CeRuntime.CreateDynamicStreamFold (Graph.Current, seed, folder, fun ct -> (d ()).EvalSource(ct)))
 
     static member EvalColdLatest<'Leaf, 'T>(d: unit -> StreamStep<'Leaf, ColdPhase, 'T>) : StreamMemo<'T> =
         CeRuntime.CreateDynamicStreamLatest (Graph.Current, fun ct -> (d ()).EvalSource(ct))
@@ -2983,7 +3567,7 @@ type StreamRunner =
         else
             StreamDynamic (Unchecked.defaultof<Graph>, fun ct -> CeRuntime.RunUsing (resource, fun () -> (body resource).EvalResult(ct)))
 
-    static member BindReturnReactive<'K, 'T>(source: IReactive<'K>, f: 'K -> StreamSource<'T>) : StreamStep<NotLeaf, BoundPhase, 'T> =
+    static member BindReturnReactive<'K, 'Key, 'T>(source: IReactive<'K>, f: 'K -> StreamSource<'T>) : StreamStep<NotLeaf<'Key>, BoundPhase, 'T> =
         if InternalCeState.IsEvaluating then
             let key = CeRuntime.ReadCeTracked source
             StreamReady (CeRuntime.RunStreamUntrackedArg (source.Graph, f, key))
@@ -2997,9 +3581,9 @@ type StreamRunner =
 
             StreamStatic (StreamOnFactory<'K, 'T>(source, build) :> IStreamStaticFactory<'T>, evalDyn)
 
-    static member BindReactiveStatic<'K, 'T>
+    static member BindReactiveStatic<'K, 'Key, 'T>
         (source: IReactive<'K>, continuation: 'K -> StreamStep<IsLeaf, ColdPhase, 'T>)
-        : StreamStep<NotLeaf, BoundPhase, 'T> =
+        : StreamStep<NotLeaf<'Key>, BoundPhase, 'T> =
         let evalDyn (ct: CancellationToken) : StreamEval<'T> =
             let key = CeRuntime.ReadCeTracked source
             CeRuntime.RunStreamUntrackedContinuation (source.Graph, key, fun k -> (continuation k).EvalResult(ct))
@@ -3014,7 +3598,7 @@ type StreamRunner =
 
     static member BindReactiveDynamic<'K, 'AnyLeaf, 'ContPhase, 'T>
         (source: IReactive<'K>, continuation: 'K -> StreamStep<'AnyLeaf, 'ContPhase, 'T>)
-        : StreamStep<NotLeaf, BoundPhase, 'T> =
+        : StreamStep<NotLeaf<DynamicKey>, BoundPhase, 'T> =
         let evalDyn (ct: CancellationToken) : StreamEval<'T> =
             let key = CeRuntime.ReadCeTracked source
             let saved = InternalCeState.SwapReactiveBind true
@@ -3077,19 +3661,19 @@ type MemoBuilder() =
         MemoPreviousOrToken<'U> seed
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Yield(_: unit) : MemoHeader<PureMode, NoCmp> =
-        MemoHeader<PureMode, NoCmp>(NoCmp ())
+    member inline _.Yield(_: unit) : MemoHeader<PureMode, NoCmp, NoTiming> =
+        MemoHeader<PureMode, NoCmp, NoTiming>(NoCmp (), NoTiming ())
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Zero() : MemoStep<'Phase, 'Prev, unit> =
+    member inline _.Zero() : MemoStep<'Leaf, 'Phase, 'Prev, unit> =
         MemoInline ()
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Return(value: 'U) : MemoStep<'Phase, 'Prev, 'U> =
+    member inline _.Return(value: 'U) : MemoStep<'Leaf, 'Phase, 'Prev, 'U> =
         MemoInline value
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.ReturnFrom(memo: Memo<'U>) : MemoTail<'Phase, 'U> =
+    member inline _.ReturnFrom(memo: Memo<'U>) : MemoTail<'Leaf, 'Phase, 'U> =
         TailReady memo
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -3097,8 +3681,8 @@ type MemoBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.Combine
-        (first: MemoStep<ColdPhase, 'Prev, unit>, [<InlineIfLambda>] second: unit -> MemoStep<ColdPhase, 'Prev, 'U>)
-        : MemoStep<'Phase, 'Prev, 'U> =
+        (first: MemoStep<IsLeaf, ColdPhase, 'Prev, unit>, [<InlineIfLambda>] second: unit -> MemoStep<IsLeaf, ColdPhase, 'Prev, 'U>)
+        : MemoStep<'OutLeaf, 'Phase, 'Prev, 'U> =
         MemoDynamic (
             Unchecked.defaultof<Graph>,
             fun () ->
@@ -3108,8 +3692,8 @@ type MemoBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.While
-        ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> MemoStep<ColdPhase, 'Prev, unit>)
-        : MemoStep<'Phase, 'Prev, unit> =
+        ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> MemoStep<IsLeaf, ColdPhase, 'Prev, unit>)
+        : MemoStep<'OutLeaf, 'Phase, 'Prev, unit> =
         MemoDynamic (
             Unchecked.defaultof<Graph>,
             fun () ->
@@ -3119,8 +3703,10 @@ type MemoBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.TryWith
-        ([<InlineIfLambda>] body: unit -> MemoStep<ColdPhase, 'Prev, 'U>, [<InlineIfLambda>] handler: exn -> MemoStep<ColdPhase, 'Prev, 'U>)
-        : MemoStep<'Phase, 'Prev, 'U> =
+        (
+            [<InlineIfLambda>] body: unit -> MemoStep<IsLeaf, ColdPhase, 'Prev, 'U>,
+            [<InlineIfLambda>] handler: exn -> MemoStep<IsLeaf, ColdPhase, 'Prev, 'U>
+        ) : MemoStep<'OutLeaf, 'Phase, 'Prev, 'U> =
         MemoDynamic (
             Unchecked.defaultof<Graph>,
             fun () ->
@@ -3132,8 +3718,8 @@ type MemoBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.TryFinally
-        ([<InlineIfLambda>] body: unit -> MemoStep<ColdPhase, 'Prev, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
-        : MemoStep<'Phase, 'Prev, 'U> =
+        ([<InlineIfLambda>] body: unit -> MemoStep<IsLeaf, ColdPhase, 'Prev, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
+        : MemoStep<'OutLeaf, 'Phase, 'Prev, 'U> =
         MemoDynamic (
             Unchecked.defaultof<Graph>,
             fun () ->
@@ -3145,24 +3731,26 @@ type MemoBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.Using
-        (resource: 'D, [<InlineIfLambda>] body: 'D -> MemoStep<ColdPhase, 'Prev, 'U>)
-        : MemoStep<'Phase, 'Prev, 'U> when 'D :> IDisposable =
+        (resource: 'D, [<InlineIfLambda>] body: 'D -> MemoStep<IsLeaf, ColdPhase, 'Prev, 'U>)
+        : MemoStep<'OutLeaf, 'Phase, 'Prev, 'U> when 'D :> IDisposable =
         MemoRunner.UsingStep (resource, body)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.For
-        (header: MemoHeader<'Mode, 'Cmp>, [<InlineIfLambda>] body: unit -> MemoStep<'Phase, 'Prev, 'U>)
-        : ConfiguredMemo<'Mode, 'Cmp, 'Phase, 'Prev, 'U> =
-        ConfiguredMemo<'Mode, 'Cmp, 'Phase, 'Prev, 'U>(header, body)
+        (header: MemoHeader<'Mode, 'Cmp, 'Timing>, [<InlineIfLambda>] body: unit -> MemoStep<'Leaf, 'Phase, 'Prev, 'U>)
+        : ConfiguredMemo<'Mode, 'Cmp, 'Timing, 'Leaf, 'Phase, 'Prev, 'U> =
+        ConfiguredMemo<'Mode, 'Cmp, 'Timing, 'Leaf, 'Phase, 'Prev, 'U>(header, body)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.For
-        (header: MemoHeader<'Mode, 'Cmp>, [<InlineIfLambda>] body: unit -> MemoTail<'Phase, 'U>)
-        : ConfiguredMemoTail<'Mode, 'Cmp, 'Phase, 'U> =
-        ConfiguredMemoTail<'Mode, 'Cmp, 'Phase, 'U>(header, body)
+        (header: MemoHeader<'Mode, 'Cmp, 'Timing>, [<InlineIfLambda>] body: unit -> MemoTail<'Leaf, 'Phase, 'U>)
+        : ConfiguredMemoTail<'Mode, 'Cmp, 'Timing, 'Leaf, 'Phase, 'U> =
+        ConfiguredMemoTail<'Mode, 'Cmp, 'Timing, 'Leaf, 'Phase, 'U>(header, body)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> MemoStep<ColdPhase, 'Prev, unit>) : MemoStep<'Phase, 'Prev, unit> =
+    member inline _.For
+        (sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> MemoStep<IsLeaf, ColdPhase, 'Prev, unit>)
+        : MemoStep<'OutLeaf, 'Phase, 'Prev, unit> =
         MemoDynamic (
             Unchecked.defaultof<Graph>,
             fun () ->
@@ -3172,34 +3760,64 @@ type MemoBuilder() =
 
     /// <summary>Gives the memo its own Phase-2 scope (disposing created nodes and cleanups on re-run and disposal).</summary>
     [<CustomOperation("owning")>]
-    member inline _.Owning(header: MemoHeader<PureMode, 'Cmp>) : MemoHeader<OwningMode, 'Cmp> =
-        MemoHeader<OwningMode, 'Cmp>(header.Cmp)
+    member inline _.Owning(header: MemoHeader<PureMode, 'Cmp, 'Timing>) : MemoHeader<OwningMode, 'Cmp, 'Timing> =
+        MemoHeader<OwningMode, 'Cmp, 'Timing>(header.Cmp, header.Timing)
 
     /// <summary>Overrides the output cutoff equality comparer on the resulting memo.</summary>
     [<CustomOperation("comparer")>]
-    member inline _.Comparer(header: MemoHeader<PureMode, NoCmp>, comparer: IEqualityComparer<'U>) : MemoHeader<PureMode, WithCmp<'U>> =
-        ignore header
-
+    member inline _.Comparer
+        (header: MemoHeader<PureMode, NoCmp, 'Timing>, comparer: IEqualityComparer<'U>)
+        : MemoHeader<PureMode, WithCmp<'U>, 'Timing> =
         if isNull (box comparer) then
             nullArg (nameof comparer)
 
-        MemoHeader<PureMode, WithCmp<'U>>(WithCmp<'U> comparer)
+        MemoHeader<PureMode, WithCmp<'U>, 'Timing>(WithCmp<'U> comparer, header.Timing)
 
     /// <summary>Overrides the output cutoff equality comparer on the owning memo.</summary>
     [<CustomOperation("comparer")>]
-    member inline _.Comparer(header: MemoHeader<OwningMode, NoCmp>, comparer: IEqualityComparer<'U>) : MemoHeader<OwningMode, WithCmp<'U>> =
-        ignore header
-
+    member inline _.Comparer
+        (header: MemoHeader<OwningMode, NoCmp, 'Timing>, comparer: IEqualityComparer<'U>)
+        : MemoHeader<OwningMode, WithCmp<'U>, 'Timing> =
         if isNull (box comparer) then
             nullArg (nameof comparer)
 
-        MemoHeader<OwningMode, WithCmp<'U>>(WithCmp<'U> comparer)
+        MemoHeader<OwningMode, WithCmp<'U>, 'Timing>(WithCmp<'U> comparer, header.Timing)
 
     /// <summary>Deduplicates <c>Some</c> wrapper identity while inner values stay equal under the graph policy.</summary>
     [<CustomOperation("option")>]
-    member inline _.Option(header: MemoHeader<PureMode, NoCmp>) : MemoHeader<OptionMode, NoCmp> =
-        ignore header
-        MemoHeader<OptionMode, NoCmp>(NoCmp ())
+    member inline _.Option(header: MemoHeader<PureMode, NoCmp, 'Timing>) : MemoHeader<OptionMode, NoCmp, 'Timing> =
+        MemoHeader<OptionMode, NoCmp, 'Timing>(NoCmp (), header.Timing)
+
+    /// <summary>Debounces the Phase-1 reactive key by <c>delay</c> before running Phase 2.</summary>
+    [<CustomOperation("debounce")>]
+    member inline _.Debounce(header: MemoHeader<'Mode, 'Cmp, NoTiming>, delay: TimeSpan) : MemoHeader<'Mode, 'Cmp, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (delay, nameof delay)
+        MemoHeader<'Mode, 'Cmp, TimedSpec<NoClock>>(header.Cmp, TimedSpec<NoClock>(0, delay, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (leading + trailing) before running Phase 2.</summary>
+    [<CustomOperation("throttle")>]
+    member inline _.Throttle(header: MemoHeader<'Mode, 'Cmp, NoTiming>, interval: TimeSpan) : MemoHeader<'Mode, 'Cmp, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        MemoHeader<'Mode, 'Cmp, TimedSpec<NoClock>>(header.Cmp, TimedSpec<NoClock>(3, interval, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (leading edge only) before running Phase 2.</summary>
+    [<CustomOperation("throttleFirst")>]
+    member inline _.ThrottleFirst(header: MemoHeader<'Mode, 'Cmp, NoTiming>, interval: TimeSpan) : MemoHeader<'Mode, 'Cmp, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        MemoHeader<'Mode, 'Cmp, TimedSpec<NoClock>>(header.Cmp, TimedSpec<NoClock>(1, interval, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (trailing edge only) before running Phase 2.</summary>
+    [<CustomOperation("throttleLast")>]
+    member inline _.ThrottleLast(header: MemoHeader<'Mode, 'Cmp, NoTiming>, interval: TimeSpan) : MemoHeader<'Mode, 'Cmp, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        MemoHeader<'Mode, 'Cmp, TimedSpec<NoClock>>(header.Cmp, TimedSpec<NoClock>(2, interval, TimedClock.system))
+
+    /// <summary>Overrides the <c>TimedClock</c> used by the Phase-1 timing gate.</summary>
+    [<CustomOperation("clock")>]
+    member inline _.Clock(header: MemoHeader<'Mode, 'Cmp, TimedSpec<NoClock>>, clock: TimedClock) : MemoHeader<'Mode, 'Cmp, TimedSpec<HasClock>> =
+        CeRuntime.ValidateClock clock
+        let cfg = header.Timing.Config
+        MemoHeader<'Mode, 'Cmp, TimedSpec<HasClock>>(header.Cmp, TimedSpec<HasClock>(cfg.Mode, cfg.Duration, clock))
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: Signal<'A>, source2: Signal<'B>) : MergedSignals<'A, 'B> =
@@ -3214,106 +3832,135 @@ type MemoBuilder() =
         MergedReactive<'A, 'B>(source1, source2)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.BindReturn(source: Signal<'K>, f: 'K -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    member inline _.BindReturn(source: Signal<'K>, f: 'K -> 'U) : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         MemoRunner.BindSignal (source, f)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.BindReturn(source: Memo<'K>, f: 'K -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    member inline _.BindReturn(source: Memo<'K>, f: 'K -> 'U) : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         MemoRunner.BindMemo (source, f)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.BindReturn(source: MergedSignals<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    member inline _.BindReturn(source: MergedSignals<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         MemoRunner.BindMergedSignals (source, f)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.BindReturn(source: MergedMemos<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    member inline _.BindReturn(source: MergedMemos<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         MemoRunner.BindMergedMemos (source, f)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.BindReturn(source: MergedReactive<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    member inline _.BindReturn(source: MergedReactive<'A, 'B>, f: struct ('A * 'B) -> 'U) : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         MemoRunner.BindMergedReactive (source, f)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.BindReturn(source: IReactive<'K>, f: 'K -> 'U) : MemoStep<BoundPhase, 'Prev, 'U> =
+    member inline _.BindReturn(source: IReactive<'K>, f: 'K -> 'U) : MemoStep<NotLeaf<'Key>, BoundPhase, 'Prev, 'U> =
         MemoRunner.BindSource (source, f)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.BindReturn(_token: MemoPreviousToken, f: 'U voption -> 'U) : MemoStep<'Phase, WithPrev, 'U> =
+    member inline _.BindReturn(_token: MemoPreviousToken, f: 'U voption -> 'U) : MemoStep<'Leaf, 'Phase, WithPrev, 'U> =
         MemoRunner.BindReturnPrevVal (InternalCeState.ReadPrevious<'U>(), f)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.BindReturn(token: MemoPreviousOrToken<'U>, f: 'U -> 'U) : MemoStep<'Phase, WithPrev, 'U> =
+    member inline _.BindReturn(token: MemoPreviousOrToken<'U>, f: 'U -> 'U) : MemoStep<'Leaf, 'Phase, WithPrev, 'U> =
         MemoRunner.BindReturnPrevVal (InternalCeState.ReadPreviousOr token.Seed, f)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> MemoStep<'Phase, 'Prev, 'U>) : MemoStep<BoundPhase, 'Prev, 'U> =
-        MemoRunner.BindReactive (source, continuation)
+    member inline _.Bind
+        (source: IReactive<'K>, continuation: 'K -> MemoStep<IsLeaf, ColdPhase, NoPrev, 'U>)
+        : MemoStep<NotLeaf<'Key>, BoundPhase, NoPrev, 'U> =
+        MemoRunner.BindReactiveStatic (source, continuation)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Bind(_token: MemoPreviousToken, continuation: 'U voption -> MemoStep<'Phase, 'InnerPrev, 'U>) : MemoStep<'Phase, WithPrev, 'U> =
+    member inline _.Bind
+        (_token: MemoPreviousToken, continuation: 'U voption -> MemoStep<'Leaf, 'Phase, 'InnerPrev, 'U>)
+        : MemoStep<NotLeaf<DynamicKey>, 'Phase, WithPrev, 'U> =
         MemoRunner.BindPrevVal (ValueNone, InternalCeState.ReadPrevious<'U>, continuation)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Bind(token: MemoPreviousOrToken<'U>, continuation: 'U -> MemoStep<'Phase, 'InnerPrev, 'U>) : MemoStep<'Phase, WithPrev, 'U> =
+    member inline _.Bind
+        (token: MemoPreviousOrToken<'U>, continuation: 'U -> MemoStep<'Leaf, 'Phase, 'InnerPrev, 'U>)
+        : MemoStep<NotLeaf<DynamicKey>, 'Phase, WithPrev, 'U> =
         let seed = token.Seed
         MemoRunner.BindPrevVal (seed, (fun () -> InternalCeState.ReadPreviousOr seed), continuation)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> MemoTail<'Phase, 'U>) : MemoTail<BoundPhase, 'U> =
+    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> MemoTail<IsLeaf, ColdPhase, 'U>) : MemoTail<NotLeaf<'Key>, BoundPhase, 'U> =
         let g = source.Graph
 
-        TailStatic (g, fun cmp -> CeRuntime.CreateStaticTail (source, (fun k -> (continuation k).EvalMemo()), cmp))
+        let binder (k: 'K) =
+            (continuation k).EvalMemo()
+
+        TailStatic (
+            g,
+            fun cmp timing ->
+                match timing with
+                | ValueSome cfg -> CeRuntime.CreateTimedTail (source, binder, cmp, cfg)
+                | ValueNone -> CeRuntime.CreateStaticTail (source, binder, cmp)
+        )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> MemoStep<ColdPhase, 'Prev, 'U>) : Memo<'U> =
+    member inline _.Run(d: unit -> MemoStep<'Leaf, ColdPhase, 'Prev, 'U>) : Memo<'U> =
         MemoRunner.EvalCold (d, false, ValueNone)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> MemoTail<ColdPhase, 'U>) : Memo<'U> =
+    member inline _.Run(d: unit -> MemoTail<'Leaf, ColdPhase, 'U>) : Memo<'U> =
         MemoRunner.EvalColdTail (d, ValueNone)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredMemo<PureMode, NoCmp, ColdPhase, 'Prev, 'U>) : Memo<'U> =
+    member inline _.Run(d: unit -> ConfiguredMemo<PureMode, NoCmp, NoTiming, 'Leaf, ColdPhase, 'Prev, 'U>) : Memo<'U> =
         MemoRunner.EvalCold ((fun () -> (d ()).Body()), false, ValueNone)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredMemo<OwningMode, NoCmp, ColdPhase, 'Prev, 'U>) : Memo<'U> =
+    member inline _.Run(d: unit -> ConfiguredMemo<OwningMode, NoCmp, NoTiming, 'Leaf, ColdPhase, 'Prev, 'U>) : Memo<'U> =
         MemoRunner.EvalCold ((fun () -> (d ()).Body()), true, ValueNone)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredMemo<PureMode, WithCmp<'U>, ColdPhase, 'Prev, 'U>) : Memo<'U> =
+    member inline _.Run(d: unit -> ConfiguredMemo<PureMode, WithCmp<'U>, NoTiming, 'Leaf, ColdPhase, 'Prev, 'U>) : Memo<'U> =
         let cfg = d ()
         MemoRunner.EvalCold (cfg.Body, false, ValueSome cfg.Header.Cmp.Comparer)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredMemo<OwningMode, WithCmp<'U>, ColdPhase, 'Prev, 'U>) : Memo<'U> =
+    member inline _.Run(d: unit -> ConfiguredMemo<OwningMode, WithCmp<'U>, NoTiming, 'Leaf, ColdPhase, 'Prev, 'U>) : Memo<'U> =
         let cfg = d ()
         MemoRunner.EvalCold (cfg.Body, true, ValueSome cfg.Header.Cmp.Comparer)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredMemo<OptionMode, NoCmp, ColdPhase, NoPrev, 'A option>) : Memo<'A option> =
+    member inline _.Run(d: unit -> ConfiguredMemo<OptionMode, NoCmp, NoTiming, 'Leaf, ColdPhase, NoPrev, 'A option>) : Memo<'A option> =
         MemoRunner.EvalColdOption (fun () -> (d ()).Body())
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredMemoTail<OwningMode, NoCmp, ColdPhase, 'U>) : Memo<'U> =
+    member inline _.Run(d: unit -> ConfiguredMemoTail<OwningMode, NoCmp, NoTiming, 'Leaf, ColdPhase, 'U>) : Memo<'U> =
         MemoRunner.EvalColdTail ((fun () -> (d ()).Body()), ValueNone)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredMemoTail<PureMode, WithCmp<'U>, ColdPhase, 'U>) : Memo<'U> =
+    member inline _.Run(d: unit -> ConfiguredMemoTail<PureMode, WithCmp<'U>, NoTiming, 'Leaf, ColdPhase, 'U>) : Memo<'U> =
         let cfg = d ()
         MemoRunner.EvalColdTail (cfg.Body, ValueSome cfg.Header.Cmp.Comparer)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredMemoTail<OwningMode, WithCmp<'U>, ColdPhase, 'U>) : Memo<'U> =
+    member inline _.Run(d: unit -> ConfiguredMemoTail<OwningMode, WithCmp<'U>, NoTiming, 'Leaf, ColdPhase, 'U>) : Memo<'U> =
         let cfg = d ()
         MemoRunner.EvalColdTail (cfg.Body, ValueSome cfg.Header.Cmp.Comparer)
+
+    [<CompilerMessage("Timing operations ('debounce', 'throttle', 'throttleFirst', 'throttleLast') require a reactive Phase-1 'let!' bind.",
+                      10401,
+                      IsError = true);
+      EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(_d: unit -> ConfiguredMemo<'Mode, 'Cmp, TimedSpec<'Clk>, 'Leaf, ColdPhase, 'Prev, 'U>) : Memo<'U> =
+        invalidOp "Timing operations require a reactive Phase-1 'let!' bind."
+
+    [<CompilerMessage("Timing operations ('debounce', 'throttle', 'throttleFirst', 'throttleLast') require a reactive Phase-1 'let!' bind.",
+                      10401,
+                      IsError = true);
+      EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(_d: unit -> ConfiguredMemoTail<'Mode, 'Cmp, TimedSpec<'Clk>, 'Leaf, ColdPhase, 'U>) : Memo<'U> =
+        invalidOp "Timing operations require a reactive Phase-1 'let!' bind."
 
 /// <summary>Computation expression builder producing <c>Effect</c> / <c>EffectOn</c> nodes with closed action bodies.</summary>
 [<Sealed>]
 type EffectBuilder() =
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Yield(_: unit) : EffectHeader<UnitOut> =
-        EffectHeader<UnitOut>()
+    member inline _.Yield(_: unit) : EffectHeader<UnitOut, NoTiming> =
+        EffectHeader<UnitOut, NoTiming>(NoTiming ())
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.Zero() : EffectStep<'Leaf, 'Phase> =
@@ -3378,10 +4025,9 @@ type EffectBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.For
-        (header: EffectHeader<'Out>, [<InlineIfLambda>] body: unit -> EffectStep<'Leaf, 'Phase>)
-        : ConfiguredEffect<'Out, 'Leaf, 'Phase> =
-        ignore header
-        ConfiguredEffect<'Out, 'Leaf, 'Phase>(body)
+        (header: EffectHeader<'Out, 'Timing>, [<InlineIfLambda>] body: unit -> EffectStep<'Leaf, 'Phase>)
+        : ConfiguredEffect<'Out, 'Timing, 'Leaf, 'Phase> =
+        ConfiguredEffect<'Out, 'Timing, 'Leaf, 'Phase>(header, body)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EffectStep<IsLeaf, 'P>) : EffectStep<'OutLeaf, 'OutPhase> =
@@ -3394,8 +4040,39 @@ type EffectBuilder() =
 
     /// <summary>Returns the created effect's <c>INode</c> handle instead of <c>unit</c>.</summary>
     [<CustomOperation("node")>]
-    member inline _.Node(_header: EffectHeader<UnitOut>) : EffectHeader<NodeOut> =
-        EffectHeader<NodeOut>()
+    member inline _.Node(header: EffectHeader<UnitOut, 'Timing>) : EffectHeader<NodeOut, 'Timing> =
+        EffectHeader<NodeOut, 'Timing>(header.Timing)
+
+    /// <summary>Debounces the Phase-1 reactive key by <c>delay</c> before running the effect action.</summary>
+    [<CustomOperation("debounce")>]
+    member inline _.Debounce(_header: EffectHeader<'Out, NoTiming>, delay: TimeSpan) : EffectHeader<'Out, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (delay, nameof delay)
+        EffectHeader<'Out, TimedSpec<NoClock>>(TimedSpec<NoClock>(0, delay, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (leading + trailing) before running the effect action.</summary>
+    [<CustomOperation("throttle")>]
+    member inline _.Throttle(_header: EffectHeader<'Out, NoTiming>, interval: TimeSpan) : EffectHeader<'Out, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        EffectHeader<'Out, TimedSpec<NoClock>>(TimedSpec<NoClock>(3, interval, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (leading edge only) before running the effect action.</summary>
+    [<CustomOperation("throttleFirst")>]
+    member inline _.ThrottleFirst(_header: EffectHeader<'Out, NoTiming>, interval: TimeSpan) : EffectHeader<'Out, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        EffectHeader<'Out, TimedSpec<NoClock>>(TimedSpec<NoClock>(1, interval, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (trailing edge only) before running the effect action.</summary>
+    [<CustomOperation("throttleLast")>]
+    member inline _.ThrottleLast(_header: EffectHeader<'Out, NoTiming>, interval: TimeSpan) : EffectHeader<'Out, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        EffectHeader<'Out, TimedSpec<NoClock>>(TimedSpec<NoClock>(2, interval, TimedClock.system))
+
+    /// <summary>Overrides the <c>TimedClock</c> used by the Phase-1 timing gate.</summary>
+    [<CustomOperation("clock")>]
+    member inline _.Clock(header: EffectHeader<'Out, TimedSpec<NoClock>>, clock: TimedClock) : EffectHeader<'Out, TimedSpec<HasClock>> =
+        CeRuntime.ValidateClock clock
+        let cfg = header.Timing.Config
+        EffectHeader<'Out, TimedSpec<HasClock>>(TimedSpec<HasClock>(cfg.Mode, cfg.Duration, clock))
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: Signal<'A>, source2: Signal<'B>) : MergedSignals<'A, 'B> =
@@ -3410,7 +4087,7 @@ type EffectBuilder() =
         MergedReactive<'A, 'B>(source1, source2)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> EffectStep<IsLeaf, 'ContPhase>) : EffectStep<NotLeaf, BoundPhase> =
+    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> EffectStep<IsLeaf, 'ContPhase>) : EffectStep<NotLeaf<'Key>, BoundPhase> =
         let evalDyn () =
             let key = CeRuntime.ReadEffectTracked source
             CeRuntime.RunEffectContinuation (source, key, fun k -> (continuation k).EvalUnit())
@@ -3421,20 +4098,37 @@ type EffectBuilder() =
         else
             let g = source.Graph
 
-            EffectStatic (g, (fun asNode -> CeRuntime.CreateEffectOn (source, (fun k -> (continuation k).EvalUnit()), asNode)), evalDyn)
+            let act (k: 'K) =
+                (continuation k).EvalUnit()
+
+            EffectStatic (
+                g,
+                (fun asNode timing ->
+                    match timing with
+                    | ValueSome cfg -> CeRuntime.CreateTimedEffectOn (source, act, asNode, cfg)
+                    | ValueNone -> CeRuntime.CreateEffectOn (source, act, asNode)),
+                evalDyn
+            )
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.Run(d: unit -> EffectStep<'Leaf, ColdPhase>) : unit =
         EffectRunner.EvalCold (d, false) |> ignore
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredEffect<UnitOut, 'Leaf, ColdPhase>) : unit =
+    member inline _.Run(d: unit -> ConfiguredEffect<UnitOut, NoTiming, 'Leaf, ColdPhase>) : unit =
         EffectRunner.EvalCold ((fun () -> (d ()).Body()), false)
         |> ignore
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredEffect<NodeOut, 'Leaf, ColdPhase>) : INode =
+    member inline _.Run(d: unit -> ConfiguredEffect<NodeOut, NoTiming, 'Leaf, ColdPhase>) : INode =
         EffectRunner.EvalCold ((fun () -> (d ()).Body()), true)
+
+    [<CompilerMessage("Timing operations ('debounce', 'throttle', 'throttleFirst', 'throttleLast') require a reactive Phase-1 'let!' bind.",
+                      10401,
+                      IsError = true);
+      EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(_d: unit -> ConfiguredEffect<'Out, TimedSpec<'Clk>, 'Leaf, ColdPhase>) : unit =
+        invalidOp "Timing operations require a reactive Phase-1 'let!' bind."
 
 /// <summary>Computation expression builder producing <c>Editable&lt;'U&gt;</c> handles.</summary>
 [<Sealed>]
@@ -4005,8 +4699,8 @@ type AsyncMemoBuilder() =
     member inline _.cancellationToken: AsyncCancellationToken = AsyncCancellationToken ()
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Yield(_: unit) : AsyncHeader<PureMode, DefaultPolicy> =
-        AsyncHeader<PureMode, DefaultPolicy>(DefaultPolicy ())
+    member inline _.Yield(_: unit) : AsyncHeader<PureMode, DefaultPolicy, NoTiming> =
+        AsyncHeader<PureMode, DefaultPolicy, NoTiming>(DefaultPolicy (), NoTiming ())
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.Zero() : AsyncStep<'Leaf, 'Phase, unit> =
@@ -4061,9 +4755,9 @@ type AsyncMemoBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.For
-        (header: AsyncHeader<'Mode, 'Pol>, [<InlineIfLambda>] body: unit -> AsyncStep<'Leaf, 'Phase, 'U>)
-        : ConfiguredAsync<'Mode, 'Pol, 'Leaf, 'Phase, 'U> =
-        ConfiguredAsync<'Mode, 'Pol, 'Leaf, 'Phase, 'U>(header, body)
+        (header: AsyncHeader<'Mode, 'Pol, 'Timing>, [<InlineIfLambda>] body: unit -> AsyncStep<'Leaf, 'Phase, 'U>)
+        : ConfiguredAsync<'Mode, 'Pol, 'Timing, 'Leaf, 'Phase, 'U> =
+        ConfiguredAsync<'Mode, 'Pol, 'Timing, 'Leaf, 'Phase, 'U>(header, body)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> AsyncStep<IsLeaf, 'P, unit>) : AsyncStep<'OutLeaf, 'OutPhase, unit> =
@@ -4071,13 +4765,44 @@ type AsyncMemoBuilder() =
 
     /// <summary>Allows the Phase-2 computation up to its first await to own child reactive nodes and cleanups.</summary>
     [<CustomOperation("owning")>]
-    member inline _.Owning(header: AsyncHeader<PureMode, 'Pol>) : AsyncHeader<OwningMode, 'Pol> =
-        AsyncHeader<OwningMode, 'Pol>(header.Pol)
+    member inline _.Owning(header: AsyncHeader<PureMode, 'Pol, 'Timing>) : AsyncHeader<OwningMode, 'Pol, 'Timing> =
+        AsyncHeader<OwningMode, 'Pol, 'Timing>(header.Pol, header.Timing)
 
     /// <summary>Configures the concurrency policy applied when Phase 1 changes while a flight is active.</summary>
     [<CustomOperation("policy")>]
-    member inline _.Policy(header: AsyncHeader<'Mode, DefaultPolicy>, policy: FlightPolicy) : AsyncHeader<'Mode, ExplicitPolicy> =
-        AsyncHeader<'Mode, ExplicitPolicy>(ExplicitPolicy policy)
+    member inline _.Policy(header: AsyncHeader<'Mode, DefaultPolicy, 'Timing>, policy: FlightPolicy) : AsyncHeader<'Mode, ExplicitPolicy, 'Timing> =
+        AsyncHeader<'Mode, ExplicitPolicy, 'Timing>(ExplicitPolicy policy, header.Timing)
+
+    /// <summary>Debounces the Phase-1 reactive key by <c>delay</c> before launching flights.</summary>
+    [<CustomOperation("debounce")>]
+    member inline _.Debounce(header: AsyncHeader<'Mode, 'Pol, NoTiming>, delay: TimeSpan) : AsyncHeader<'Mode, 'Pol, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (delay, nameof delay)
+        AsyncHeader<'Mode, 'Pol, TimedSpec<NoClock>>(header.Pol, TimedSpec<NoClock>(0, delay, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (leading + trailing) before launching flights.</summary>
+    [<CustomOperation("throttle")>]
+    member inline _.Throttle(header: AsyncHeader<'Mode, 'Pol, NoTiming>, interval: TimeSpan) : AsyncHeader<'Mode, 'Pol, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        AsyncHeader<'Mode, 'Pol, TimedSpec<NoClock>>(header.Pol, TimedSpec<NoClock>(3, interval, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (leading edge only) before launching flights.</summary>
+    [<CustomOperation("throttleFirst")>]
+    member inline _.ThrottleFirst(header: AsyncHeader<'Mode, 'Pol, NoTiming>, interval: TimeSpan) : AsyncHeader<'Mode, 'Pol, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        AsyncHeader<'Mode, 'Pol, TimedSpec<NoClock>>(header.Pol, TimedSpec<NoClock>(1, interval, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (trailing edge only) before launching flights.</summary>
+    [<CustomOperation("throttleLast")>]
+    member inline _.ThrottleLast(header: AsyncHeader<'Mode, 'Pol, NoTiming>, interval: TimeSpan) : AsyncHeader<'Mode, 'Pol, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        AsyncHeader<'Mode, 'Pol, TimedSpec<NoClock>>(header.Pol, TimedSpec<NoClock>(2, interval, TimedClock.system))
+
+    /// <summary>Overrides the <c>TimedClock</c> used by the Phase-1 timing gate.</summary>
+    [<CustomOperation("clock")>]
+    member inline _.Clock(header: AsyncHeader<'Mode, 'Pol, TimedSpec<NoClock>>, clock: TimedClock) : AsyncHeader<'Mode, 'Pol, TimedSpec<HasClock>> =
+        CeRuntime.ValidateClock clock
+        let cfg = header.Timing.Config
+        AsyncHeader<'Mode, 'Pol, TimedSpec<HasClock>>(header.Pol, TimedSpec<HasClock>(cfg.Mode, cfg.Duration, clock))
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: Signal<'A>, source2: Signal<'B>) : MergedSignals<'A, 'B> =
@@ -4092,7 +4817,7 @@ type AsyncMemoBuilder() =
         MergedReactive<'A, 'B>(source1, source2)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.BindReturn(source: IReactive<'K>, f: 'K -> 'U) : AsyncStep<NotLeaf, BoundPhase, 'U> =
+    member inline _.BindReturn(source: IReactive<'K>, f: 'K -> 'U) : AsyncStep<NotLeaf<'Key>, BoundPhase, 'U> =
         AsyncRunner.BindReturnReactive (source, f)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -4114,7 +4839,7 @@ type AsyncMemoBuilder() =
 #endif
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> AsyncStep<IsLeaf, ColdPhase, 'U>) : AsyncStep<NotLeaf, BoundPhase, 'U> =
+    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> AsyncStep<IsLeaf, ColdPhase, 'U>) : AsyncStep<NotLeaf<'Key>, BoundPhase, 'U> =
         AsyncRunner.BindReactiveStatic (source, continuation)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -4142,22 +4867,29 @@ type AsyncMemoBuilder() =
         AsyncRunner.EvalCold (d, false, ValueNone)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredAsync<PureMode, DefaultPolicy, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
+    member inline _.Run(d: unit -> ConfiguredAsync<PureMode, DefaultPolicy, NoTiming, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
         AsyncRunner.EvalCold ((fun () -> (d ()).Body()), false, ValueNone)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, DefaultPolicy, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
+    member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, DefaultPolicy, NoTiming, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
         AsyncRunner.EvalCold ((fun () -> (d ()).Body()), true, ValueNone)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredAsync<PureMode, ExplicitPolicy, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
+    member inline _.Run(d: unit -> ConfiguredAsync<PureMode, ExplicitPolicy, NoTiming, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
         let cfg = d ()
         AsyncRunner.EvalCold (cfg.Body, false, ValueSome cfg.Header.Pol.Policy)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, ExplicitPolicy, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
+    member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, ExplicitPolicy, NoTiming, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
         let cfg = d ()
         AsyncRunner.EvalCold (cfg.Body, true, ValueSome cfg.Header.Pol.Policy)
+
+    [<CompilerMessage("Timing operations ('debounce', 'throttle', 'throttleFirst', 'throttleLast') require a reactive Phase-1 'let!' bind.",
+                      10401,
+                      IsError = true);
+      EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(_d: unit -> ConfiguredAsync<'Mode, 'Pol, TimedSpec<'Clk>, 'Leaf, ColdPhase, 'U>) : AsyncMemo<'U> =
+        invalidOp "Timing operations require a reactive Phase-1 'let!' bind."
 
 /// <summary>Two-phase computation expression builder producing <c>StreamMemo&lt;'U&gt;</c> nodes.</summary>
 [<Sealed>]
@@ -4166,8 +4898,8 @@ type StreamBuilder() =
     member inline _.cancellationToken: StreamCancellationToken = StreamCancellationToken ()
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Yield(_: unit) : StreamHeader<LatestMode> =
-        StreamHeader<LatestMode>(LatestMode ())
+    member inline _.Yield(_: unit) : StreamHeader<LatestMode, NoTiming> =
+        StreamHeader<LatestMode, NoTiming>(LatestMode (), NoTiming ())
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.Zero() : StreamStep<'Leaf, 'Phase, unit> =
@@ -4242,9 +4974,9 @@ type StreamBuilder() =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.For
-        (header: StreamHeader<'Mode>, [<InlineIfLambda>] body: unit -> StreamStep<'Leaf, 'Phase, 'T>)
-        : ConfiguredStream<'Mode, 'Leaf, 'Phase, 'T> =
-        ConfiguredStream<'Mode, 'Leaf, 'Phase, 'T>(header, body)
+        (header: StreamHeader<'Mode, 'Timing>, [<InlineIfLambda>] body: unit -> StreamStep<'Leaf, 'Phase, 'T>)
+        : ConfiguredStream<'Mode, 'Timing, 'Leaf, 'Phase, 'T> =
+        ConfiguredStream<'Mode, 'Timing, 'Leaf, 'Phase, 'T>(header, body)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.For
@@ -4261,9 +4993,40 @@ type StreamBuilder() =
 
     /// <summary>Accumulates incoming stream items onto <c>seed</c> using <c>folder</c>, starting from <c>seed</c> on each stream restart.</summary>
     [<CustomOperation("fold")>]
-    member inline _.Fold(_header: StreamHeader<LatestMode>, seed: 'S, folder: 'S -> 'T -> 'S) : StreamHeader<FoldMode<'S, 'T>> =
+    member inline _.Fold(header: StreamHeader<LatestMode, 'Timing>, seed: 'S, folder: 'S -> 'T -> 'S) : StreamHeader<FoldMode<'S, 'T>, 'Timing> =
         CeRuntime.RequireStreamFolder folder
-        StreamHeader<FoldMode<'S, 'T>>(FoldMode<'S, 'T>(seed, folder))
+        StreamHeader<FoldMode<'S, 'T>, 'Timing>(FoldMode<'S, 'T>(seed, folder), header.Timing)
+
+    /// <summary>Debounces the Phase-1 reactive key by <c>delay</c> before starting stream subscriptions.</summary>
+    [<CustomOperation("debounce")>]
+    member inline _.Debounce(header: StreamHeader<'Mode, NoTiming>, delay: TimeSpan) : StreamHeader<'Mode, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (delay, nameof delay)
+        StreamHeader<'Mode, TimedSpec<NoClock>>(header.Mode, TimedSpec<NoClock>(0, delay, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (leading + trailing) before starting stream subscriptions.</summary>
+    [<CustomOperation("throttle")>]
+    member inline _.Throttle(header: StreamHeader<'Mode, NoTiming>, interval: TimeSpan) : StreamHeader<'Mode, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        StreamHeader<'Mode, TimedSpec<NoClock>>(header.Mode, TimedSpec<NoClock>(3, interval, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (leading edge only) before starting stream subscriptions.</summary>
+    [<CustomOperation("throttleFirst")>]
+    member inline _.ThrottleFirst(header: StreamHeader<'Mode, NoTiming>, interval: TimeSpan) : StreamHeader<'Mode, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        StreamHeader<'Mode, TimedSpec<NoClock>>(header.Mode, TimedSpec<NoClock>(1, interval, TimedClock.system))
+
+    /// <summary>Throttles the Phase-1 reactive key by <c>interval</c> (trailing edge only) before starting stream subscriptions.</summary>
+    [<CustomOperation("throttleLast")>]
+    member inline _.ThrottleLast(header: StreamHeader<'Mode, NoTiming>, interval: TimeSpan) : StreamHeader<'Mode, TimedSpec<NoClock>> =
+        CeRuntime.ValidateTimingDuration (interval, nameof interval)
+        StreamHeader<'Mode, TimedSpec<NoClock>>(header.Mode, TimedSpec<NoClock>(2, interval, TimedClock.system))
+
+    /// <summary>Overrides the <c>TimedClock</c> used by the Phase-1 timing gate.</summary>
+    [<CustomOperation("clock")>]
+    member inline _.Clock(header: StreamHeader<'Mode, TimedSpec<NoClock>>, clock: TimedClock) : StreamHeader<'Mode, TimedSpec<HasClock>> =
+        CeRuntime.ValidateClock clock
+        let cfg = header.Timing.Config
+        StreamHeader<'Mode, TimedSpec<HasClock>>(header.Mode, TimedSpec<HasClock>(cfg.Mode, cfg.Duration, clock))
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     member inline _.MergeSources(source1: Signal<'A>, source2: Signal<'B>) : MergedSignals<'A, 'B> =
@@ -4278,7 +5041,7 @@ type StreamBuilder() =
         MergedReactive<'A, 'B>(source1, source2)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.BindReturn(source: IReactive<'K>, f: 'K -> StreamSource<'T>) : StreamStep<NotLeaf, BoundPhase, 'T> =
+    member inline _.BindReturn(source: IReactive<'K>, f: 'K -> StreamSource<'T>) : StreamStep<NotLeaf<'Key>, BoundPhase, 'T> =
         StreamRunner.BindReturnReactive (source, f)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -4286,7 +5049,7 @@ type StreamBuilder() =
         StreamDynamic (Unchecked.defaultof<Graph>, fun ct -> StreamEvalSource (f ct))
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> StreamStep<IsLeaf, ColdPhase, 'T>) : StreamStep<NotLeaf, BoundPhase, 'T> =
+    member inline _.Bind(source: IReactive<'K>, continuation: 'K -> StreamStep<IsLeaf, ColdPhase, 'T>) : StreamStep<NotLeaf<'Key>, BoundPhase, 'T> =
         StreamRunner.BindReactiveStatic (source, continuation)
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -4300,17 +5063,519 @@ type StreamBuilder() =
         StreamRunner.EvalColdLatest d
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredStream<LatestMode, 'Leaf, ColdPhase, 'T>) : StreamMemo<'T> =
+    member inline _.Run(d: unit -> ConfiguredStream<LatestMode, NoTiming, 'Leaf, ColdPhase, 'T>) : StreamMemo<'T> =
         StreamRunner.EvalColdLatest (fun () -> (d ()).Body())
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
-    member inline _.Run(d: unit -> ConfiguredStream<FoldMode<'S, 'T>, 'Leaf, ColdPhase, 'T>) : StreamMemo<'S> =
+    member inline _.Run(d: unit -> ConfiguredStream<FoldMode<'S, 'T>, NoTiming, 'Leaf, ColdPhase, 'T>) : StreamMemo<'S> =
         let cfg = d ()
         StreamRunner.EvalColdFold (cfg.Body, cfg.Header.Mode.Seed, cfg.Header.Mode.Folder)
+
+    [<CompilerMessage("Timing operations ('debounce', 'throttle', 'throttleFirst', 'throttleLast') require a reactive Phase-1 'let!' bind.",
+                      10401,
+                      IsError = true);
+      EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(_d: unit -> ConfiguredStream<'Mode, TimedSpec<'Clk>, 'Leaf, ColdPhase, 'T>) : StreamMemo<'T> =
+        invalidOp "Timing operations require a reactive Phase-1 'let!' bind."
+
+/// <summary>Computation expression builder producing <c>Signal&lt;'T&gt;</c> sources on the active <c>Graph</c>.</summary>
+[<Sealed>]
+type SignalBuilder() =
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Yield(_: unit) : SignalHeader<NoCmp> =
+        SignalHeader<NoCmp>(NoCmp ())
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Zero() : unit = ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Return(value: 'T) : SignalResult<'T> =
+        SignalResult<'T> value
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.ReturnFrom(value: 'T) : SignalResult<'T> =
+        SignalResult<'T> value
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Delay([<InlineIfLambda>] f: unit -> 'Step) : unit -> 'Step = f
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Combine(first: unit, [<InlineIfLambda>] second: unit -> 'Step) : 'Step =
+        first
+        second ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> unit) : unit =
+        while guard () do
+            body ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryWith([<InlineIfLambda>] body: unit -> 'Step, [<InlineIfLambda>] handler: exn -> 'Step) : 'Step =
+        try
+            body ()
+        with ex ->
+            handler ex
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryFinally([<InlineIfLambda>] body: unit -> 'Step, [<InlineIfLambda>] compensation: unit -> unit) : 'Step =
+        try
+            body ()
+        finally
+            compensation ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Using<'D, 'Step when 'D :> IDisposable>(resource: 'D, [<InlineIfLambda>] body: 'D -> 'Step) : 'Step =
+        CeRuntime.RunUsing (resource, fun () -> body resource)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For(header: SignalHeader<'Cmp>, [<InlineIfLambda>] body: unit -> SignalResult<'T>) : ConfiguredSignal<'Cmp, 'T> =
+        ConfiguredSignal<'Cmp, 'T>(header, body)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For(sequence: seq<'Item>, [<InlineIfLambda>] body: 'Item -> unit) : unit =
+        for item in sequence do
+            body item
+
+    /// <summary>Overrides the write cutoff equality comparer on the resulting signal.</summary>
+    [<CustomOperation("comparer")>]
+    member inline _.Comparer(_header: SignalHeader<NoCmp>, comparer: IEqualityComparer<'T>) : SignalHeader<WithCmp<'T>> =
+        if isNull (box comparer) then
+            nullArg (nameof comparer)
+
+        SignalHeader<WithCmp<'T>>(WithCmp<'T> comparer)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> SignalResult<'T>) : Signal<'T> =
+        CeRuntime.CreateSignal (fun () -> (d ()).Value)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> ConfiguredSignal<WithCmp<'T>, 'T>) : Signal<'T> =
+        let cfg = d ()
+        CeRuntime.CreateSignalWithCmp (cfg.Header.Cmp.Comparer, fun () -> (cfg.Body ()).Value)
+
+/// <summary>Computation expression builder registering a <c>unit</c> cleanup action on the innermost enclosing scope.</summary>
+[<Sealed>]
+type CleanupBuilder() =
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Zero() : unit = ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Delay([<InlineIfLambda>] f: unit -> unit) : unit -> unit = f
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Combine(first: unit, [<InlineIfLambda>] second: unit -> unit) : unit =
+        first
+        second ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> unit) : unit =
+        while guard () do
+            body ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryWith([<InlineIfLambda>] body: unit -> unit, [<InlineIfLambda>] handler: exn -> unit) : unit =
+        try
+            body ()
+        with ex ->
+            handler ex
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryFinally([<InlineIfLambda>] body: unit -> unit, [<InlineIfLambda>] compensation: unit -> unit) : unit =
+        try
+            body ()
+        finally
+            compensation ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Using<'D when 'D :> IDisposable>(resource: 'D, [<InlineIfLambda>] body: 'D -> unit) : unit =
+        CeRuntime.RunUsing (resource, fun () -> body resource)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For(sequence: seq<'Item>, [<InlineIfLambda>] body: 'Item -> unit) : unit =
+        for item in sequence do
+            body item
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> unit) : unit =
+        Api.onCleanup d
+
+/// <summary>Computation expression builder deferring effect execution across grouped signal writes (<c>batch</c>).</summary>
+[<Sealed>]
+type BatchedBuilder() =
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Zero() : unit = ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Return(value: 'T) : 'T = value
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.ReturnFrom(value: 'T) : 'T = value
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Delay([<InlineIfLambda>] f: unit -> 'T) : unit -> 'T = f
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Combine(first: unit, [<InlineIfLambda>] second: unit -> 'T) : 'T =
+        first
+        second ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> unit) : unit =
+        while guard () do
+            body ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryWith([<InlineIfLambda>] body: unit -> 'T, [<InlineIfLambda>] handler: exn -> 'T) : 'T =
+        try
+            body ()
+        with ex ->
+            handler ex
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryFinally([<InlineIfLambda>] body: unit -> 'T, [<InlineIfLambda>] compensation: unit -> unit) : 'T =
+        try
+            body ()
+        finally
+            compensation ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Using<'D, 'T when 'D :> IDisposable>(resource: 'D, [<InlineIfLambda>] body: 'D -> 'T) : 'T =
+        CeRuntime.RunUsing (resource, fun () -> body resource)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For(sequence: seq<'Item>, [<InlineIfLambda>] body: 'Item -> unit) : unit =
+        for item in sequence do
+            body item
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> 'T) : 'T =
+        Api.batch d
+
+/// <summary>Computation expression builder executing reads without recording reactive dependencies (<c>untrack</c>).</summary>
+[<Sealed>]
+type UntrackedBuilder() =
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Zero() : unit = ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Return(value: 'T) : 'T = value
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.ReturnFrom(value: 'T) : 'T = value
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Delay([<InlineIfLambda>] f: unit -> 'T) : unit -> 'T = f
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Combine(first: unit, [<InlineIfLambda>] second: unit -> 'T) : 'T =
+        first
+        second ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> unit) : unit =
+        while guard () do
+            body ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryWith([<InlineIfLambda>] body: unit -> 'T, [<InlineIfLambda>] handler: exn -> 'T) : 'T =
+        try
+            body ()
+        with ex ->
+            handler ex
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryFinally([<InlineIfLambda>] body: unit -> 'T, [<InlineIfLambda>] compensation: unit -> unit) : 'T =
+        try
+            body ()
+        finally
+            compensation ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Using<'D, 'T when 'D :> IDisposable>(resource: 'D, [<InlineIfLambda>] body: 'D -> 'T) : 'T =
+        CeRuntime.RunUsing (resource, fun () -> body resource)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For(sequence: seq<'Item>, [<InlineIfLambda>] body: 'Item -> unit) : unit =
+        for item in sequence do
+            body item
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> 'T) : 'T =
+        Api.untrack d
+
+/// <summary>Computation expression builder creating a nested disposable <c>Owner</c> scope (<c>createRoot</c>).</summary>
+[<Sealed>]
+type RootBuilder() =
+    /// <summary>Context token bound via <c>let! o = root.owner</c> to obtain the created <c>Owner</c>.</summary>
+    member inline _.owner: RootOwnerToken = RootOwnerToken ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Zero() : RootFire =
+        RootFire ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Return(value: 'T) : RootResult<'T> =
+        RootResult<'T> value
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Delay([<InlineIfLambda>] f: unit -> 'Step) : unit -> 'Step = f
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Combine(_first: RootFire, [<InlineIfLambda>] second: unit -> 'Step) : 'Step = second ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> RootFire) : RootFire =
+        while guard () do
+            body () |> ignore
+
+        RootFire ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryWith([<InlineIfLambda>] body: unit -> 'Step, [<InlineIfLambda>] handler: exn -> 'Step) : 'Step =
+        try
+            body ()
+        with ex ->
+            handler ex
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryFinally([<InlineIfLambda>] body: unit -> 'Step, [<InlineIfLambda>] compensation: unit -> unit) : 'Step =
+        try
+            body ()
+        finally
+            compensation ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Using<'D, 'Step when 'D :> IDisposable>(resource: 'D, [<InlineIfLambda>] body: 'D -> 'Step) : 'Step =
+        CeRuntime.RunUsing (resource, fun () -> body resource)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For(sequence: seq<'Item>, [<InlineIfLambda>] body: 'Item -> RootFire) : RootFire =
+        for item in sequence do
+            body item |> ignore
+
+        RootFire ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Bind(_token: RootOwnerToken, [<InlineIfLambda>] continuation: Owner -> 'Step) : 'Step =
+        continuation InternalCeState.CurrentRootOwner
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.BindReturn(_token: RootOwnerToken, [<InlineIfLambda>] f: Owner -> 'T) : RootResult<'T> =
+        RootResult<'T>(f InternalCeState.CurrentRootOwner)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> RootFire) : Owner =
+        CeRuntime.RunRootFire d
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Run(d: unit -> RootResult<'T>) : 'T =
+        CeRuntime.RunRootResult d
+
+/// <summary>
+/// Computation expression builder marshaling work into <c>graph</c>'s consistency domain, routing <c>unit</c> blocks to
+/// <c>Graph.Dispatch</c> and <c>return</c> / <c>cancellation</c> blocks to <c>Graph.DispatchAsync</c>.
+/// </summary>
+[<Sealed>]
+type DispatchBuilder(graph: Graph) =
+    do
+        if isNull (box graph) then
+            nullArg (nameof graph)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member _.Graph = graph
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Yield(_: unit) : DispatchHeader<NoCancel> =
+        DispatchHeader<NoCancel>(NoCancel ())
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Zero() : DispatchFire =
+        DispatchFire ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Return(value: 'T) : DispatchResult<'T> =
+        DispatchResult<'T> value
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Delay([<InlineIfLambda>] f: unit -> 'Step) : unit -> 'Step = f
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Combine(_first: DispatchFire, [<InlineIfLambda>] second: unit -> 'Step) : 'Step = second ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.While([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> DispatchFire) : DispatchFire =
+        while guard () do
+            body () |> ignore
+
+        DispatchFire ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryWith([<InlineIfLambda>] body: unit -> 'Step, [<InlineIfLambda>] handler: exn -> 'Step) : 'Step =
+        try
+            body ()
+        with ex ->
+            handler ex
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.TryFinally([<InlineIfLambda>] body: unit -> 'Step, [<InlineIfLambda>] compensation: unit -> unit) : 'Step =
+        try
+            body ()
+        finally
+            compensation ()
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.Using<'D, 'Step when 'D :> IDisposable>(resource: 'D, [<InlineIfLambda>] body: 'D -> 'Step) : 'Step =
+        CeRuntime.RunUsing (resource, fun () -> body resource)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For(header: DispatchHeader<'Tok>, [<InlineIfLambda>] body: unit -> 'Step) : ConfiguredDispatch<'Tok, 'Step> =
+        ConfiguredDispatch<'Tok, 'Step>(header, body)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline _.For(sequence: seq<'Item>, [<InlineIfLambda>] body: 'Item -> DispatchFire) : DispatchFire =
+        for item in sequence do
+            body item |> ignore
+
+        DispatchFire ()
+
+    /// <summary>Supplies a <c>CancellationToken</c> for queued <c>DispatchAsync</c> execution.</summary>
+    [<CustomOperation("cancellation")>]
+    member inline _.Cancellation(_header: DispatchHeader<NoCancel>, cancellationToken: CancellationToken) : DispatchHeader<WithCancel> =
+        DispatchHeader<WithCancel>(WithCancel cancellationToken)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline this.Run(d: unit -> DispatchFire) : unit =
+        CeRuntime.DispatchUnit (this.Graph, d)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline this.Run(d: unit -> DispatchResult<'T>) : Task<'T> =
+        CeRuntime.DispatchResult (this.Graph, d)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline this.Run(d: unit -> ConfiguredDispatch<WithCancel, DispatchFire>) : Task<unit> =
+        let cfg = d ()
+        CeRuntime.DispatchUnitWithCancel (this.Graph, cfg.Header.Tok.Token, cfg.Body)
+
+    [<EditorBrowsable(EditorBrowsableState.Never)>]
+    member inline this.Run(d: unit -> ConfiguredDispatch<WithCancel, DispatchResult<'T>>) : Task<'T> =
+        let cfg = d ()
+        CeRuntime.DispatchResultWithCancel (this.Graph, cfg.Header.Tok.Token, cfg.Body)
+
+/// <summary>Implicit computation expression extensions for <see cref="T:Ranvier.Graph"/> and <see cref="T:Ranvier.Owner"/>.</summary>
+[<AutoOpen>]
+module GraphCeExtensions =
+    type Graph with
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Zero() : unit = ()
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Return(value: 'T) : 'T = value
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.ReturnFrom(value: 'T) : 'T = value
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Delay([<InlineIfLambda>] f: unit -> 'T) : GraphDelayed<'T> =
+            GraphDelayed<'T> f
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Combine(first: unit, second: GraphDelayed<'T>) : 'T =
+            first
+            second.Invoke ()
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.While([<InlineIfLambda>] guard: unit -> bool, body: GraphDelayed<unit>) : unit =
+            while guard () do
+                body.Invoke ()
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.TryWith(body: GraphDelayed<'T>, [<InlineIfLambda>] handler: exn -> 'T) : 'T =
+            try
+                body.Invoke ()
+            with ex ->
+                handler ex
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.TryFinally(body: GraphDelayed<'T>, [<InlineIfLambda>] compensation: unit -> unit) : 'T =
+            try
+                body.Invoke ()
+            finally
+                compensation ()
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Using<'D, 'T when 'D :> IDisposable>(resource: 'D, [<InlineIfLambda>] body: 'D -> 'T) : 'T =
+            CeRuntime.RunUsing (resource, fun () -> body resource)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.For(sequence: seq<'Item>, [<InlineIfLambda>] body: 'Item -> unit) : unit =
+            for item in sequence do
+                body item
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline this.Run(delayed: GraphDelayed<'T>) : 'T =
+            if isNull (box this) then
+                nullArg "graph"
+
+            use _ = this.Activate ()
+            delayed.Invoke ()
+
+    type Owner with
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Zero() : unit = ()
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Return(value: 'T) : 'T = value
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.ReturnFrom(value: 'T) : 'T = value
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Delay([<InlineIfLambda>] f: unit -> 'T) : OwnerDelayed<'T> =
+            OwnerDelayed<'T> f
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Combine(first: unit, second: OwnerDelayed<'T>) : 'T =
+            first
+            second.Invoke ()
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.While([<InlineIfLambda>] guard: unit -> bool, body: OwnerDelayed<unit>) : unit =
+            while guard () do
+                body.Invoke ()
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.TryWith(body: OwnerDelayed<'T>, [<InlineIfLambda>] handler: exn -> 'T) : 'T =
+            try
+                body.Invoke ()
+            with ex ->
+                handler ex
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.TryFinally(body: OwnerDelayed<'T>, [<InlineIfLambda>] compensation: unit -> unit) : 'T =
+            try
+                body.Invoke ()
+            finally
+                compensation ()
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Using<'D, 'T when 'D :> IDisposable>(resource: 'D, [<InlineIfLambda>] body: 'D -> 'T) : 'T =
+            CeRuntime.RunUsing (resource, fun () -> body resource)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.For(sequence: seq<'Item>, [<InlineIfLambda>] body: 'Item -> unit) : unit =
+            for item in sequence do
+                body item
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline this.Run(delayed: OwnerDelayed<'T>) : 'T =
+            Api.runWithOwner this (fun () -> delayed.Invoke ())
 
 /// <summary>Computation expression builders and combinators explicitly gated behind <c>Ranvier.CE</c>.</summary>
 [<AutoOpen>]
 module Builders =
+    /// <summary>Computation expression builder producing <c>Signal&lt;'T&gt;</c> sources on the active <c>Graph</c>.</summary>
+    let signal = SignalBuilder ()
+
     /// <summary>Computation expression builder producing <c>Memo&lt;'U&gt;</c> nodes with closed Phase-2 bodies.</summary>
     let memo = MemoBuilder ()
 
@@ -4335,6 +5600,26 @@ module Builders =
     /// <summary>Computation expression builder producing per-key projection readers <c>unit -&gt; 'V</c>.</summary>
     let row = RowBuilder ()
 
+    /// <summary>Computation expression builder registering a <c>unit</c> cleanup action on the innermost enclosing scope.</summary>
+    let cleanup = CleanupBuilder ()
+
+    /// <summary>Computation expression builder deferring effect execution across grouped signal writes (<c>batch</c>).</summary>
+    let batched = BatchedBuilder ()
+
+    /// <summary>Computation expression builder executing reads without recording reactive dependencies (<c>untrack</c>).</summary>
+    let untracked = UntrackedBuilder ()
+
+    /// <summary>Computation expression builder creating a nested disposable <c>Owner</c> scope (<c>createRoot</c>).</summary>
+    let root = RootBuilder ()
+
+    /// <summary>
+    /// Creates a computation expression builder marshaling work into <c>graph</c>'s consistency domain (<c>Graph.Dispatch</c> for
+    /// <c>unit</c> blocks, <c>Graph.DispatchAsync</c> when <c>return</c> or <c>cancellation</c> is used).
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>graph</c> is null.</exception>
+    let inline dispatch (graph: Graph) : DispatchBuilder =
+        DispatchBuilder graph
+
     /// <summary>
     /// Wraps <c>source</c> so Phase-1 key comparison in <c>effect</c>, <c>memo</c>, <c>asyncMemo</c>, or <c>stream</c>
     /// compares keys under <c>comparer</c> instead of the graph's equality policy.
@@ -4346,14 +5631,57 @@ module Builders =
 
         ComparedReactive<'K>(source, comparer)
 
+    /// <summary>
+    /// Wraps <c>source</c> so Phase-1 <c>let!</c> binds read <c>Reading&lt;'T&gt;</c> (<c>Ready</c>, <c>Pending</c>, or <c>Failed</c>)
+    /// via <c>.TryValue</c> without suspending or faulting the enclosing computation.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>source</c> is null.</exception>
+    let inline tryRead (source: #ITryReactive<'T>) : ReadingReactive<'T> =
+        if isNull (box source) then
+            nullArg (nameof source)
+
+        ReadingReactive<'T>(source :> ITryReactive<'T>)
+
+    /// <summary>Creates an owned <c>Timed&lt;'T&gt;</c> node debouncing <c>source</c> by <c>delay</c> on <c>source.Graph</c>.</summary>
+    let debounced (delay: TimeSpan) (source: IReactive<'T>) : Timed<'T> =
+        CeRuntime.PipeTimed (TimedOptions.defaults<'T>, delay, 0, source)
+
+    /// <summary>Creates an owned <c>Timed&lt;'T&gt;</c> node debouncing <c>source</c> by <c>delay</c> with <c>options</c> on <c>source.Graph</c>.</summary>
+    let debouncedWith (options: TimedOptions<'T>) (delay: TimeSpan) (source: IReactive<'T>) : Timed<'T> =
+        CeRuntime.PipeTimed (options, delay, 0, source)
+
+    /// <summary>Creates an owned <c>Timed&lt;'T&gt;</c> node throttling <c>source</c> by <c>interval</c> (leading + trailing) on <c>source.Graph</c>.</summary>
+    let throttled (interval: TimeSpan) (source: IReactive<'T>) : Timed<'T> =
+        CeRuntime.PipeTimed (TimedOptions.defaults<'T>, interval, 3, source)
+
+    /// <summary>Creates an owned <c>Timed&lt;'T&gt;</c> node throttling <c>source</c> by <c>interval</c> (leading + trailing) with <c>options</c> on <c>source.Graph</c>.</summary>
+    let throttledWith (options: TimedOptions<'T>) (interval: TimeSpan) (source: IReactive<'T>) : Timed<'T> =
+        CeRuntime.PipeTimed (options, interval, 3, source)
+
+    /// <summary>Creates an owned <c>Timed&lt;'T&gt;</c> node throttling <c>source</c> by <c>interval</c> (leading edge only) on <c>source.Graph</c>.</summary>
+    let throttledFirst (interval: TimeSpan) (source: IReactive<'T>) : Timed<'T> =
+        CeRuntime.PipeTimed (TimedOptions.defaults<'T>, interval, 1, source)
+
+    /// <summary>Creates an owned <c>Timed&lt;'T&gt;</c> node throttling <c>source</c> by <c>interval</c> (leading edge only) with <c>options</c> on <c>source.Graph</c>.</summary>
+    let throttledFirstWith (options: TimedOptions<'T>) (interval: TimeSpan) (source: IReactive<'T>) : Timed<'T> =
+        CeRuntime.PipeTimed (options, interval, 1, source)
+
+    /// <summary>Creates an owned <c>Timed&lt;'T&gt;</c> node throttling <c>source</c> by <c>interval</c> (trailing edge only) on <c>source.Graph</c>.</summary>
+    let throttledLast (interval: TimeSpan) (source: IReactive<'T>) : Timed<'T> =
+        CeRuntime.PipeTimed (TimedOptions.defaults<'T>, interval, 2, source)
+
+    /// <summary>Creates an owned <c>Timed&lt;'T&gt;</c> node throttling <c>source</c> by <c>interval</c> (trailing edge only) with <c>options</c> on <c>source.Graph</c>.</summary>
+    let throttledLastWith (options: TimedOptions<'T>) (interval: TimeSpan) (source: IReactive<'T>) : Timed<'T> =
+        CeRuntime.PipeTimed (options, interval, 2, source)
+
 /// <summary>Lower-priority <c>BoundPhase</c> computation-expression overloads resolving unambiguously against intrinsic <c>ColdPhase</c> methods.</summary>
 [<AutoOpen>]
 module BuilderExtensions =
     type MemoBuilder with
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Combine
-            (first: MemoStep<'P1, 'Prev, unit>, [<InlineIfLambda>] second: unit -> MemoStep<'P2, 'Prev, 'U>)
-            : MemoStep<'OutPhase, 'Prev, 'U> =
+            (first: MemoStep<'L1, 'P1, 'Prev, unit>, [<InlineIfLambda>] second: unit -> MemoStep<'L2, 'P2, 'Prev, 'U>)
+            : MemoStep<NotLeaf<DynamicKey>, 'OutPhase, 'Prev, 'U> =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -4363,8 +5691,8 @@ module BuilderExtensions =
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.While
-            ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> MemoStep<'P, 'Prev, unit>)
-            : MemoStep<'OutPhase, 'Prev, unit> =
+            ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> MemoStep<'L, 'P, 'Prev, unit>)
+            : MemoStep<NotLeaf<DynamicKey>, 'OutPhase, 'Prev, unit> =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -4374,8 +5702,8 @@ module BuilderExtensions =
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryWith
-            ([<InlineIfLambda>] body: unit -> MemoStep<'P1, 'Prev, 'U>, [<InlineIfLambda>] handler: exn -> MemoStep<'P2, 'Prev, 'U>)
-            : MemoStep<'OutPhase, 'Prev, 'U> =
+            ([<InlineIfLambda>] body: unit -> MemoStep<'L1, 'P1, 'Prev, 'U>, [<InlineIfLambda>] handler: exn -> MemoStep<'L2, 'P2, 'Prev, 'U>)
+            : MemoStep<NotLeaf<DynamicKey>, 'OutPhase, 'Prev, 'U> =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -4387,8 +5715,8 @@ module BuilderExtensions =
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryFinally
-            ([<InlineIfLambda>] body: unit -> MemoStep<'P, 'Prev, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
-            : MemoStep<'OutPhase, 'Prev, 'U> =
+            ([<InlineIfLambda>] body: unit -> MemoStep<'L, 'P, 'Prev, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
+            : MemoStep<NotLeaf<DynamicKey>, 'OutPhase, 'Prev, 'U> =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -4400,12 +5728,14 @@ module BuilderExtensions =
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Using
-            (resource: 'D, [<InlineIfLambda>] body: 'D -> MemoStep<'P, 'Prev, 'U>)
-            : MemoStep<'OutPhase, 'Prev, 'U> when 'D :> IDisposable =
+            (resource: 'D, [<InlineIfLambda>] body: 'D -> MemoStep<'L, 'P, 'Prev, 'U>)
+            : MemoStep<NotLeaf<DynamicKey>, 'OutPhase, 'Prev, 'U> when 'D :> IDisposable =
             MemoRunner.UsingStep (resource, body)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> MemoStep<'P, 'Prev, unit>) : MemoStep<'OutPhase, 'Prev, unit> =
+        member inline _.For
+            (sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> MemoStep<'L, 'P, 'Prev, unit>)
+            : MemoStep<NotLeaf<DynamicKey>, 'OutPhase, 'Prev, unit> =
             MemoDynamic (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -4414,54 +5744,118 @@ module BuilderExtensions =
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> MemoStep<BoundPhase, 'Prev, 'U>) : Memo<'U> =
-            MemoRunner.EvalBound (d, false, ValueNone)
+        member inline _.Bind
+            (source: IReactive<'K>, continuation: 'K -> MemoStep<'AnyLeaf, 'Phase, 'Prev, 'U>)
+            : MemoStep<NotLeaf<DynamicKey>, BoundPhase, 'Prev, 'U> =
+            MemoRunner.BindReactive (source, continuation)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> MemoTail<BoundPhase, 'U>) : Memo<'U> =
-            MemoRunner.EvalBoundTail (d, ValueNone)
+        member inline _.Bind
+            (source: IReactive<'K>, continuation: 'K -> MemoTail<'AnyLeaf, 'Phase, 'U>)
+            : MemoTail<NotLeaf<DynamicKey>, BoundPhase, 'U> =
+            let g = source.Graph
+            TailStatic (g, fun cmp _timing -> CeRuntime.CreateStaticTail (source, (fun k -> (continuation k).EvalMemo()), cmp))
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredMemo<PureMode, NoCmp, BoundPhase, 'Prev, 'U>) : Memo<'U> =
-            MemoRunner.EvalBound ((fun () -> (d ()).Body()), false, ValueNone)
+        member inline _.Run(d: unit -> MemoStep<'Leaf, BoundPhase, 'Prev, 'U>) : Memo<'U> =
+            MemoRunner.EvalBound (d, false, ValueNone, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredMemo<OwningMode, NoCmp, BoundPhase, 'Prev, 'U>) : Memo<'U> =
-            MemoRunner.EvalBound ((fun () -> (d ()).Body()), true, ValueNone)
+        member inline _.Run(d: unit -> MemoTail<'Leaf, BoundPhase, 'U>) : Memo<'U> =
+            MemoRunner.EvalBoundTail (d, ValueNone, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredMemo<PureMode, WithCmp<'U>, BoundPhase, 'Prev, 'U>) : Memo<'U> =
+        member inline _.Run(d: unit -> ConfiguredMemo<PureMode, NoCmp, NoTiming, 'Leaf, BoundPhase, 'Prev, 'U>) : Memo<'U> =
+            MemoRunner.EvalBound ((fun () -> (d ()).Body()), false, ValueNone, ValueNone)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredMemo<OwningMode, NoCmp, NoTiming, 'Leaf, BoundPhase, 'Prev, 'U>) : Memo<'U> =
+            MemoRunner.EvalBound ((fun () -> (d ()).Body()), true, ValueNone, ValueNone)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredMemo<PureMode, WithCmp<'U>, NoTiming, 'Leaf, BoundPhase, 'Prev, 'U>) : Memo<'U> =
             let cfg = d ()
-            MemoRunner.EvalBound (cfg.Body, false, ValueSome cfg.Header.Cmp.Comparer)
+            MemoRunner.EvalBound (cfg.Body, false, ValueSome cfg.Header.Cmp.Comparer, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredMemo<OwningMode, WithCmp<'U>, BoundPhase, 'Prev, 'U>) : Memo<'U> =
+        member inline _.Run(d: unit -> ConfiguredMemo<OwningMode, WithCmp<'U>, NoTiming, 'Leaf, BoundPhase, 'Prev, 'U>) : Memo<'U> =
             let cfg = d ()
-            MemoRunner.EvalBound (cfg.Body, true, ValueSome cfg.Header.Cmp.Comparer)
+            MemoRunner.EvalBound (cfg.Body, true, ValueSome cfg.Header.Cmp.Comparer, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredMemo<OptionMode, NoCmp, BoundPhase, NoPrev, 'A option>) : Memo<'A option> =
-            MemoRunner.EvalBoundOption (fun () -> (d ()).Body())
+        member inline _.Run(d: unit -> ConfiguredMemo<OptionMode, NoCmp, NoTiming, 'Leaf, BoundPhase, NoPrev, 'A option>) : Memo<'A option> =
+            MemoRunner.EvalBoundOption ((fun () -> (d ()).Body()), ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredMemoTail<OwningMode, NoCmp, BoundPhase, 'U>) : Memo<'U> =
-            MemoRunner.EvalBoundTail ((fun () -> (d ()).Body()), ValueNone)
+        member inline _.Run(d: unit -> ConfiguredMemoTail<OwningMode, NoCmp, NoTiming, 'Leaf, BoundPhase, 'U>) : Memo<'U> =
+            MemoRunner.EvalBoundTail ((fun () -> (d ()).Body()), ValueNone, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredMemoTail<PureMode, WithCmp<'U>, BoundPhase, 'U>) : Memo<'U> =
+        member inline _.Run(d: unit -> ConfiguredMemoTail<PureMode, WithCmp<'U>, NoTiming, 'Leaf, BoundPhase, 'U>) : Memo<'U> =
             let cfg = d ()
-            MemoRunner.EvalBoundTail (cfg.Body, ValueSome cfg.Header.Cmp.Comparer)
+            MemoRunner.EvalBoundTail (cfg.Body, ValueSome cfg.Header.Cmp.Comparer, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredMemoTail<OwningMode, WithCmp<'U>, BoundPhase, 'U>) : Memo<'U> =
+        member inline _.Run(d: unit -> ConfiguredMemoTail<OwningMode, WithCmp<'U>, NoTiming, 'Leaf, BoundPhase, 'U>) : Memo<'U> =
             let cfg = d ()
-            MemoRunner.EvalBoundTail (cfg.Body, ValueSome cfg.Header.Cmp.Comparer)
+            MemoRunner.EvalBoundTail (cfg.Body, ValueSome cfg.Header.Cmp.Comparer, ValueNone)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredMemo<PureMode, NoCmp, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, NoPrev, 'U>) : Memo<'U> =
+            let cfg = d ()
+            MemoRunner.EvalBound (cfg.Body, false, ValueNone, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredMemo<OwningMode, NoCmp, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, NoPrev, 'U>) : Memo<'U> =
+            let cfg = d ()
+            MemoRunner.EvalBound (cfg.Body, true, ValueNone, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run
+            (d: unit -> ConfiguredMemo<PureMode, WithCmp<'U>, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, NoPrev, 'U>)
+            : Memo<'U> =
+            let cfg = d ()
+            MemoRunner.EvalBound (cfg.Body, false, ValueSome cfg.Header.Cmp.Comparer, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run
+            (d: unit -> ConfiguredMemo<OwningMode, WithCmp<'U>, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, NoPrev, 'U>)
+            : Memo<'U> =
+            let cfg = d ()
+            MemoRunner.EvalBound (cfg.Body, true, ValueSome cfg.Header.Cmp.Comparer, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run
+            (d: unit -> ConfiguredMemo<OptionMode, NoCmp, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, NoPrev, 'A option>)
+            : Memo<'A option> =
+            let cfg = d ()
+            MemoRunner.EvalBoundOption (cfg.Body, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredMemoTail<PureMode, NoCmp, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, 'U>) : Memo<'U> =
+            let cfg = d ()
+            MemoRunner.EvalBoundTail (cfg.Body, ValueNone, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredMemoTail<OwningMode, NoCmp, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, 'U>) : Memo<'U> =
+            let cfg = d ()
+            MemoRunner.EvalBoundTail (cfg.Body, ValueNone, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredMemoTail<PureMode, WithCmp<'U>, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, 'U>) : Memo<'U> =
+            let cfg = d ()
+            MemoRunner.EvalBoundTail (cfg.Body, ValueSome cfg.Header.Cmp.Comparer, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredMemoTail<OwningMode, WithCmp<'U>, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, 'U>) : Memo<'U> =
+            let cfg = d ()
+            MemoRunner.EvalBoundTail (cfg.Body, ValueSome cfg.Header.Cmp.Comparer, ValueSome cfg.Header.Timing.Config)
 
     type EffectBuilder with
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Combine
             (first: EffectStep<'L1, 'P1>, [<InlineIfLambda>] second: unit -> EffectStep<'L2, 'P2>)
-            : EffectStep<NotLeaf, 'OutPhase> =
+            : EffectStep<NotLeaf<DynamicKey>, 'OutPhase> =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -4472,7 +5866,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.While
             ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> EffectStep<'L, 'P>)
-            : EffectStep<NotLeaf, 'OutPhase> =
+            : EffectStep<NotLeaf<DynamicKey>, 'OutPhase> =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -4483,7 +5877,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryWith
             ([<InlineIfLambda>] body: unit -> EffectStep<'L1, 'P1>, [<InlineIfLambda>] handler: exn -> EffectStep<'L2, 'P2>)
-            : EffectStep<NotLeaf, 'OutPhase> =
+            : EffectStep<NotLeaf<DynamicKey>, 'OutPhase> =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -4496,7 +5890,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryFinally
             ([<InlineIfLambda>] body: unit -> EffectStep<'L, 'P>, [<InlineIfLambda>] compensation: unit -> unit)
-            : EffectStep<NotLeaf, 'OutPhase> =
+            : EffectStep<NotLeaf<DynamicKey>, 'OutPhase> =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -4509,11 +5903,11 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Using
             (resource: 'D, [<InlineIfLambda>] body: 'D -> EffectStep<'L, 'P>)
-            : EffectStep<NotLeaf, 'OutPhase> when 'D :> IDisposable =
+            : EffectStep<NotLeaf<DynamicKey>, 'OutPhase> when 'D :> IDisposable =
             EffectRunner.UsingStep (resource, body)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EffectStep<'L, 'P>) : EffectStep<NotLeaf, 'OutPhase> =
+        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> EffectStep<'L, 'P>) : EffectStep<NotLeaf<DynamicKey>, 'OutPhase> =
             EffectDynamicFn (
                 Unchecked.defaultof<Graph>,
                 fun () ->
@@ -4522,7 +5916,7 @@ module BuilderExtensions =
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Bind(source: IReactive<'K>, continuation: 'K -> EffectStep<'AnyLeaf, 'Phase>) : EffectStep<NotLeaf, BoundPhase> =
+        member inline _.Bind(source: IReactive<'K>, continuation: 'K -> EffectStep<'AnyLeaf, 'Phase>) : EffectStep<NotLeaf<DynamicKey>, BoundPhase> =
             if InternalCeState.IsEvaluating then
                 let key = CeRuntime.ReadEffectTracked source
                 CeRuntime.RunEffectContinuation (source, key, fun k -> (continuation k).EvalUnit())
@@ -4539,16 +5933,29 @@ module BuilderExtensions =
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Run(d: unit -> EffectStep<'Leaf, BoundPhase>) : unit =
-            EffectRunner.EvalBound (d, false) |> ignore
-
-        [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredEffect<UnitOut, 'Leaf, BoundPhase>) : unit =
-            EffectRunner.EvalBound ((fun () -> (d ()).Body()), false)
+            EffectRunner.EvalBound (d, false, ValueNone)
             |> ignore
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredEffect<NodeOut, 'Leaf, BoundPhase>) : INode =
-            EffectRunner.EvalBound ((fun () -> (d ()).Body()), true)
+        member inline _.Run(d: unit -> ConfiguredEffect<UnitOut, NoTiming, 'Leaf, BoundPhase>) : unit =
+            EffectRunner.EvalBound ((fun () -> (d ()).Body()), false, ValueNone)
+            |> ignore
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredEffect<NodeOut, NoTiming, 'Leaf, BoundPhase>) : INode =
+            EffectRunner.EvalBound ((fun () -> (d ()).Body()), true, ValueNone)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredEffect<UnitOut, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase>) : unit =
+            let cfg = d ()
+
+            EffectRunner.EvalBound (cfg.Body, false, ValueSome cfg.Header.Timing.Config)
+            |> ignore
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredEffect<NodeOut, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase>) : INode =
+            let cfg = d ()
+            EffectRunner.EvalBound (cfg.Body, true, ValueSome cfg.Header.Timing.Config)
 
     type EditableBuilder with
         [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -4789,35 +6196,37 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Combine
             (first: AsyncStep<'L1, 'P1, unit>, [<InlineIfLambda>] second: unit -> AsyncStep<'L2, 'P2, 'U>)
-            : AsyncStep<NotLeaf, 'OutPhase, 'U> =
+            : AsyncStep<NotLeaf<DynamicKey>, 'OutPhase, 'U> =
             AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalCombine (first, second, prev, ct))
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.While
             ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> AsyncStep<'L, 'P, unit>)
-            : AsyncStep<NotLeaf, 'OutPhase, unit> =
+            : AsyncStep<NotLeaf<DynamicKey>, 'OutPhase, unit> =
             AsyncDynamic (Unchecked.defaultof<Graph>, fun _ ct -> AsyncRunner.EvalWhile (guard, body, ct))
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryWith
             ([<InlineIfLambda>] body: unit -> AsyncStep<'L1, 'P1, 'U>, [<InlineIfLambda>] handler: exn -> AsyncStep<'L2, 'P2, 'U>)
-            : AsyncStep<NotLeaf, 'OutPhase, 'U> =
+            : AsyncStep<NotLeaf<DynamicKey>, 'OutPhase, 'U> =
             AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalTryWith (body, handler, prev, ct))
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryFinally
             ([<InlineIfLambda>] body: unit -> AsyncStep<'L, 'P, 'U>, [<InlineIfLambda>] compensation: unit -> unit)
-            : AsyncStep<NotLeaf, 'OutPhase, 'U> =
+            : AsyncStep<NotLeaf<DynamicKey>, 'OutPhase, 'U> =
             AsyncDynamic (Unchecked.defaultof<Graph>, fun prev ct -> AsyncRunner.EvalTryFinally (body, compensation, prev, ct))
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Using
             (resource: 'D, [<InlineIfLambda>] body: 'D -> AsyncStep<'L, 'P, 'U>)
-            : AsyncStep<NotLeaf, 'OutPhase, 'U> when 'D :> IDisposable =
+            : AsyncStep<NotLeaf<DynamicKey>, 'OutPhase, 'U> when 'D :> IDisposable =
             AsyncRunner.UsingStep (resource, body)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.For(sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> AsyncStep<'L, 'P, unit>) : AsyncStep<NotLeaf, 'OutPhase, unit> =
+        member inline _.For
+            (sequence: seq<'T>, [<InlineIfLambda>] body: 'T -> AsyncStep<'L, 'P, unit>)
+            : AsyncStep<NotLeaf<DynamicKey>, 'OutPhase, unit> =
             AsyncDynamic (Unchecked.defaultof<Graph>, fun _ ct -> AsyncRunner.EvalForSeq (sequence, body, ct))
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -4839,36 +6248,66 @@ module BuilderExtensions =
 #endif
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Bind(source: IReactive<'K>, continuation: 'K -> AsyncStep<'AnyLeaf, 'ContPhase, 'U>) : AsyncStep<NotLeaf, BoundPhase, 'U> =
+        member inline _.Bind
+            (source: IReactive<'K>, continuation: 'K -> AsyncStep<'AnyLeaf, 'ContPhase, 'U>)
+            : AsyncStep<NotLeaf<DynamicKey>, BoundPhase, 'U> =
             AsyncRunner.BindReactiveDynamic (source, continuation)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Run(d: unit -> AsyncStep<'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
-            AsyncRunner.EvalBound (d, false, ValueNone)
+            AsyncRunner.EvalBound (d, false, ValueNone, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredAsync<PureMode, DefaultPolicy, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
-            AsyncRunner.EvalBound ((fun () -> (d ()).Body()), false, ValueNone)
+        member inline _.Run(d: unit -> ConfiguredAsync<PureMode, DefaultPolicy, NoTiming, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
+            AsyncRunner.EvalBound ((fun () -> (d ()).Body()), false, ValueNone, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, DefaultPolicy, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
-            AsyncRunner.EvalBound ((fun () -> (d ()).Body()), true, ValueNone)
+        member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, DefaultPolicy, NoTiming, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
+            AsyncRunner.EvalBound ((fun () -> (d ()).Body()), true, ValueNone, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredAsync<PureMode, ExplicitPolicy, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
+        member inline _.Run(d: unit -> ConfiguredAsync<PureMode, ExplicitPolicy, NoTiming, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
             let cfg = d ()
-            AsyncRunner.EvalBound (cfg.Body, false, ValueSome cfg.Header.Pol.Policy)
+            AsyncRunner.EvalBound (cfg.Body, false, ValueSome cfg.Header.Pol.Policy, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, ExplicitPolicy, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
+        member inline _.Run(d: unit -> ConfiguredAsync<OwningMode, ExplicitPolicy, NoTiming, 'Leaf, BoundPhase, 'U>) : AsyncMemo<'U> =
             let cfg = d ()
-            AsyncRunner.EvalBound (cfg.Body, true, ValueSome cfg.Header.Pol.Policy)
+            AsyncRunner.EvalBound (cfg.Body, true, ValueSome cfg.Header.Pol.Policy, ValueNone)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run
+            (d: unit -> ConfiguredAsync<PureMode, DefaultPolicy, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, 'U>)
+            : AsyncMemo<'U> =
+            let cfg = d ()
+            AsyncRunner.EvalBound (cfg.Body, false, ValueNone, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run
+            (d: unit -> ConfiguredAsync<OwningMode, DefaultPolicy, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, 'U>)
+            : AsyncMemo<'U> =
+            let cfg = d ()
+            AsyncRunner.EvalBound (cfg.Body, true, ValueNone, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run
+            (d: unit -> ConfiguredAsync<PureMode, ExplicitPolicy, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, 'U>)
+            : AsyncMemo<'U> =
+            let cfg = d ()
+            AsyncRunner.EvalBound (cfg.Body, false, ValueSome cfg.Header.Pol.Policy, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run
+            (d: unit -> ConfiguredAsync<OwningMode, ExplicitPolicy, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, 'U>)
+            : AsyncMemo<'U> =
+            let cfg = d ()
+            AsyncRunner.EvalBound (cfg.Body, true, ValueSome cfg.Header.Pol.Policy, ValueSome cfg.Header.Timing.Config)
 
     type StreamBuilder with
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Combine
             (first: StreamStep<'L1, 'P1, unit>, [<InlineIfLambda>] second: unit -> StreamStep<'L2, 'P2, 'T>)
-            : StreamStep<NotLeaf, 'OutPhase, 'T> =
+            : StreamStep<NotLeaf<DynamicKey>, 'OutPhase, 'T> =
             StreamDynamic (
                 Unchecked.defaultof<Graph>,
                 fun ct ->
@@ -4879,7 +6318,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.While
             ([<InlineIfLambda>] guard: unit -> bool, [<InlineIfLambda>] body: unit -> StreamStep<'L, 'P, unit>)
-            : StreamStep<NotLeaf, 'OutPhase, unit> =
+            : StreamStep<NotLeaf<DynamicKey>, 'OutPhase, unit> =
             StreamDynamic (
                 Unchecked.defaultof<Graph>,
                 fun ct ->
@@ -4892,7 +6331,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryWith
             ([<InlineIfLambda>] body: unit -> StreamStep<'L1, 'P1, 'T>, [<InlineIfLambda>] handler: exn -> StreamStep<'L2, 'P2, 'T>)
-            : StreamStep<NotLeaf, 'OutPhase, 'T> =
+            : StreamStep<NotLeaf<DynamicKey>, 'OutPhase, 'T> =
             StreamDynamic (
                 Unchecked.defaultof<Graph>,
                 fun ct ->
@@ -4905,7 +6344,7 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.TryFinally
             ([<InlineIfLambda>] body: unit -> StreamStep<'L, 'P, 'T>, [<InlineIfLambda>] compensation: unit -> unit)
-            : StreamStep<NotLeaf, 'OutPhase, 'T> =
+            : StreamStep<NotLeaf<DynamicKey>, 'OutPhase, 'T> =
             StreamDynamic (
                 Unchecked.defaultof<Graph>,
                 fun ct ->
@@ -4918,13 +6357,13 @@ module BuilderExtensions =
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Using
             (resource: 'D, [<InlineIfLambda>] body: 'D -> StreamStep<'L, 'P, 'T>)
-            : StreamStep<NotLeaf, 'OutPhase, 'T> when 'D :> IDisposable =
+            : StreamStep<NotLeaf<DynamicKey>, 'OutPhase, 'T> when 'D :> IDisposable =
             StreamRunner.UsingStep (resource, body)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.For
             (sequence: seq<'TItem>, [<InlineIfLambda>] body: 'TItem -> StreamStep<'L, 'P, unit>)
-            : StreamStep<NotLeaf, 'OutPhase, unit> =
+            : StreamStep<NotLeaf<DynamicKey>, 'OutPhase, unit> =
             StreamDynamic (
                 Unchecked.defaultof<Graph>,
                 fun ct ->
@@ -4935,18 +6374,30 @@ module BuilderExtensions =
             )
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Bind(source: IReactive<'K>, continuation: 'K -> StreamStep<'AnyLeaf, 'ContPhase, 'T>) : StreamStep<NotLeaf, BoundPhase, 'T> =
+        member inline _.Bind
+            (source: IReactive<'K>, continuation: 'K -> StreamStep<'AnyLeaf, 'ContPhase, 'T>)
+            : StreamStep<NotLeaf<DynamicKey>, BoundPhase, 'T> =
             StreamRunner.BindReactiveDynamic (source, continuation)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member inline _.Run(d: unit -> StreamStep<'Leaf, BoundPhase, 'T>) : StreamMemo<'T> =
-            StreamRunner.EvalBoundLatest d
+            StreamRunner.EvalBoundLatest (d, ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredStream<LatestMode, 'Leaf, BoundPhase, 'T>) : StreamMemo<'T> =
-            StreamRunner.EvalBoundLatest (fun () -> (d ()).Body())
+        member inline _.Run(d: unit -> ConfiguredStream<LatestMode, NoTiming, 'Leaf, BoundPhase, 'T>) : StreamMemo<'T> =
+            StreamRunner.EvalBoundLatest ((fun () -> (d ()).Body()), ValueNone)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
-        member inline _.Run(d: unit -> ConfiguredStream<FoldMode<'S, 'T>, 'Leaf, BoundPhase, 'T>) : StreamMemo<'S> =
+        member inline _.Run(d: unit -> ConfiguredStream<FoldMode<'S, 'T>, NoTiming, 'Leaf, BoundPhase, 'T>) : StreamMemo<'S> =
             let cfg = d ()
-            StreamRunner.EvalBoundFold (cfg.Body, cfg.Header.Mode.Seed, cfg.Header.Mode.Folder)
+            StreamRunner.EvalBoundFold (cfg.Body, cfg.Header.Mode.Seed, cfg.Header.Mode.Folder, ValueNone)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredStream<LatestMode, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, 'T>) : StreamMemo<'T> =
+            let cfg = d ()
+            StreamRunner.EvalBoundLatest (cfg.Body, ValueSome cfg.Header.Timing.Config)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member inline _.Run(d: unit -> ConfiguredStream<FoldMode<'S, 'T>, TimedSpec<'Clk>, NotLeaf<StaticKey>, BoundPhase, 'T>) : StreamMemo<'S> =
+            let cfg = d ()
+            StreamRunner.EvalBoundFold (cfg.Body, cfg.Header.Mode.Seed, cfg.Header.Mode.Folder, ValueSome cfg.Header.Timing.Config)

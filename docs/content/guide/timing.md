@@ -57,8 +57,10 @@ timing and detach dependencies. Reads after disposal retain the last published s
 `TimedCombinators` exposes `debounceWith`, `throttleWith`, `throttleFirstWith` and `throttleLastWith` with
 arguments in the order `options duration read graph`. Use `TimedOptions.defaults` for the standard
 configuration. An injected clock supplies `NowMilliseconds` and `CreateTimer`. Each `TimedTimer` supports
-`Arm`, `Disarm` and `Dispose`. A [reactive CE](computation-expressions.md#choose-the-inputs) can bind a
-`Timed<_>` to consume its admitted value.
+`Arm`, `Disarm` and `Dispose`. A [reactive CE](computation-expressions.md#non-throwing-tryread-and-phase-1-timing)
+can either gate its Phase-1 key directly with `debounce`, `throttle`, `throttleFirst`, `throttleLast` (and
+optional `clock`) headers on `memo`, `effect`, `asyncMemo`, and `stream`, or pipe individual `IReactive<'T>`
+inputs through `debounced*` / `throttled*`.
 
 Timer callbacks post a wake to the graph owner. A queued expiry respects batching and processes
 new source changes before admission. Native callbacks may be late; throttle anchors its next

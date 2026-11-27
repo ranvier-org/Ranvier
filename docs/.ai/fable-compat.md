@@ -50,7 +50,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Cutoff.fs | 16 | 14 | 14 | 16 | 14 | 14 | 0 | 0 |
 | SuspensionEdges.fs | 21 | 20 | 20 | 21 | 20 | 20 | 0 | 0 |
 | Scopes.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
-| Propagation.fs | 19 | 19 | 19 | 19 | 19 | 19 | 0 | 0 |
+| Propagation.fs | 20 | 20 | 20 | 20 | 20 | 20 | 0 | 0 |
 | Reads.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
 | Batching.fs | 12 | 12 | 12 | 12 | 12 | 12 | 0 | 0 |
 | AsyncEdges.fs | 71 | 71 | 68 | 71 | 71 | 68 | 4 | 0 |
@@ -83,7 +83,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryDictionary.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| Builders.fs | 29 | 29 | 29 | 29 | 29 | 29 | 0 | 3 |
+| Builders.fs | 32 | 32 | 32 | 32 | 32 | 32 | 0 | 3 |
 | VendoredThoth.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | WireDecoding.fs | 31 | 31 | 31 | 31 | 31 | 31 | 2 | 0 |
 | NumericDecoding.fs | 66 | 66 | 66 | 66 | 66 | 66 | 1 | 0 |
@@ -92,7 +92,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1878 | 1864 | 1861 | 2106 | 2088 | 2085 | 161 | 4 |
+| **Total** | 1882 | 1868 | 1865 | 2110 | 2092 | 2089 | 161 | 4 |
 
 ## Tests.fs
 
@@ -1107,7 +1107,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Propagation.fs
 
-<details><summary>19 passed in every build and delivery that runs them</summary>
+<details><summary>20 passed in every build and delivery that runs them</summary>
 
 - an effect at the bottom of a diamond runs once per write
 - the bottom of a diamond never sees one leg updated and the other not
@@ -1124,6 +1124,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an effect reading a memo over a projection's keys, then the source, sees one state per write
 - an effect reading a memo over a projection's row, then the source, sees one state per write
 - a projection over a projection publishes before an effect reading both ends runs
+- a drained queue preserves projection priority and effect order
 - a source written by an effect in the flush reaches a later effect through a projection
 - a pass queued by an effect that first reads its projection runs before an effect queued ahead of the write
 - an effect reading a memo over a lookup's key, then the source, sees one state per write
@@ -2575,7 +2576,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | part of: Review Focus #2 & #5: asyncMemo keyComparer, match!, Phase-2 pending, use across await | ValueTask is a .NET BCL struct. |
 | part of: Task 4 Fix Round 1: ColdPhase closed/B17, token+static CreateOn+withComparer, and control flow | IValueTaskSource and ValueTask are .NET BCL types. |
 
-<details><summary>29 passed in every build and delivery that runs them</summary>
+<details><summary>32 passed in every build and delivery that runs them</summary>
 
 - IReactive<'T> resolves Graph without Activate and ReadTracked delegates across all 8 reactive node types
 - BoundaryAdapter, TimedAdapter, and StreamMemoAdapter work via CombinatorMemos.createSourceMap
@@ -2606,6 +2607,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Task 4 Fix Round 1: ColdPhase closed/B17, token+static CreateOn+withComparer, and control flow
 - Task 4 Fix Round 2: WithContext SuspendNested reentrancy inside dynamic memo and boundary
 - Final review fixes: withComparer propagated across and!-merged keys and RowBuilder cross-graph MergeSources
+- 0.2.4 scope and constructor CEs: signal, cleanup, batched, untracked, root, graph, owner, and dispatch
+- 0.2.4 timing headers (debounce, throttle*, clock) on memo, effect, asyncMemo, and stream + early disposal
+- 0.2.4 reactive helpers: tryRead, per-arm debounced*/throttled* pipes, and Editable.isEdited / Editable.upstream
 
 </details>
 

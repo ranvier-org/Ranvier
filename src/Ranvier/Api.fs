@@ -306,6 +306,10 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
         member this.ReadTracked() =
             this.Value
 
+    interface ITryReactive<'T> with
+        member this.ReadTryTracked() =
+            this.TryValue
+
 /// <summary>
 /// The functions most code should use. Every node type can be constructed
 /// directly against an explicit <c>Graph</c> — that is what the tests and the
@@ -1480,6 +1484,90 @@ module StreamMemo =
 
         let g = source.Graph
         g.Entered ("Creating a node", fun () -> StreamMemo<'S>.CreateFoldOn(g, seed, fold, (fun () -> source.Value), binder))
+
+#if FABLE_COMPILER
+/// <summary>Tracked read descriptor for <c>editable.IsEdited</c>.</summary>
+[<Sealed; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type EditableIsEdited<'T>(editable: Editable<'T>) =
+    do
+        if isNull (box editable) then
+            nullArg (nameof editable)
+
+    interface IReactive<bool> with
+        member _.Graph = editable.Graph
+
+        member _.ReadTracked() =
+            editable.IsEdited
+
+/// <summary>Tracked read descriptor for <c>editable.Upstream</c>.</summary>
+[<Sealed; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type EditableUpstream<'T>(editable: Editable<'T>) =
+    do
+        if isNull (box editable) then
+            nullArg (nameof editable)
+
+    interface IReactive<'T> with
+        member _.Graph = editable.Graph
+
+        member _.ReadTracked() =
+            editable.Upstream
+#else
+/// <summary>Tracked read descriptor for <c>editable.IsEdited</c>.</summary>
+[<Struct; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type EditableIsEdited<'T> =
+    val private editable: Editable<'T>
+
+    /// <summary>Creates a tracked <c>Editable.IsEdited</c> descriptor.</summary>
+    new(editable: Editable<'T>) =
+        if isNull (box editable) then
+            nullArg (nameof editable)
+
+        { editable = editable }
+
+    interface IReactive<bool> with
+        member this.Graph = this.editable.Graph
+
+        member this.ReadTracked() =
+            this.editable.IsEdited
+
+/// <summary>Tracked read descriptor for <c>editable.Upstream</c>.</summary>
+[<Struct; NoEquality; NoComparison; System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)>]
+type EditableUpstream<'T> =
+    val private editable: Editable<'T>
+
+    /// <summary>Creates a tracked <c>Editable.Upstream</c> descriptor.</summary>
+    new(editable: Editable<'T>) =
+        if isNull (box editable) then
+            nullArg (nameof editable)
+
+        { editable = editable }
+
+    interface IReactive<'T> with
+        member this.Graph = this.editable.Graph
+
+        member this.ReadTracked() =
+            this.editable.Upstream
+#endif
+
+/// <summary>Bindable property descriptors over <see cref="T:Ranvier.Editable`1"/>.</summary>
+[<RequireQualifiedAccess>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Editable =
+    /// <summary>Tracked read of <c>editable.IsEdited</c> (<c>true</c> while a local edit is in force).</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>editable</c> is null.</exception>
+    let inline isEdited (editable: Editable<'T>) : EditableIsEdited<'T> =
+        if isNull (box editable) then
+            nullArg (nameof editable)
+
+        EditableIsEdited<'T>(editable)
+
+    /// <summary>Tracked read of <c>editable.Upstream</c>, whether or not a local edit is in force.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>editable</c> is null.</exception>
+    let inline upstream (editable: Editable<'T>) : EditableUpstream<'T> =
+        if isNull (box editable) then
+            nullArg (nameof editable)
+
+        EditableUpstream<'T>(editable)
 
 /// <summary>Keyed copy-and-update over F# lists.</summary>
 [<RequireQualifiedAccess>]

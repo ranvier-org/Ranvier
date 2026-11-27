@@ -621,6 +621,120 @@ module private CeSmoke =
             && mergeMemo3.Value = 236
             && mergeMemoRuns.Value = 4
 
+        // 13. 0.2.4 scope CEs, timing headers, tryRead, debounced*, and Editable descriptors
+        let mutable aotClockNow = 0.
+        let aotTimers = ResizeArray<Action * float ref>()
+
+        let aotClock =
+            { new TimedClock() with
+                override _.NowMilliseconds = aotClockNow
+
+                override _.CreateTimer(cb) =
+                    let due = ref infinity
+                    aotTimers.Add (cb, due)
+
+                    { new TimedTimer() with
+                        member _.Arm d =
+                            due.Value <- aotClockNow + d.TotalMilliseconds
+
+                        member _.Disarm() =
+                            due.Value <- infinity
+
+                        member _.Dispose() =
+                            due.Value <- infinity
+                    }
+            }
+
+        let advanceAotClock (target: float) =
+            aotClockNow <- target
+
+            for cb, due in aotTimers do
+                if due.Value <= target then
+                    due.Value <- infinity
+                    cb.Invoke ()
+
+        let s024, d024, mTimed024, tryBadge024, scope024, cleanLog024 =
+            g {
+                let cleanups = ResizeArray<string>()
+
+                let s =
+                    signal {
+                        comparer mod10Comparer
+                        return 2
+                    }
+
+                let d = draft { let! x = s in return x * 10 }
+
+                let mTimed =
+                    memo {
+                        debounce (TimeSpan.FromMilliseconds 50.)
+                        clock aotClock
+                        let! x = s
+                        return x + 100
+                    }
+
+                let badge =
+                    memo {
+                        let! r = tryRead d
+                        and! ed = Editable.isEdited d
+                        and! up = Editable.upstream d
+
+                        let v =
+                            match r with
+                            | Ready n -> n
+                            | _ -> -1
+
+                        let edStr = if ed then "true" else "false"
+                        return $"{v}:{edStr}:{up}"
+                    }
+
+                let scope =
+                    root {
+                        let! o = root.owner
+
+                        o { cleanup { cleanups.Add "bye" } }
+
+                        return o
+                    }
+
+                return (s, d, mTimed, badge, scope, cleanups)
+            }
+
+        let aot024Init =
+            mTimed024.Value = 102
+            && tryBadge024.Value = "20:false:20"
+
+        g {
+            batched {
+                s024.Value <- 12
+                d024.Value <- 99
+            }
+        }
+
+        let aot024Held =
+            mTimed024.Value = 102
+            && untracked { return tryBadge024.Value } = "99:true:20"
+
+        s024.Value <- 5
+
+        let aot024PreExpire =
+            mTimed024.Value = 102
+            && tryBadge024.Value = "99:true:50"
+
+        advanceAotClock 50.
+        let aot024PostExpire = mTimed024.Value = 105
+        scope024.Dispose ()
+
+        let dispVal024 =
+            (dispatch g { return mTimed024.Value + cleanLog024.Count }).GetAwaiter().GetResult()
+
+        let aot024Ok =
+            aot024Init
+            && aot024Held
+            && aot024PreExpire
+            && aot024PostExpire
+            && dispVal024 = 106
+
         [
             "CE memo 4-stage fused chain",
             fusedInit = 70
@@ -833,6 +947,17 @@ module private CeSmoke =
             + string m3ThirdWoke
             + ":"
             + string m3AndEffWoke
+            "CE 0.2.4 scope, timing, tryRead, and dispatch",
+            aot024Ok,
+            string aot024Init
+            + ":"
+            + string aot024Held
+            + ":"
+            + string aot024PreExpire
+            + ":"
+            + string aot024PostExpire
+            + ":"
+            + string dispVal024
         ]
 
 [<EntryPoint>]
