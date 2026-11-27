@@ -203,32 +203,78 @@ let theme =
         )
     )
 
-/// The og card of each section, keyed by the path segment that names it, with the card's alt text.
+/// The og card of each docs path, most specific first, with the card's alt text. A key names a page or a section by its
+/// source path without the extension.
 let private ogCards =
+    let core =
+        "core", "Signals, memos and effects: a write jumps node to node along a nerve while unchanged branches stay dark"
+
+    let collections =
+        "collections", "Keyed collections: one row per key, the changed row carrying the pulse"
+
+    let extensions =
+        "extensions", "Packages on the graph: Query, Elmish, Dom, Wire and Mcp branching from one fibre"
+
+    let pending = "async", "Async and pending: boundary states along a nerve fibre"
+
     [
-        "nacara", "nacara", "Runnable Ranvier documentation: components, signal maps and editable examples"
-        "async-and-pending", "async", "Async and pending: boundary states along a nerve fibre"
-        "tracing", "tracing", "Tracing: a cause chain traced back along a nerve fibre"
-        "signal-maps", "signal-maps", "Signal maps: a traced graph drawn live, a write travelling its edges"
-        "timing", "timing", "Debounce and throttle: capture changes now, admit them after quiet or at a fixed deadline"
-        "guide", "guide", "Ranvier guide: build with signals"
-        "concepts", "concepts", "Ranvier concepts: how the graph works"
-        "fable", "fable", "Ranvier on Fable: the JavaScript target"
-        "benchmarks", "benchmarks", "Ranvier benchmarks: measured per commit"
+        yield "guide/nacara", "nacara", "Runnable Ranvier documentation: components, signal maps and editable examples"
+        for page in [ "async-and-pending"; "async-sources"; "async-memos"; "boundaries" ] -> $"guide/{page}", fst pending, snd pending
+        yield "guide/tracing", "tracing", "Tracing: a cause chain traced back along a nerve fibre"
+        yield "guide/signal-maps", "signal-maps", "Signal maps: a traced graph drawn live, a write travelling its edges"
+        yield "guide/timing", "timing", "Debounce and throttle: capture changes now, admit them after quiet or at a fixed deadline"
+
+        for page in
+            [
+                "graph"
+                "signals"
+                "memos"
+                "computation-expressions"
+                "effects"
+                "bindings"
+                "roots"
+                "cleanup"
+                "untrack"
+                "batch"
+                "editable"
+                "drafts"
+                "equality"
+            ] -> $"guide/{page}", fst core, snd core
+
+        for page in
+            [
+                "collections"
+                "projections"
+                "lookups"
+                "selectors"
+                "collection-updates"
+                "collection-views"
+                "aggregates"
+            ] -> $"guide/{page}", fst collections, snd collections
+
+        for page in [ "queries"; "query-navigation"; "elmish"; "dom"; "wire"; "mcp" ] -> $"guide/{page}", fst extensions, snd extensions
+        yield "guide", "guide", "Ranvier guide: build with signals"
+        yield "concepts", "concepts", "Ranvier concepts: how the graph works"
+        yield "fable", "fable", "Ranvier on Fable: the JavaScript target"
+        yield "benchmarks", "benchmarks", "Ranvier benchmarks: measured per commit"
+        yield "reference", "reference", "Ranvier API reference: a nerve in cross-section, one axon lit"
+        yield "blog", "blog", "Ranvier blog: building with Ranvier"
     ]
 
-/// The card of the most specific section named by a page's path.
+/// The card of the most specific key that names the page or a section containing it.
 let private sectionCard (page: Page) =
-    let segments =
-        page.Id.Split ([| '/'; '\\'; ':' |])
-        |> Array.map (fun s -> s.Replace (".md", ""))
+    let path =
+        "/"
+        + Path.ChangeExtension (page.Id.Replace(':', '/').Replace('\\', '/'), null)
 
     ogCards
-    |> List.tryFind (fun (segment, _, _) -> Array.contains segment segments)
+    |> List.tryFind (fun (key, _, _) ->
+        path.EndsWith ("/" + key)
+        || path.Contains ("/" + key + "/"))
     |> Option.map (fun (_, card, alt) ->
         OgImage.image $"/og/%s{card}.png"
         |> OgImage.withAlt alt
-        |> OgImage.withSize 1200 630)
+        |> OgImage.withSize 2400 1260)
 
 let private ogImages (options: OgImageOptions) =
     options
@@ -236,7 +282,7 @@ let private ogImages (options: OgImageOptions) =
     |> OgImage.defaultImage (
         OgImage.image "/og/home.png"
         |> OgImage.withAlt "Ranvier: fine-grained reactive computation for .NET"
-        |> OgImage.withSize 1200 630
+        |> OgImage.withSize 2400 1260
     )
 
 /// The shipped C# grammar (<c>c_sharp</c>, after its wasm's <c>tree_sitter_c_sharp</c> export), also written with

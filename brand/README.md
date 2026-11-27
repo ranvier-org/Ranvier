@@ -37,3 +37,19 @@ Do not reintroduce these:
   item and code block edges.
 - **Landing**: lead with the behaviour: a boundary moving through its states next to the code
   that drives it, then the state vocabulary.
+
+## Open Graph cards
+
+`og/render.fsx` draws the 1200 x 630 cards of the README and the documentation site from the tokens,
+the wordmark and the state marks in this folder. Run it from the repository root:
+
+```sh
+dotnet fsi brand/og/render.fsx              # every card
+dotnet fsi brand/og/render.fsx home async   # the named cards
+```
+
+Each card is a `Ranvier.View.Dsl` SVG component, mounted in a headless `Ranvier.View.WebCore` host and
+snapshotted to `og/<name>.png` at two device pixels per CSS pixel (2400 x 1260), so it stays sharp on
+high-density screens. A card the site uses is also written to `docs/static/og/<key>.png`, and
+`docs/Site.fs` declares its size. Geist and Geist Mono load from Google Fonts, so a render needs
+network access.
