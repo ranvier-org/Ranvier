@@ -197,6 +197,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 64,946 | 164,979 | 1,531,080 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 64,986 | 165,004 | 1,531,088 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 64,986 | 165,032 | 1,531,040 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 64,986 | 165,004 | 1,531,067 |
 
 ## app-table
 
@@ -395,6 +396,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 2,078,891 | 4,223,764 | 61,337,718 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 2,078,892 | 4,223,754 | 61,337,718 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 2,078,898 | 4,223,973 | 61,337,687 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 2,078,888 | 4,223,840 | 61,337,726 |
 
 ## async-recover
 
@@ -593,6 +595,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 92,438 | 25,743 | 311,835 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 92,253 | 25,743 | 311,834 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 92,253 | 25,741 | 311,835 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 92,254 | 25,743 | 311,831 |
 
 ## async-resolve
 
@@ -791,6 +794,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 2,713,798 | 614,783 | 7,631,168 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 2,707,399 | 614,758 | 7,631,159 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 2,707,398 | 614,772 | 7,631,123 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 2,707,399 | 614,812 | 7,631,140 |
 
 ## chain
 
@@ -989,6 +993,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 13,020 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,608 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 13,020 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,608 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 13,020 | 318 | 1,240 | 4,419 | 2,708 | 72,358 | 58,609 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 13,020 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,608 |
 
 ## chain-affinity
 
@@ -1187,6 +1192,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,240 | 1,985 | 1,447 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,240 | 1,985 | 1,447 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,240 | 1,985 | 1,447 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,240 | 1,985 | 1,447 |
 
 ## chain-map
 
@@ -1385,6 +1391,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 468 | 726 | 18,900 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 468 | 726 | 18,900 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 468 | 726 | 18,900 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 468 | 726 | 18,900 |
 
 ## chain-on
 
@@ -1583,6 +1590,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 2,021 | 4,449 | 85,379 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 2,021 | 4,448 | 85,379 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 2,021 | 4,449 | 85,379 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 2,021 | 4,448 | 85,379 |
 
 ## control
 
@@ -1781,6 +1789,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 74,708 | 463,064 | 2,271,571 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 74,709 | 463,048 | 2,271,598 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 74,709 | 463,026 | 2,271,639 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 74,708 | 463,030 | 2,271,675 |
 
 ## create
 
@@ -1979,6 +1988,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 13,445,832 | 2,859,678 | 1,574,668 | 4,443,276 | 1,661,992 | 32,790,101 | 33,522,901 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 13,571,372 | 2,875,742 | 1,576,620 | 4,442,478 | 1,661,983 | 32,790,242 | 33,522,788 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 13,445,843 | 2,859,678 | 1,576,621 | 4,442,845 | 1,661,975 | 32,790,219 | 33,522,822 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 13,477,798 | 2,859,678 | 1,576,621 | 4,443,188 | 1,662,096 | 32,790,255 | 33,522,710 |
 
 ## create-on
 
@@ -2177,6 +2187,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,878,251 | 1,999,896 | 38,957,820 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,882,251 | 1,999,950 | 38,957,791 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,882,251 | 1,999,914 | 38,958,025 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,882,251 | 2,000,041 | 38,957,842 |
 
 ## cutoff
 
@@ -2375,6 +2386,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 
 ## derive-effect
 
@@ -2573,6 +2585,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 268 | 597 | 12,928 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 268 | 597 | 12,928 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 268 | 597 | 12,928 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 268 | 597 | 12,928 |
 
 ## derive-on
 
@@ -2771,6 +2784,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 276 | 589 | 13,663 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 276 | 589 | 13,663 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 276 | 589 | 13,663 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 276 | 589 | 13,663 |
 
 ## dispose
 
@@ -2969,6 +2983,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 2,707,643 | 806,290 | 284,345 | 480,077 | 856,810 | 11,183,999 | 7,328,962 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 2,707,644 | 806,290 | 284,345 | 480,060 | 857,085 | 11,184,646 | 7,329,054 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 2,707,643 | 806,290 | 284,345 | 479,431 | 856,931 | 11,184,710 | 7,328,863 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 2,707,645 | 806,290 | 284,345 | 479,959 | 856,818 | 11,184,922 | 7,329,449 |
 
 ## dispose-on
 
@@ -3167,6 +3182,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 284,345 | 857,078 | 7,328,828 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 284,345 | 857,004 | 7,328,998 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 284,345 | 856,590 | 7,329,401 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 284,345 | 856,860 | 7,329,187 |
 
 ## editable-edit
 
@@ -3365,6 +3381,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 73,409 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 73,409 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 73,409 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 73,409 |
 
 ## editable-upstream
 
@@ -3563,6 +3580,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 128,609 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 128,609 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 128,609 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 128,609 |
 
 ## fail-recompute
 
@@ -3761,6 +3779,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 54,247 | 723 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 54,299 | 723 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 54,299 | 723 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 54,483 | 723 |
 
 ## flight
 
@@ -3959,6 +3978,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 
 ## keyed-insert
 
@@ -4157,6 +4177,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,112,549 | 26,230 | 26,838 | 2,149,464 | 457,664 | 476,765 | 36,885,220 | 2,595,246 | 2,620,615 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,112,565 | 26,230 | 26,854 | 2,149,588 | 469,368 | 476,904 | 36,885,229 | 2,595,295 | 2,620,652 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,112,547 | 26,228 | 26,838 | 2,149,536 | 469,195 | 476,785 | 36,885,198 | 2,595,235 | 2,620,595 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,112,549 | 26,230 | 26,838 | 2,149,520 | 469,331 | 476,854 | 36,885,225 | 2,595,292 | 2,620,628 |
 
 ## keyed-remove
 
@@ -4355,6 +4376,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,112,093 | 23,551 | 24,724 | 2,141,257 | 413,219 | 425,101 | 36,855,565 | 1,903,251 | 1,938,140 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,112,121 | 23,551 | 24,735 | 2,141,241 | 413,253 | 425,068 | 36,855,639 | 1,903,303 | 1,938,188 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,112,097 | 23,551 | 24,726 | 2,141,263 | 413,230 | 425,113 | 36,855,652 | 1,903,308 | 1,938,140 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,112,098 | 23,551 | 24,726 | 2,141,208 | 413,207 | 425,072 | 36,855,682 | 1,903,309 | 1,938,168 |
 
 ## keyed-swap
 
@@ -4553,6 +4575,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,092,753 | 30,640 | 31,021 | 2,690,944 | 366,663 | 91,670 | 37,448,798 | 690,986 | 703,861 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,092,761 | 30,640 | 31,037 | 2,690,906 | 366,624 | 91,666 | 37,448,845 | 691,025 | 703,827 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,092,746 | 30,640 | 31,021 | 2,690,935 | 366,607 | 91,675 | 37,448,851 | 690,983 | 703,833 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,092,753 | 30,640 | 31,021 | 2,690,921 | 366,644 | 91,658 | 37,448,813 | 691,023 | 703,835 |
 
 ## mvu-dispatch
 
@@ -4751,6 +4774,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 32,385 | 345 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 32,385 | 345 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 32,385 | 345 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 32,385 | 345 |
 
 ## persist-write
 
@@ -4949,6 +4973,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | — | — |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | — | — |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | — | — |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | — | — |
 
 ## project-chain
 
@@ -5147,6 +5172,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 58,755 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 58,791 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 58,794 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 58,770 |
 
 ## project-churn
 
@@ -5345,6 +5371,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 23,235 | 21,245 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 23,235 | 21,245 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 23,235 | 21,245 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 23,235 | 21,246 |
 
 ## project-edit
 
@@ -5543,6 +5570,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 22,470 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 22,486 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 22,470 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 22,470 |
 
 ## project-reorder
 
@@ -5741,6 +5769,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 239,691 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 239,707 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 239,691 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 239,691 |
 
 ## server-render
 
@@ -5939,6 +5968,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | — | — | — |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | — | — | — |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | — | — | — |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | — | — | — |
 
 ## shape-diamond
 
@@ -6137,6 +6167,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 45,940 | 82,554 | 1,544,580 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 45,940 | 82,554 | 1,544,580 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 45,940 | 82,554 | 1,544,580 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 45,940 | 82,554 | 1,544,580 |
 
 ## shape-dynamic
 
@@ -6335,6 +6366,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 44,340 | 86,817 | 1,604,704 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 44,340 | 86,818 | 1,604,704 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 44,340 | 86,817 | 1,604,704 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 44,340 | 86,820 | 1,604,704 |
 
 ## stream-burst-1
 
@@ -6533,6 +6565,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,789 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,788 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,788 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,788 |
 
 ## stream-burst-16
 
@@ -6731,6 +6764,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,760 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,760 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,758 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,758 |
 
 ## stream-burst-256
 
@@ -6929,6 +6963,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 22,589 | 207,118 | 28,699 | 83,744 | 410,550 | 57,672 | 821,862 | 8,331,778 | 620,628 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 22,589 | 207,118 | 28,699 | 83,747 | 410,556 | 57,672 | 821,866 | 8,331,755 | 620,671 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 22,589 | 207,118 | 28,699 | 83,746 | 410,556 | 57,672 | 821,852 | 8,331,783 | 620,674 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 22,589 | 207,118 | 28,699 | 83,747 | 410,556 | 57,672 | 821,861 | 8,331,780 | 620,663 |
 
 ## stream-restart
 
@@ -7127,6 +7162,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 3,186 | 3,509 | 17,066 | 14,809 | 39,952 | 66,897 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 3,186 | 3,509 | 17,067 | 14,805 | 39,952 | 66,900 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 3,186 | 3,509 | 17,063 | 14,809 | 39,953 | 66,898 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 3,186 | 3,509 | 17,063 | 14,811 | 39,956 | 66,902 |
 
 ## timed-admit-both
 
@@ -7325,6 +7361,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 83,107 | 112,714 | 2,282,257 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 83,107 | 112,728 | 2,282,257 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 83,107 | 112,727 | 2,282,244 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 83,107 | 112,725 | 2,282,257 |
 
 ## timed-admit-debounce
 
@@ -7523,6 +7560,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 82,595 | 110,350 | 2,256,677 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 82,595 | 110,349 | 2,256,703 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 82,595 | 110,352 | 2,256,682 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 82,595 | 110,349 | 2,256,677 |
 
 ## timed-admit-first
 
@@ -7721,6 +7759,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 45,668 | 62,483 | 1,407,797 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 45,668 | 62,483 | 1,407,798 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 45,668 | 62,482 | 1,407,798 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 45,668 | 62,483 | 1,407,798 |
 
 ## timed-admit-last
 
@@ -7919,6 +7958,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 82,851 | 111,694 | 2,266,725 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 82,851 | 111,689 | 2,266,725 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 82,851 | 111,695 | 2,266,725 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 82,851 | 111,694 | 2,266,726 |
 
 ## timed-capture-both
 
@@ -8117,6 +8157,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 25,291 | 40,077 | 748,926 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 25,291 | 40,076 | 748,927 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 25,291 | 40,075 | 748,926 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 25,291 | 40,073 | 748,927 |
 
 ## timed-capture-debounce
 
@@ -8315,6 +8356,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 24,971 | 38,606 | 734,805 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 24,971 | 38,607 | 734,801 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 24,971 | 38,606 | 734,801 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 24,971 | 38,606 | 734,800 |
 
 ## timed-capture-first
 
@@ -8513,6 +8555,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 24,075 | 34,445 | 677,904 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 24,075 | 34,445 | 677,904 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 24,075 | 34,445 | 677,904 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 24,075 | 34,444 | 677,905 |
 
 ## timed-capture-last
 
@@ -8711,6 +8754,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 25,035 | 38,671 | 732,432 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 25,035 | 38,671 | 732,432 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 25,035 | 38,671 | 732,432 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 25,035 | 38,670 | 732,432 |
 
 ## update
 
@@ -8909,6 +8953,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,088,990 | 38,805 | 28,306 | 196,623 | 71,299 | 2,533,219 | 1,334,506 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,090,590 | 38,805 | 28,306 | 196,924 | 71,299 | 2,533,155 | 1,334,495 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,087,390 | 38,805 | 28,306 | 196,923 | 71,299 | 2,533,221 | 1,334,462 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,087,390 | 38,805 | 28,306 | 196,932 | 71,299 | 2,533,206 | 1,334,503 |
 
 ## update-on
 
@@ -9107,6 +9152,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 35,406 | 82,599 | 1,633,637 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 35,406 | 82,599 | 1,633,633 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 35,406 | 82,599 | 1,633,626 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 35,406 | 82,598 | 1,633,643 |
 
 ## work-form
 
@@ -9305,6 +9351,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 87,492 | 79,896 | 255,162 | 269,267 | 3,956,523 | 4,028,301 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 87,492 | 79,896 | 255,131 | 269,244 | 3,956,611 | 4,028,343 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 87,492 | 79,896 | 255,162 | 269,278 | 3,956,633 | 4,028,308 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 87,492 | 79,896 | 255,162 | 269,280 | 3,956,624 | 4,028,342 |
 
 ## work-status
 
@@ -9503,6 +9550,7 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 51,446 | 31,786 | 181,592 | 79,609 | 1,594,514 | 1,389,388 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 51,446 | 31,786 | 181,584 | 79,626 | 1,594,527 | 1,389,437 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 51,446 | 31,786 | 181,574 | 79,609 | 1,594,462 | 1,389,325 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 51,446 | 31,786 | 181,558 | 79,611 | 1,594,537 | 1,389,433 |
 
 ## work-value
 
@@ -9701,4 +9749,5 @@
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 58,570 | 65,870 | 181,815 | 197,992 | 1,579,135 | 1,877,080 |
 | `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 58,570 | 65,870 | 181,822 | 197,971 | 1,579,201 | 1,877,074 |
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 58,570 | 65,870 | 181,787 | 197,997 | 1,579,165 | 1,876,965 |
+| `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 58,570 | 65,870 | 181,778 | 198,002 | 1,579,182 | 1,877,041 |
 
