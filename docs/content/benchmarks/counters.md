@@ -111,9 +111,10 @@ These scenarios postdate `e13f159` and appear only in the CI charts. Each measur
 | [`stream-restart`](streams.md#stream-restart) | Write a dependency of a stream, restarting it, then deliver one item; or of an async memo, restarting its flight. | A stream; an async memo under `CancelPrevious` | .NET, Node.js |
 | `control` | Refill a 256-entry closure table, sum it and sort a copy of its array. | — | .NET, Node.js |
 
-`control` runs no Ranvier code. Every worker process measures it last, as a reference for the state of the
-process and the machine. When `control` moves on a runtime, the perf verdict reports that runtime's regressions as
-inconclusive.
+`control` runs no Ranvier code. Every worker process measures Ranvier's cases first, then the comparator libraries'
+cases, and `control` last, as a reference for the state of the process and the machine. A Ranvier figure is
+independent of which comparator libraries, at which versions, the process measures. When `control` moves on a
+runtime, the perf verdict reports that runtime's regressions as inconclusive.
 
 ## Comparable APIs
 

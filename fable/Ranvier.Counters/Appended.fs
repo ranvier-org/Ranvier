@@ -1,6 +1,7 @@
 /// <summary>
-/// Cases the harness measures after every case of <c>Scenarios.all</c>. <c>Main</c> loads this module only then, so
-/// the code loaded while <c>Scenarios.all</c> runs is the code of a harness without these cases.
+/// Cases the harness measures after the Ranvier cases of <c>Scenarios.all</c>, before its comparator cases. <c>Main</c>
+/// loads this module only then, so the code loaded while those Ranvier cases run is the code of a harness without
+/// these cases.
 /// </summary>
 module FableCounters.Appended
 

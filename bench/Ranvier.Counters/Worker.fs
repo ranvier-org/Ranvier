@@ -122,11 +122,24 @@ let measure (hardware: LinuxPmc.ThreadCounters option) (case: Case) (ops: int) (
     finally
         prepared.Teardown ()
 
+/// <summary>The measurement group of a case: 0 for Ranvier, 1 for a comparator library, 2 for the control.</summary>
+let private group (case: Case) =
+    if case.Engine.StartsWith ("Ranvier", StringComparison.Ordinal) then
+        0
+    elif case.Engine = "Control" then
+        2
+    else
+        1
+
 /// <summary>
 /// Measures every case at N and 2N after one unmeasured run at N, which
 /// compiles every method and initialises every static the region reaches.
 /// With <c>only</c>, measures the cases whose scenario name starts with it.
 /// </summary>
+/// <remarks>
+/// Ranvier's cases run first, then the comparator libraries' cases, then the control: a Ranvier figure is
+/// independent of the set of comparator libraries. Results keep the declared order of <c>Scenarios.all</c>.
+/// </remarks>
 let run (scale: int) (only: string option) (output: string) =
     let hardware =
         if OperatingSystem.IsLinux () then
@@ -149,7 +162,9 @@ let run (scale: int) (only: string option) (output: string) =
 
     let results =
         cases
-        |> List.mapi (fun index case ->
+        |> List.indexed
+        |> List.sortBy (snd >> group)
+        |> List.mapi (fun index (position, case) ->
             let warm = case.Prepare case.Ops
 
             try
@@ -160,6 +175,7 @@ let run (scale: int) (only: string option) (output: string) =
             if index = 0 && hardware.IsSome then
                 measure hardware case case.Ops -1 |> ignore
 
+            position,
             {
                 Scenario = case.Scenario
                 Engine = case.Engine
@@ -170,6 +186,8 @@ let run (scale: int) (only: string option) (output: string) =
                         measure hardware case (2 * case.Ops) (2 * index + 1)
                     |]
             })
+        |> List.sortBy fst
+        |> List.map snd
         |> List.toArray
 
     let run =
