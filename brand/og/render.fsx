@@ -7,8 +7,8 @@
 //   dotnet fsi brand/og/render.fsx                 renders every card
 //   dotnet fsi brand/og/render.fsx home async      renders the named cards
 
-#r "nuget: Ranvier.View, 0.5.0"
-#r "nuget: Ranvier.View.WebCore, 0.3.1"
+#r "nuget: Ranvier.View, 0.7.0"
+#r "nuget: Ranvier.View.WebCore, 0.3.3"
 
 open System
 open System.Diagnostics
@@ -118,7 +118,7 @@ let grad (t: float) =
 let at (name: string) (value: string) : Part<'native, unit> =
     TemplateParts.attribute name value
 
-/// An SVG element the DSL has no tag for, such as <c>filter</c>.
+/// An SVG element with the tag <c>name</c>, for tags read from a brand SVG file.
 let element (name: string) (parts: Part<Ranvier.Dom.SVGElement, unit> array) (children: TemplateView<unit> array) =
     TemplateParts.element (HtmlTag name) parts children
 
@@ -264,7 +264,7 @@ type Card() =
                     at "height" "200%"
                 |]
 
-        this.Define (element "filter" region [| element "feGaussianBlur" [| at "stdDeviation" (num sd) |] [||] |])
+        this.Define (filter region { feGaussianBlur (at "stdDeviation" (num sd)) { () } })
 
         $"url(#{id})"
 
