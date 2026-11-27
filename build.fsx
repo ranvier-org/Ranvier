@@ -1233,10 +1233,17 @@ module private Perf =
             and! headDir = argument "HEAD_DIR" "perf build output of the head"
             and! output = argument "OUT" "File to write the measurements to"
 
+            and! runtimes =
+                Input.option<string list> "--runtime"
+                |> Input.arity Arity.ZeroOrMore
+                |> Input.allowMultipleArgumentsPerToken
+                |> Input.acceptOnlyFromAmong [| "node"; "node-jitless"; "dotnet" |]
+                |> Input.description "The runtimes of the leg to measure; every runtime of the leg when omitted"
+
             return
                 stage "perf alternating measurements" {
                     run (
-                        dotnet
+                        dotnet (
                             [
                                 combine (absolute headDir) "worker/Ranvier.Counters.dll"
                                 "ab"
@@ -1251,6 +1258,8 @@ module private Perf =
                                 "--out"
                                 absolute output
                             ]
+                            @ (runtimes |> List.collect (fun runtime -> [ "--runtime"; runtime ]))
+                        )
                     )
                 }
         }

@@ -86,18 +86,38 @@ jobs:
     if: needs.find.outputs.run == '' && needs.find.outputs.ignored != 'true' && needs.find.outputs.docs != 'true'
     strategy:
       fail-fast: false
+      # Each job measures one runtime of a leg, base and head alternating on one machine; the verdict job merges a leg's
+      # jobs into ab-<leg>.json. The primary job of a leg runs the test suites and stores the leg's builds.
       matrix:
         include:
           - leg: arm64-counters
             os: ubuntu-24.04-arm
+            runtime: node
+            primary: false
+          - leg: arm64-counters
+            os: ubuntu-24.04-arm
+            runtime: node-jitless
+            primary: false
+          - leg: arm64-counters
+            os: ubuntu-24.04-arm
+            runtime: dotnet
+            primary: true
           - leg: x64-timing
             os: ubuntu-latest
+            runtime: node
+            primary: false
+          - leg: x64-timing
+            os: ubuntu-latest
+            runtime: dotnet
+            primary: true
+    name: measure (${{ matrix.leg }}, ${{ matrix.runtime }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     env:
       BASE: ${{ needs.find.outputs.base }}
       HEAD: ${{ needs.find.outputs.head }}
       LEG: ${{ matrix.leg }}
+      RUNTIME: ${{ matrix.runtime }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -112,8 +132,10 @@ jobs:
           node-version: '26'
       - run: sudo sysctl -w kernel.perf_event_paranoid=-1
       - name: Full counter suite
+        if: matrix.primary
         run: dotnet test bench/Ranvier.Counters.Tests -c Release
       - name: Workflow logic tests
+        if: matrix.primary
         run: node --test .github/scripts/*.test.cjs
       # A perf build is keyed by its commit, the build logic and the installed SDKs, which global.json rolls forward
       # over. The measurement reads its workers, Fable output and versions.json, and the cache holds those without the
@@ -130,7 +152,7 @@ jobs:
           key: perf-build-${{ runner.os }}-${{ runner.arch }}-${{ env.BASE }}-${{ steps.build-key.outputs.suffix }}
       - if: steps.base-build.outputs.cache-hit != 'true'
         run: dotnet fsi build.fsx -- perf build "$BASE" "$RUNNER_TEMP/perf/base"
-      - if: steps.base-build.outputs.cache-hit != 'true' && github.event_name == 'pull_request'
+      - if: steps.base-build.outputs.cache-hit != 'true' && github.event_name == 'pull_request' && matrix.primary
         uses: actions/cache/save@v6
         with:
           path: |
@@ -139,14 +161,14 @@ jobs:
           key: ${{ steps.base-build.outputs.cache-primary-key }}
       - run: dotnet fsi build.fsx -- perf build "$HEAD" "$RUNNER_TEMP/perf/head"
       - name: Alternating measurements (arm64 asserts hardware in every region)
-        run: dotnet fsi build.fsx -- perf ab "$LEG" "$BASE" "$RUNNER_TEMP/perf/base" "$HEAD" "$RUNNER_TEMP/perf/head" "out/ab-$LEG.json"
+        run: dotnet fsi build.fsx -- perf ab "$LEG" "$BASE" "$RUNNER_TEMP/perf/base" "$HEAD" "$RUNNER_TEMP/perf/head" "out/ab-$LEG-$RUNTIME.json" --runtime "$RUNTIME"
       - uses: actions/upload-artifact@v7
         with:
-          name: ab-${{ matrix.leg }}
-          path: out/ab-${{ matrix.leg }}.json
+          name: ab-${{ matrix.leg }}-${{ matrix.runtime }}
+          path: out/ab-${{ matrix.leg }}-${{ matrix.runtime }}.json
           if-no-files-found: error
       # The verdict job runs on x64 and compares with the head worker this leg built.
-      - if: matrix.leg == 'x64-timing'
+      - if: matrix.leg == 'x64-timing' && matrix.primary
         uses: actions/upload-artifact@v7
         with:
           name: head-worker
@@ -156,11 +178,11 @@ jobs:
       # A master commit is the base of the pull requests opened on it. The cache restores to the base directory, so the
       # head build moves there first.
       - name: Store the head build as a future base
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && matrix.primary
         run: |
           rm -rf "$RUNNER_TEMP/perf/base"
           mv "$RUNNER_TEMP/perf/head" "$RUNNER_TEMP/perf/base"
-      - if: github.event_name == 'push'
+      - if: github.event_name == 'push' && matrix.primary
         uses: actions/cache/save@v6
         with:
           path: |
@@ -192,23 +214,27 @@ jobs:
           path: out
           run-id: ${{ needs.find.outputs.run || github.run_id }}
           github-token: ${{ github.token }}
+      # A run that measured one runtime per job holds ab-<leg>-<runtime>.json files; a run from before holds ab-<leg>.json.
+      - name: Merge each leg's runtime measurements
+        run: node .github/scripts/perf-merge.cjs out
       - name: Restate a reused measurement for this base and head
         if: needs.find.outputs.run != ''
         env:
           RUN: ${{ needs.find.outputs.run }}
         run: node .github/scripts/perf-reuse.cjs out "$BASE" "$HEAD" "$RUN"
-      - if: needs.find.outputs.run != ''
-        uses: actions/upload-artifact@v7
+      # Perf-reuse finds a run's measurement by these two names.
+      - uses: actions/upload-artifact@v7
         with:
           name: ab-arm64-counters
           path: out/ab-arm64-counters.json
           if-no-files-found: error
-      - if: needs.find.outputs.run != ''
-        uses: actions/upload-artifact@v7
+          overwrite: true
+      - uses: actions/upload-artifact@v7
         with:
           name: ab-x64-timing
           path: out/ab-x64-timing.json
           if-no-files-found: error
+          overwrite: true
       - id: head-worker
         if: needs.measure.result == 'success'
         continue-on-error: true

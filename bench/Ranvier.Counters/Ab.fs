@@ -285,6 +285,7 @@ type private Options =
         Rounds: int
         Scale: int
         Only: string option
+        Runtimes: string list
         Node: string
         Out: string
     }
@@ -325,6 +326,7 @@ let rec private parse (o: Options) args =
     | "--rounds" :: v :: rest -> parse { o with Rounds = positive v } rest
     | "--scale" :: v :: rest -> parse { o with Scale = positive v } rest
     | "--only" :: v :: rest when nonempty v -> parse { o with Only = Some v } rest
+    | "--runtime" :: v :: rest when nonempty v -> parse { o with Runtimes = o.Runtimes @ [ v ] } rest
     | "--node" :: v :: rest when nonempty v -> parse { o with Node = v } rest
     | "--out" :: v :: rest when nonempty v -> parse { o with Out = Path.GetFullPath v } rest
     | unknown :: _ -> failwith $"Invalid ab argument '{unknown}'."
@@ -437,6 +439,7 @@ let private hardware leg (values: seq<int64 * int64 * int64>) =
 /// <summary>
 /// Collects Node then .NET in alternating base/head order and writes an <c>AbRun</c> only after every head run succeeds.
 /// A failing timing baseline is explicitly marked unavailable; missing base instrumentation preserves valid timing.
+/// Each <c>--runtime</c> selects one runtime of the leg; without it every runtime of the leg is measured.
 /// </summary>
 let main args =
     let o =
@@ -448,6 +451,7 @@ let main args =
                 Rounds = 5
                 Scale = 1
                 Only = None
+                Runtimes = []
                 Node = "node"
                 Out = ""
             }
@@ -455,6 +459,15 @@ let main args =
 
     require (o.Leg = "arm64-counters" || o.Leg = "x64-timing") "Expected --leg arm64-counters or x64-timing."
     require (nonempty o.Out) "ab needs --out."
+
+    for runtime in o.Runtimes do
+        require
+            (List.contains runtime (Runtimes.measured o.Leg))
+            $"""The %s{o.Leg} leg measures %s{String.Join (", ", Runtimes.measured o.Leg)}, not %s{runtime}."""
+
+    let selected =
+        Runtimes.measured o.Leg
+        |> List.filter (fun runtime -> o.Runtimes.IsEmpty || List.contains runtime o.Runtimes)
 
     let baseSide =
         o.Base
@@ -557,7 +570,7 @@ let main args =
 
             { figure with Side = side.Name })
 
-    for runtime in Runtimes.measured o.Leg do
+    for runtime in selected do
         let mutable baseAvailable = true
 
         for index in 0 .. o.Rounds - 1 do
