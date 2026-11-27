@@ -467,7 +467,9 @@ let main args =
 
     let selected =
         Runtimes.measured o.Leg
-        |> List.filter (fun runtime -> o.Runtimes.IsEmpty || List.contains runtime o.Runtimes)
+        |> List.filter (fun runtime ->
+            o.Runtimes.IsEmpty
+            || List.contains runtime o.Runtimes)
 
     let baseSide =
         o.Base
