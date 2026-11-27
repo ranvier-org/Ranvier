@@ -192,6 +192,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 64,844 | 164,850 | 1,517,801 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 64,906 | 165,001 | 1,531,076 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 64,946 | 165,029 | 1,531,069 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 64,946 | 164,999 | 1,531,062 |
 
 ## app-table
 
@@ -385,6 +386,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,067,717 | 4,202,103 | 60,421,732 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 2,078,884 | 4,225,046 | 61,337,004 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 2,078,885 | 4,224,246 | 61,337,732 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 2,078,898 | 4,223,843 | 61,337,705 |
 
 ## async-recover
 
@@ -578,6 +580,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 92,229 | 26,035 | 312,413 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 92,462 | 25,745 | 311,826 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 92,437 | 25,743 | 311,821 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 92,437 | 25,743 | 311,825 |
 
 ## async-resolve
 
@@ -771,6 +774,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,706,599 | 624,759 | 7,651,583 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 2,714,598 | 614,820 | 7,631,194 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 2,713,798 | 614,750 | 7,631,164 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 2,713,798 | 614,764 | 7,631,169 |
 
 ## chain
 
@@ -964,6 +968,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 13,147 | 318 | 1,240 | 4,516 | 2,779 | 72,462 | 58,502 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 13,019 | 318 | 1,240 | 4,420 | 2,709 | 72,358 | 58,609 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 13,020 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,608 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 13,020 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,608 |
 
 ## chain-affinity
 
@@ -1157,6 +1162,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,240 | 1,985 | 1,447 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,240 | 1,985 | 1,447 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 1,240 | 1,985 | 1,447 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,240 | 1,985 | 1,447 |
 
 ## chain-map
 
@@ -1350,6 +1356,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | — | — | — |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 468 | 726 | 18,900 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 468 | 726 | 18,900 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 468 | 726 | 18,900 |
 
 ## chain-on
 
@@ -1543,6 +1550,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | — | — | — |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 2,021 | 4,449 | 85,379 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 2,021 | 4,449 | 85,379 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 2,021 | 4,449 | 85,379 |
 
 ## control
 
@@ -1736,6 +1744,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 74,709 | 467,905 | 2,262,597 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 74,709 | 475,417 | 2,270,230 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 74,709 | 462,975 | 2,271,639 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 74,709 | 463,040 | 2,271,701 |
 
 ## create
 
@@ -1929,6 +1938,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 13,572,355 | 2,880,744 | 1,574,639 | 4,542,625 | 1,662,974 | 32,890,792 | 33,517,760 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 13,573,379 | 2,880,681 | 1,577,620 | 4,443,255 | 1,661,947 | 32,790,736 | 33,522,435 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 13,445,870 | 2,859,678 | 1,574,621 | 4,443,293 | 1,662,029 | 32,790,275 | 33,522,332 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 13,445,914 | 2,859,678 | 1,574,621 | 4,443,243 | 1,662,100 | 32,790,312 | 33,522,682 |
 
 ## create-on
 
@@ -2122,6 +2132,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,878,271 | 2,000,800 | 38,953,020 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,882,250 | 1,999,829 | 38,957,379 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 1,878,251 | 1,999,772 | 38,958,091 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,878,251 | 2,000,107 | 38,957,863 |
 
 ## cutoff
 
@@ -2315,6 +2326,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,182 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,182 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 
 ## derive-effect
 
@@ -2508,6 +2520,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 268 | 597 | 12,922 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 268 | 597 | 12,928 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 268 | 597 | 12,928 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 268 | 597 | 12,928 |
 
 ## derive-on
 
@@ -2701,6 +2714,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 276 | 589 | 13,658 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 276 | 589 | 13,663 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 276 | 589 | 13,663 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 276 | 589 | 13,663 |
 
 ## dispose
 
@@ -2894,6 +2908,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,707,643 | 806,290 | 284,345 | 479,220 | 856,743 | 11,185,486 | 7,329,454 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 2,706,253 | 806,290 | 284,345 | 479,901 | 856,947 | 11,184,745 | 7,329,319 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 2,706,242 | 806,290 | 284,345 | 480,169 | 856,649 | 11,184,177 | 7,329,501 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 2,707,642 | 806,290 | 284,345 | 479,784 | 857,008 | 11,184,378 | 7,328,931 |
 
 ## dispose-on
 
@@ -3087,6 +3102,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 284,345 | 856,879 | 7,329,261 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 284,345 | 857,032 | 7,328,936 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 284,345 | 856,723 | 7,329,465 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 284,345 | 856,920 | 7,329,476 |
 
 ## editable-edit
 
@@ -3280,6 +3296,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 73,306 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 73,409 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 73,409 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 73,409 |
 
 ## editable-upstream
 
@@ -3473,6 +3490,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 128,806 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 128,609 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 128,609 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 128,609 |
 
 ## fail-recompute
 
@@ -3666,6 +3684,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 54,324 | 720 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 54,307 | 723 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 54,247 | 723 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 54,247 | 723 |
 
 ## flight
 
@@ -3859,6 +3878,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 9,233 | 5,203 | 5,205 | 9,498 | 9,036 | 9,684 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 
 ## keyed-insert
 
@@ -4052,6 +4072,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,112,587 | 26,179 | 26,827 | 2,151,505 | 470,549 | 477,698 | 36,840,117 | 2,603,592 | 2,619,918 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,112,549 | 26,229 | 26,838 | 2,149,543 | 469,507 | 477,142 | 36,885,301 | 2,598,011 | 2,612,940 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 1,112,549 | 26,232 | 26,838 | 2,149,483 | 469,264 | 476,873 | 36,885,230 | 2,595,300 | 2,620,635 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,112,549 | 26,228 | 26,838 | 2,149,497 | 469,355 | 476,844 | 36,885,216 | 2,595,289 | 2,620,564 |
 
 ## keyed-remove
 
@@ -4245,6 +4266,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,112,112 | 23,551 | 24,705 | 2,143,109 | 414,377 | 426,018 | 36,810,752 | 1,908,818 | 1,937,624 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,112,096 | 23,551 | 24,729 | 2,141,346 | 413,268 | 425,240 | 36,855,694 | 1,903,327 | 1,930,571 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 1,112,094 | 23,551 | 24,729 | 2,141,197 | 413,225 | 425,008 | 36,855,655 | 1,903,239 | 1,938,036 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,112,095 | 23,551 | 24,725 | 2,141,273 | 413,249 | 425,090 | 36,855,627 | 1,903,247 | 1,938,119 |
 
 ## keyed-swap
 
@@ -4438,6 +4460,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,092,665 | 30,690 | 31,021 | 2,692,633 | 367,689 | 92,658 | 37,428,854 | 691,958 | 704,846 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,092,753 | 30,640 | 31,022 | 2,690,621 | 366,626 | 91,666 | 37,461,904 | 691,007 | 704,000 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 1,092,748 | 30,640 | 31,021 | 2,690,966 | 366,642 | 91,642 | 37,448,848 | 690,992 | 703,901 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,092,749 | 30,640 | 31,021 | 2,690,945 | 366,626 | 91,626 | 37,448,849 | 691,014 | 703,890 |
 
 ## mvu-dispatch
 
@@ -4631,6 +4654,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 32,385 | 345 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 32,385 | 345 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 32,385 | 345 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 32,385 | 345 |
 
 ## persist-write
 
@@ -4824,6 +4848,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | — | — |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | — | — |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | — | — |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | — | — |
 
 ## project-chain
 
@@ -5017,6 +5042,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 58,460 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 58,742 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 58,735 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 58,770 |
 
 ## project-churn
 
@@ -5210,6 +5236,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 23,215 | 21,225 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 23,235 | 21,246 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 23,235 | 21,245 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 23,235 | 21,245 |
 
 ## project-edit
 
@@ -5403,6 +5430,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 22,467 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 22,470 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 22,470 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 22,470 |
 
 ## project-reorder
 
@@ -5596,6 +5624,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 239,687 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 239,691 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 239,691 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 239,691 |
 
 ## server-render
 
@@ -5789,6 +5818,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | — | — | — |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | — | — | — |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | — | — | — |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | — | — | — |
 
 ## shape-diamond
 
@@ -5982,6 +6012,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 45,940 | 81,851 | 1,543,700 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 45,940 | 82,554 | 1,544,581 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 45,940 | 82,554 | 1,544,580 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 45,940 | 82,554 | 1,544,580 |
 
 ## shape-dynamic
 
@@ -6175,6 +6206,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 44,340 | 86,806 | 1,604,464 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 44,340 | 86,822 | 1,604,706 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 44,340 | 86,815 | 1,604,705 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 44,340 | 86,815 | 1,604,704 |
 
 ## stream-burst-1
 
@@ -6368,6 +6400,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,193 | 823 | 1,690 | 12,419 | 4,338 | 12,516 | 35,025 | 33,223 | 43,614 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,193 | 823 | 1,690 | 12,417 | 4,336 | 12,601 | 35,054 | 33,256 | 43,788 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,788 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,788 |
 
 ## stream-burst-16
 
@@ -6561,6 +6594,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,453 | 12,958 | 3,280 | 13,478 | 25,881 | 13,557 | 81,448 | 521,242 | 77,591 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 2,453 | 12,958 | 3,280 | 13,477 | 26,618 | 13,645 | 81,475 | 521,628 | 77,758 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,760 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,760 |
 
 ## stream-burst-256
 
@@ -6754,6 +6788,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 22,589 | 207,118 | 28,699 | 83,162 | 410,549 | 57,670 | 821,691 | 8,325,598 | 620,428 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 22,589 | 207,118 | 28,699 | 83,803 | 410,555 | 57,672 | 821,862 | 8,331,776 | 620,609 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 22,589 | 207,118 | 28,699 | 83,746 | 410,556 | 57,672 | 821,860 | 8,331,782 | 620,624 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 22,589 | 207,118 | 28,699 | 83,744 | 410,556 | 57,672 | 821,863 | 8,331,783 | 620,666 |
 
 ## stream-restart
 
@@ -6947,6 +6982,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 3,180 | 3,499 | 16,970 | 14,813 | 39,820 | 66,716 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 3,186 | 3,509 | 17,066 | 14,807 | 39,957 | 66,898 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 3,186 | 3,509 | 17,063 | 14,806 | 39,954 | 66,899 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 3,186 | 3,509 | 17,064 | 14,807 | 39,953 | 66,899 |
 
 ## timed-admit-both
 
@@ -7140,6 +7176,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 83,107 | 112,720 | 2,282,043 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 83,107 | 112,731 | 2,282,299 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 83,107 | 112,723 | 2,282,257 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 83,107 | 112,723 | 2,282,244 |
 
 ## timed-admit-debounce
 
@@ -7333,6 +7370,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 82,595 | 110,361 | 2,256,698 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 82,595 | 110,345 | 2,256,617 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 82,595 | 110,360 | 2,256,677 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 82,595 | 110,374 | 2,256,677 |
 
 ## timed-admit-first
 
@@ -7526,6 +7564,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 45,668 | 62,483 | 1,407,854 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 45,668 | 62,484 | 1,407,797 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 45,668 | 62,482 | 1,407,798 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 45,668 | 62,483 | 1,407,798 |
 
 ## timed-admit-last
 
@@ -7719,6 +7758,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 82,851 | 111,690 | 2,266,746 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 82,851 | 111,692 | 2,266,662 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 82,851 | 111,696 | 2,266,730 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 82,851 | 111,696 | 2,266,725 |
 
 ## timed-capture-both
 
@@ -7912,6 +7952,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 25,291 | 40,074 | 748,688 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 25,291 | 40,205 | 748,622 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 25,291 | 40,076 | 748,926 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 25,291 | 40,076 | 748,926 |
 
 ## timed-capture-debounce
 
@@ -8105,6 +8146,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 24,971 | 38,606 | 734,829 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 24,971 | 38,607 | 734,800 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 24,971 | 38,607 | 734,800 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 24,971 | 38,607 | 734,802 |
 
 ## timed-capture-first
 
@@ -8298,6 +8340,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 24,075 | 34,446 | 677,931 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 24,075 | 34,446 | 677,904 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 24,075 | 34,445 | 677,906 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 24,075 | 34,445 | 677,907 |
 
 ## timed-capture-last
 
@@ -8491,6 +8534,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 25,035 | 38,670 | 732,459 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 25,035 | 38,671 | 732,431 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 25,035 | 38,671 | 732,432 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 25,035 | 38,670 | 732,432 |
 
 ## update
 
@@ -8684,6 +8728,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,089,090 | 38,805 | 28,306 | 206,606 | 71,299 | 2,543,060 | 1,333,833 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 1,090,590 | 38,805 | 28,306 | 196,938 | 71,281 | 2,533,222 | 1,334,501 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 1,088,990 | 38,805 | 28,306 | 196,923 | 71,299 | 2,533,203 | 1,334,502 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,088,990 | 38,805 | 28,306 | 196,670 | 71,299 | 2,533,206 | 1,334,492 |
 
 ## update-on
 
@@ -8877,6 +8922,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 35,406 | 82,582 | 1,633,106 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 35,406 | 82,583 | 1,633,644 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 35,406 | 82,575 | 1,633,586 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 35,406 | 82,599 | 1,633,531 |
 
 ## work-form
 
@@ -9070,6 +9116,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 87,492 | 79,896 | 255,149 | 269,288 | 3,955,968 | 4,027,772 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 87,492 | 79,896 | 255,145 | 269,281 | 3,956,607 | 4,028,332 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 87,492 | 79,896 | 255,147 | 269,274 | 3,956,564 | 4,028,333 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 87,492 | 79,896 | 255,162 | 269,261 | 3,956,614 | 4,028,387 |
 
 ## work-status
 
@@ -9263,6 +9310,7 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 51,446 | 31,786 | 181,483 | 79,507 | 1,593,996 | 1,388,918 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 51,446 | 31,786 | 181,497 | 79,606 | 1,594,508 | 1,389,121 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 51,446 | 31,786 | 181,526 | 79,605 | 1,594,538 | 1,389,407 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 51,446 | 31,786 | 181,558 | 79,647 | 1,594,528 | 1,389,407 |
 
 ## work-value
 
@@ -9456,4 +9504,5 @@
 | `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 58,570 | 65,870 | 181,726 | 198,064 | 1,578,618 | 1,876,541 |
 | `b8ee210` | 2026-11-26 | feat(core): add closed-window On primitives, reactive combinators, and map-chain fusion (#389) | 58,570 | 65,870 | 181,786 | 198,155 | 1,579,219 | 1,877,081 |
 | `26e2077` | 2026-11-26 | feat(ce): add Ranvier.CE computation expressions, collection descriptors, and 0.2.3 release (#391) | 58,570 | 65,870 | 181,784 | 197,996 | 1,579,143 | 1,877,036 |
+| `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 58,570 | 65,870 | 181,804 | 197,971 | 1,579,113 | 1,877,084 |
 
