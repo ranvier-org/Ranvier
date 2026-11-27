@@ -195,6 +195,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 64,946 | 164,999 | 1,531,062 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 64,946 | 164,969 | 1,531,085 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 64,946 | 164,979 | 1,531,080 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 64,986 | 165,004 | 1,531,088 |
 
 ## app-table
 
@@ -391,6 +392,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 2,078,898 | 4,223,843 | 61,337,705 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 2,078,914 | 4,223,928 | 61,337,767 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 2,078,891 | 4,223,764 | 61,337,718 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 2,078,892 | 4,223,754 | 61,337,718 |
 
 ## async-recover
 
@@ -587,6 +589,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 92,437 | 25,743 | 311,825 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 92,437 | 25,743 | 311,833 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 92,438 | 25,743 | 311,835 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 92,253 | 25,743 | 311,834 |
 
 ## async-resolve
 
@@ -783,6 +786,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 2,713,798 | 614,764 | 7,631,169 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 2,713,798 | 614,774 | 7,631,167 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 2,713,798 | 614,783 | 7,631,168 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 2,707,399 | 614,758 | 7,631,159 |
 
 ## chain
 
@@ -979,6 +983,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 13,020 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,608 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 13,020 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,609 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 13,020 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,608 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 13,020 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,608 |
 
 ## chain-affinity
 
@@ -1175,6 +1180,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,240 | 1,985 | 1,447 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 1,240 | 1,985 | 1,447 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,240 | 1,985 | 1,447 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,240 | 1,985 | 1,447 |
 
 ## chain-map
 
@@ -1371,6 +1377,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 468 | 726 | 18,900 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 468 | 726 | 18,900 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 468 | 726 | 18,900 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 468 | 726 | 18,900 |
 
 ## chain-on
 
@@ -1567,6 +1574,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 2,021 | 4,449 | 85,379 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 2,021 | 4,449 | 85,379 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 2,021 | 4,449 | 85,379 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 2,021 | 4,448 | 85,379 |
 
 ## control
 
@@ -1763,6 +1771,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 74,709 | 463,040 | 2,271,701 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 74,709 | 463,021 | 2,271,612 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 74,708 | 463,064 | 2,271,571 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 74,709 | 463,048 | 2,271,598 |
 
 ## create
 
@@ -1959,6 +1968,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 13,445,914 | 2,859,678 | 1,574,621 | 4,443,243 | 1,662,100 | 32,790,312 | 33,522,682 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 13,445,847 | 2,859,678 | 1,574,621 | 4,443,375 | 1,662,169 | 32,790,265 | 33,522,714 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 13,445,832 | 2,859,678 | 1,574,668 | 4,443,276 | 1,661,992 | 32,790,101 | 33,522,901 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 13,571,372 | 2,875,742 | 1,576,620 | 4,442,478 | 1,661,983 | 32,790,242 | 33,522,788 |
 
 ## create-on
 
@@ -2155,6 +2165,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,878,251 | 2,000,107 | 38,957,863 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 1,878,251 | 1,999,991 | 38,957,740 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,878,251 | 1,999,896 | 38,957,820 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,882,251 | 1,999,950 | 38,957,791 |
 
 ## cutoff
 
@@ -2351,6 +2362,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 
 ## derive-effect
 
@@ -2547,6 +2559,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 268 | 597 | 12,928 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 268 | 597 | 12,928 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 268 | 597 | 12,928 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 268 | 597 | 12,928 |
 
 ## derive-on
 
@@ -2743,6 +2756,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 276 | 589 | 13,663 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 276 | 589 | 13,663 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 276 | 589 | 13,663 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 276 | 589 | 13,663 |
 
 ## dispose
 
@@ -2939,6 +2953,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 2,707,642 | 806,290 | 284,345 | 479,784 | 857,008 | 11,184,378 | 7,328,931 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 2,707,647 | 806,290 | 284,345 | 479,672 | 857,047 | 11,184,734 | 7,329,025 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 2,707,643 | 806,290 | 284,345 | 480,077 | 856,810 | 11,183,999 | 7,328,962 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 2,707,644 | 806,290 | 284,345 | 480,060 | 857,085 | 11,184,646 | 7,329,054 |
 
 ## dispose-on
 
@@ -3135,6 +3150,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 284,345 | 856,920 | 7,329,476 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 284,345 | 856,856 | 7,328,732 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 284,345 | 857,078 | 7,328,828 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 284,345 | 857,004 | 7,328,998 |
 
 ## editable-edit
 
@@ -3331,6 +3347,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 73,409 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 73,409 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 73,409 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 73,409 |
 
 ## editable-upstream
 
@@ -3527,6 +3544,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 128,609 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 128,609 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 128,609 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 128,609 |
 
 ## fail-recompute
 
@@ -3723,6 +3741,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 54,247 | 723 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 54,247 | 723 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 54,247 | 723 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 54,299 | 723 |
 
 ## flight
 
@@ -3919,6 +3938,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 
 ## keyed-insert
 
@@ -4115,6 +4135,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,112,549 | 26,228 | 26,838 | 2,149,497 | 469,355 | 476,844 | 36,885,216 | 2,595,289 | 2,620,564 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 1,112,549 | 26,231 | 26,838 | 2,149,574 | 457,717 | 476,832 | 36,885,230 | 2,595,176 | 2,620,576 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,112,549 | 26,230 | 26,838 | 2,149,464 | 457,664 | 476,765 | 36,885,220 | 2,595,246 | 2,620,615 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,112,565 | 26,230 | 26,854 | 2,149,588 | 469,368 | 476,904 | 36,885,229 | 2,595,295 | 2,620,652 |
 
 ## keyed-remove
 
@@ -4311,6 +4332,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,112,095 | 23,551 | 24,725 | 2,141,273 | 413,249 | 425,090 | 36,855,627 | 1,903,247 | 1,938,119 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 1,112,095 | 23,551 | 24,732 | 2,141,229 | 413,253 | 425,112 | 36,855,625 | 1,903,294 | 1,938,155 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,112,093 | 23,551 | 24,724 | 2,141,257 | 413,219 | 425,101 | 36,855,565 | 1,903,251 | 1,938,140 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,112,121 | 23,551 | 24,735 | 2,141,241 | 413,253 | 425,068 | 36,855,639 | 1,903,303 | 1,938,188 |
 
 ## keyed-swap
 
@@ -4507,6 +4529,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,092,749 | 30,640 | 31,021 | 2,690,945 | 366,626 | 91,626 | 37,448,849 | 691,014 | 703,890 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 1,092,749 | 30,640 | 31,021 | 2,690,992 | 366,646 | 91,692 | 37,448,846 | 690,949 | 703,895 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,092,753 | 30,640 | 31,021 | 2,690,944 | 366,663 | 91,670 | 37,448,798 | 690,986 | 703,861 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,092,761 | 30,640 | 31,037 | 2,690,906 | 366,624 | 91,666 | 37,448,845 | 691,025 | 703,827 |
 
 ## mvu-dispatch
 
@@ -4703,6 +4726,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 32,385 | 345 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 32,385 | 345 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 32,385 | 345 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 32,385 | 345 |
 
 ## persist-write
 
@@ -4899,6 +4923,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | — | — |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | — | — |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | — | — |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | — | — |
 
 ## project-chain
 
@@ -5095,6 +5120,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 58,770 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 58,855 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 58,755 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 58,791 |
 
 ## project-churn
 
@@ -5291,6 +5317,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 23,235 | 21,245 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 23,235 | 21,245 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 23,235 | 21,245 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 23,235 | 21,245 |
 
 ## project-edit
 
@@ -5487,6 +5514,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 22,470 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 22,502 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 22,470 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 22,486 |
 
 ## project-reorder
 
@@ -5683,6 +5711,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 239,691 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 239,723 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 239,691 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 239,707 |
 
 ## server-render
 
@@ -5879,6 +5908,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | — | — | — |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | — | — | — |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | — | — | — |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | — | — | — |
 
 ## shape-diamond
 
@@ -6075,6 +6105,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 45,940 | 82,554 | 1,544,580 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 45,940 | 82,554 | 1,544,580 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 45,940 | 82,554 | 1,544,580 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 45,940 | 82,554 | 1,544,580 |
 
 ## shape-dynamic
 
@@ -6271,6 +6302,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 44,340 | 86,815 | 1,604,704 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 44,340 | 86,816 | 1,604,704 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 44,340 | 86,817 | 1,604,704 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 44,340 | 86,818 | 1,604,704 |
 
 ## stream-burst-1
 
@@ -6467,6 +6499,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,788 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,053 | 33,256 | 43,788 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,789 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,788 |
 
 ## stream-burst-16
 
@@ -6663,6 +6696,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,760 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,475 | 521,628 | 77,757 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,760 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,760 |
 
 ## stream-burst-256
 
@@ -6859,6 +6893,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 22,589 | 207,118 | 28,699 | 83,744 | 410,556 | 57,672 | 821,863 | 8,331,783 | 620,666 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 22,589 | 207,118 | 28,699 | 83,746 | 410,550 | 57,672 | 821,861 | 8,331,826 | 620,668 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 22,589 | 207,118 | 28,699 | 83,744 | 410,550 | 57,672 | 821,862 | 8,331,778 | 620,628 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 22,589 | 207,118 | 28,699 | 83,747 | 410,556 | 57,672 | 821,866 | 8,331,755 | 620,671 |
 
 ## stream-restart
 
@@ -7055,6 +7090,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 3,186 | 3,509 | 17,064 | 14,807 | 39,953 | 66,899 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 3,186 | 3,509 | 17,066 | 14,811 | 39,956 | 66,901 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 3,186 | 3,509 | 17,066 | 14,809 | 39,952 | 66,897 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 3,186 | 3,509 | 17,067 | 14,805 | 39,952 | 66,900 |
 
 ## timed-admit-both
 
@@ -7251,6 +7287,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 83,107 | 112,723 | 2,282,244 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 83,107 | 112,727 | 2,282,257 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 83,107 | 112,714 | 2,282,257 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 83,107 | 112,728 | 2,282,257 |
 
 ## timed-admit-debounce
 
@@ -7447,6 +7484,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 82,595 | 110,374 | 2,256,677 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 82,595 | 110,376 | 2,256,664 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 82,595 | 110,350 | 2,256,677 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 82,595 | 110,349 | 2,256,703 |
 
 ## timed-admit-first
 
@@ -7643,6 +7681,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 45,668 | 62,483 | 1,407,798 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 45,668 | 62,483 | 1,407,797 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 45,668 | 62,483 | 1,407,797 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 45,668 | 62,483 | 1,407,798 |
 
 ## timed-admit-last
 
@@ -7839,6 +7878,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 82,851 | 111,696 | 2,266,725 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 82,851 | 111,690 | 2,266,725 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 82,851 | 111,694 | 2,266,725 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 82,851 | 111,689 | 2,266,725 |
 
 ## timed-capture-both
 
@@ -8035,6 +8075,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 25,291 | 40,076 | 748,926 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 25,291 | 40,075 | 748,926 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 25,291 | 40,077 | 748,926 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 25,291 | 40,076 | 748,927 |
 
 ## timed-capture-debounce
 
@@ -8231,6 +8272,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 24,971 | 38,607 | 734,802 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 24,971 | 38,607 | 734,800 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 24,971 | 38,606 | 734,805 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 24,971 | 38,607 | 734,801 |
 
 ## timed-capture-first
 
@@ -8427,6 +8469,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 24,075 | 34,445 | 677,907 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 24,075 | 34,445 | 677,905 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 24,075 | 34,445 | 677,904 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 24,075 | 34,445 | 677,904 |
 
 ## timed-capture-last
 
@@ -8623,6 +8666,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 25,035 | 38,670 | 732,432 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 25,035 | 38,671 | 732,432 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 25,035 | 38,671 | 732,432 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 25,035 | 38,671 | 732,432 |
 
 ## update
 
@@ -8819,6 +8863,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 1,088,990 | 38,805 | 28,306 | 196,670 | 71,299 | 2,533,206 | 1,334,492 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 1,088,990 | 38,805 | 28,306 | 196,923 | 71,299 | 2,533,220 | 1,334,494 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 1,088,990 | 38,805 | 28,306 | 196,623 | 71,299 | 2,533,219 | 1,334,506 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 1,090,590 | 38,805 | 28,306 | 196,924 | 71,299 | 2,533,155 | 1,334,495 |
 
 ## update-on
 
@@ -9015,6 +9060,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 35,406 | 82,599 | 1,633,531 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 35,406 | 82,599 | 1,633,645 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 35,406 | 82,599 | 1,633,637 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 35,406 | 82,599 | 1,633,633 |
 
 ## work-form
 
@@ -9211,6 +9257,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 87,492 | 79,896 | 255,162 | 269,261 | 3,956,614 | 4,028,387 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 87,492 | 79,896 | 255,145 | 269,282 | 3,956,631 | 4,028,282 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 87,492 | 79,896 | 255,162 | 269,267 | 3,956,523 | 4,028,301 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 87,492 | 79,896 | 255,131 | 269,244 | 3,956,611 | 4,028,343 |
 
 ## work-status
 
@@ -9407,6 +9454,7 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 51,446 | 31,786 | 181,558 | 79,647 | 1,594,528 | 1,389,407 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 51,446 | 31,786 | 181,584 | 79,591 | 1,594,488 | 1,389,448 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 51,446 | 31,786 | 181,592 | 79,609 | 1,594,514 | 1,389,388 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 51,446 | 31,786 | 181,584 | 79,626 | 1,594,527 | 1,389,437 |
 
 ## work-value
 
@@ -9603,4 +9651,5 @@
 | `20b781f` | 2026-11-27 | ci(perf): cancel superseded PR runs and reuse the base and worker builds (#393) | 58,570 | 65,870 | 181,804 | 197,971 | 1,579,113 | 1,877,084 |
 | `b51d19c` | 2026-11-27 | ci: split the .NET tests by trace flavour and pack once for package consumers (#394) | 58,570 | 65,870 | 181,789 | 197,972 | 1,579,207 | 1,877,016 |
 | `c820697` | 2026-11-27 | ci(proofs): compile Audit.v once and key the site on the proofs alone (#392) | 58,570 | 65,870 | 181,815 | 197,992 | 1,579,135 | 1,877,080 |
+| `5e359d4` | 2026-11-27 | perf(core): reuse drained scheduler queue storage (#395) | 58,570 | 65,870 | 181,822 | 197,971 | 1,579,201 | 1,877,074 |
 
