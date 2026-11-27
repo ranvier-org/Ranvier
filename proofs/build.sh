@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the Rocq project. Run as `bash proofs/build.sh` from any directory and any shell.
 #
-#   build.sh                 generate Makefile.rocq from _CoqProject and build in parallel
+#   build.sh [TARGET...]     generate Makefile.rocq from _CoqProject and build TARGETs (default: every file) in parallel
 #   build.sh --run CMD ARGS  run CMD in the project directory with the toolchain environment
 #
 # The toolchain lives in WSL (see VERSIONS.md). Outside Linux this script re-executes itself in
@@ -37,6 +37,6 @@ rocq makefile -f _CoqProject -o Makefile.rocq
 # A checkout on a Windows drive (/mnt/c) reports file times a fraction of a second ahead of the
 # WSL clock; make's warnings about that carry no information, so they are filtered out.
 set +e
-make -f Makefile.rocq -j"$(nproc)" 2>&1 \
+make -f Makefile.rocq -j"$(nproc)" "$@" 2>&1 \
   | { grep -v -E "(modification time .* in the future|[Cc]lock skew detected)" || true; }
 exit "${PIPESTATUS[0]}"

@@ -1,5 +1,5 @@
-# Compiles and audits the proofs, then builds their Navigator site. The Docs workflow places the newest site from master at
-# /proofs/ of the Pages deployment, so the docs build needs no Rocq.
+# Compiles and audits the proofs, then builds their Navigator site, and checks the model against the F# core. The Docs
+# workflow places the newest site from master at /proofs/ of the Pages deployment, so the docs build needs no Rocq.
 name: Proofs site
 
 on:
@@ -24,6 +24,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to a pull request cancels its running checks. Every other run has a group of its own.
+concurrency:
+  group: proofs-site-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   site:
     runs-on: ubuntu-latest
@@ -35,12 +40,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      # The artifact's name is the hash of every input of the audit and the build. Equal names hold equal sites, whichever
-      # commit or merge strategy produced the inputs.
+      # The artifact's name is the hash of every input of the Rocq audit and the build. Equal names hold equal sites,
+      # whichever commit or merge strategy produced the inputs. The F# core is an input of the conformance job alone.
       - name: Key the site by its inputs
         id: key
         run: |
-          key="$(git rev-parse HEAD:proofs HEAD:src/Ranvier HEAD:global.json HEAD:.github/workflows/proofs-site.yml | sha256sum | cut -c1-40)"
+          key="$(git rev-parse HEAD:proofs HEAD:global.json HEAD:.github/workflows/proofs-site.yml | sha256sum | cut -c1-40)"
           echo "name=proofs-site-$key" >> "$GITHUB_OUTPUT"
       # A site is reused only from a run of this repository whose workflow file is this one, which computed the name by
       # the step above. A fork's run can upload under any name.
@@ -100,7 +105,7 @@ jobs:
           opam clean --all-switches --download-cache --logs --repo-cache --untracked
       - name: Audit the proofs
         if: steps.reuse.outputs.hit != 'true'
-        run: bash proofs/check.sh
+        run: bash proofs/check.sh --part rocq
       - name: Build the site
         if: steps.reuse.outputs.hit != 'true'
         env:
@@ -114,8 +119,27 @@ jobs:
           retention-days: 90
           if-no-files-found: error
 
+  # Regenerates the conformance scenarios from the F# core and runs the differential check against the extracted
+  # interpreter in differential/, which the site job compares with theories/Extract.v. Runs on every change, reused site
+  # or not.
+  conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: '4.14.2'
+      - name: Check the model against the F# core
+        run: opam exec -- bash proofs/check.sh --part conformance
+
   publish:
-    needs: site
+    needs: [site, conformance]
     if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
