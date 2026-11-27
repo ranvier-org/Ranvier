@@ -426,6 +426,7 @@ Print Assumptions serialised_reentrant_preserves_holder.
 Print Assumptions serialised_release_reposts_nonempty_inbox.
 Print Assumptions inbox_drain_fifo_fault_isolated.
 Print Assumptions pending_dispatch_claim_exclusive.
+Print Assumptions coalesced_drain_post_no_lost_drain.
 Print Assumptions Ranvier.Heap.Concurrency.guarded_enter_spec.
 Print Assumptions Ranvier.Heap.Concurrency.serialised_acquire_spec.
 Print Assumptions Ranvier.Heap.Concurrency.serialised_release_spec.
