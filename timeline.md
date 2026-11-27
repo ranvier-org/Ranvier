@@ -199,6 +199,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 64,986 | 165,032 | 1,531,040 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 64,986 | 165,004 | 1,531,067 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 64,946 | 164,995 | 1,531,037 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 64,946 | 165,006 | 1,530,994 |
 
 ## app-table
 
@@ -399,6 +400,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 2,078,898 | 4,223,973 | 61,337,687 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 2,078,888 | 4,223,840 | 61,337,726 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 2,078,892 | 4,223,616 | 61,337,517 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 2,078,908 | 4,223,769 | 61,337,515 |
 
 ## async-recover
 
@@ -599,6 +601,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 92,253 | 25,741 | 311,835 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 92,254 | 25,743 | 311,831 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 92,253 | 25,741 | 311,841 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 92,254 | 25,743 | 311,839 |
 
 ## async-resolve
 
@@ -799,6 +802,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 2,707,398 | 614,772 | 7,631,123 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 2,707,399 | 614,812 | 7,631,140 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 2,707,398 | 614,683 | 7,631,155 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 2,707,397 | 614,632 | 7,631,182 |
 
 ## chain
 
@@ -999,6 +1003,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 13,020 | 318 | 1,240 | 4,419 | 2,708 | 72,358 | 58,609 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 13,020 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,608 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 13,083 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,609 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 13,019 | 318 | 1,240 | 4,419 | 2,709 | 72,358 | 58,608 |
 
 ## chain-affinity
 
@@ -1199,6 +1204,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,240 | 1,985 | 1,447 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,240 | 1,985 | 1,447 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 1,240 | 1,985 | 1,447 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,240 | 1,985 | 1,447 |
 
 ## chain-map
 
@@ -1399,6 +1405,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 468 | 726 | 18,900 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 468 | 726 | 18,900 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 468 | 726 | 18,900 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 468 | 726 | 18,900 |
 
 ## chain-on
 
@@ -1599,6 +1606,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 2,021 | 4,449 | 85,379 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 2,021 | 4,448 | 85,379 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 2,021 | 4,448 | 85,379 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 2,021 | 4,448 | 85,379 |
 
 ## control
 
@@ -1799,6 +1807,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 74,709 | 463,026 | 2,271,639 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 74,708 | 463,030 | 2,271,675 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 74,709 | 462,700 | 2,270,367 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 74,708 | 462,669 | 2,270,349 |
 
 ## create
 
@@ -1999,6 +2008,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 13,445,843 | 2,859,678 | 1,576,621 | 4,442,845 | 1,661,975 | 32,790,219 | 33,522,822 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 13,477,798 | 2,859,678 | 1,576,621 | 4,443,188 | 1,662,096 | 32,790,255 | 33,522,710 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 13,543,885 | 2,860,740 | 1,579,620 | 4,443,253 | 1,661,944 | 32,788,904 | 33,522,851 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 13,573,389 | 2,860,676 | 1,579,620 | 4,442,560 | 1,661,870 | 32,788,928 | 33,523,026 |
 
 ## create-on
 
@@ -2199,6 +2209,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,882,251 | 1,999,914 | 38,958,025 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,882,251 | 2,000,041 | 38,957,842 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 1,887,766 | 2,001,867 | 39,082,487 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,887,766 | 2,001,933 | 39,082,780 |
 
 ## cutoff
 
@@ -2399,6 +2410,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,183 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 1,182 | 50 | 14 | 65 | 56 | 1,095 | 830 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,182 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 
 ## derive-effect
 
@@ -2599,6 +2611,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 268 | 597 | 12,928 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 268 | 597 | 12,928 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 268 | 597 | 12,928 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 268 | 597 | 12,928 |
 
 ## derive-on
 
@@ -2799,6 +2812,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 276 | 589 | 13,663 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 276 | 589 | 13,663 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 276 | 589 | 13,663 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 276 | 589 | 13,663 |
 
 ## dispose
 
@@ -2999,6 +3013,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 2,707,643 | 806,290 | 284,345 | 479,431 | 856,931 | 11,184,710 | 7,328,863 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 2,707,645 | 806,290 | 284,345 | 479,959 | 856,818 | 11,184,922 | 7,329,449 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 2,707,643 | 806,290 | 284,345 | 480,032 | 856,863 | 11,184,772 | 7,329,273 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 2,706,244 | 806,290 | 284,345 | 479,973 | 856,694 | 11,184,432 | 7,328,906 |
 
 ## dispose-on
 
@@ -3199,6 +3214,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 284,345 | 856,590 | 7,329,401 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 284,345 | 856,860 | 7,329,187 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 284,345 | 856,820 | 7,329,231 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 284,345 | 856,829 | 7,329,109 |
 
 ## editable-edit
 
@@ -3399,6 +3415,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 73,409 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 73,409 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 73,409 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 73,409 |
 
 ## editable-upstream
 
@@ -3599,6 +3616,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 128,609 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 128,609 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 128,609 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 128,609 |
 
 ## fail-recompute
 
@@ -3799,6 +3817,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 54,299 | 723 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 54,483 | 723 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 54,467 | 723 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 54,467 | 723 |
 
 ## flight
 
@@ -3999,6 +4018,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 
 ## keyed-insert
 
@@ -4199,6 +4219,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,112,547 | 26,228 | 26,838 | 2,149,536 | 469,195 | 476,785 | 36,885,198 | 2,595,235 | 2,620,595 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,112,549 | 26,230 | 26,838 | 2,149,520 | 469,331 | 476,854 | 36,885,225 | 2,595,292 | 2,620,628 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 1,112,545 | 26,225 | 26,838 | 2,149,565 | 469,291 | 476,869 | 36,885,259 | 2,602,075 | 2,620,479 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,112,545 | 26,225 | 26,838 | 2,149,543 | 469,299 | 476,897 | 36,885,254 | 2,602,080 | 2,620,464 |
 
 ## keyed-remove
 
@@ -4399,6 +4420,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,112,097 | 23,551 | 24,726 | 2,141,263 | 413,230 | 425,113 | 36,855,652 | 1,903,308 | 1,938,140 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,112,098 | 23,551 | 24,726 | 2,141,208 | 413,207 | 425,072 | 36,855,682 | 1,903,309 | 1,938,168 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 1,112,112 | 23,539 | 24,740 | 2,141,251 | 413,224 | 425,125 | 36,855,664 | 1,907,379 | 1,938,121 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,112,122 | 23,539 | 24,741 | 2,141,283 | 413,256 | 425,045 | 36,855,686 | 1,907,388 | 1,938,167 |
 
 ## keyed-swap
 
@@ -4599,6 +4621,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,092,746 | 30,640 | 31,021 | 2,690,935 | 366,607 | 91,675 | 37,448,851 | 690,983 | 703,833 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,092,753 | 30,640 | 31,021 | 2,690,921 | 366,644 | 91,658 | 37,448,813 | 691,023 | 703,835 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 1,092,747 | 30,636 | 31,021 | 2,690,912 | 366,619 | 91,657 | 37,450,103 | 691,018 | 704,114 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,092,747 | 30,636 | 31,021 | 2,690,969 | 366,639 | 91,649 | 37,450,084 | 690,950 | 704,135 |
 
 ## mvu-dispatch
 
@@ -4799,6 +4822,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 32,385 | 345 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 32,385 | 345 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 32,385 | 345 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 32,385 | 345 |
 
 ## persist-write
 
@@ -4999,6 +5023,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | — | — |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | — | — |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | — | — |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — |
 
 ## project-chain
 
@@ -5199,6 +5224,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 58,794 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 58,770 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 58,785 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 58,800 |
 
 ## project-churn
 
@@ -5399,6 +5425,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 23,235 | 21,245 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 23,235 | 21,246 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 23,235 | 21,245 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 23,235 | 21,246 |
 
 ## project-edit
 
@@ -5599,6 +5626,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 22,470 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 22,470 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 22,470 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 22,470 |
 
 ## project-reorder
 
@@ -5799,6 +5827,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 239,691 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 239,691 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 239,699 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 239,699 |
 
 ## server-render
 
@@ -5999,6 +6028,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | — | — | — |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | — | — | — |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | — | — | — |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | — |
 
 ## shape-diamond
 
@@ -6199,6 +6229,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 45,940 | 82,554 | 1,544,580 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 45,940 | 82,554 | 1,544,580 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 45,940 | 82,554 | 1,544,580 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 45,940 | 82,554 | 1,544,580 |
 
 ## shape-dynamic
 
@@ -6399,6 +6430,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 44,340 | 86,817 | 1,604,704 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 44,340 | 86,820 | 1,604,704 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 44,340 | 86,823 | 1,604,704 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 44,340 | 86,813 | 1,604,703 |
 
 ## stream-burst-1
 
@@ -6599,6 +6631,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,788 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,193 | 823 | 1,690 | 12,417 | 4,333 | 12,601 | 35,054 | 33,256 | 43,788 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 1,193 | 823 | 1,690 | 12,417 | 4,337 | 12,601 | 35,061 | 33,256 | 43,789 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,193 | 823 | 1,690 | 12,417 | 4,337 | 12,601 | 35,061 | 33,256 | 43,788 |
 
 ## stream-burst-16
 
@@ -6799,6 +6832,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,758 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 2,453 | 12,958 | 3,280 | 13,477 | 26,614 | 13,645 | 81,474 | 521,628 | 77,758 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 2,453 | 12,958 | 3,280 | 13,477 | 26,615 | 13,645 | 81,481 | 521,628 | 77,760 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 2,453 | 12,958 | 3,280 | 13,477 | 26,615 | 13,645 | 81,482 | 521,628 | 77,760 |
 
 ## stream-burst-256
 
@@ -6999,6 +7033,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 22,589 | 207,118 | 28,699 | 83,746 | 410,556 | 57,672 | 821,852 | 8,331,783 | 620,674 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 22,589 | 207,118 | 28,699 | 83,747 | 410,556 | 57,672 | 821,861 | 8,331,780 | 620,663 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 22,589 | 207,118 | 28,699 | 83,749 | 410,559 | 57,672 | 822,017 | 8,331,766 | 620,662 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 22,589 | 207,118 | 28,699 | 83,749 | 410,559 | 57,672 | 822,034 | 8,331,782 | 620,692 |
 
 ## stream-restart
 
@@ -7199,6 +7234,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 3,186 | 3,509 | 17,063 | 14,809 | 39,953 | 66,898 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 3,186 | 3,509 | 17,063 | 14,811 | 39,956 | 66,902 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 3,186 | 3,509 | 17,066 | 14,812 | 39,956 | 66,906 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 3,186 | 3,509 | 17,064 | 14,808 | 39,956 | 66,906 |
 
 ## timed-admit-both
 
@@ -7399,6 +7435,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 83,107 | 112,727 | 2,282,244 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 83,107 | 112,725 | 2,282,257 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 83,107 | 112,728 | 2,282,391 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 83,107 | 112,723 | 2,282,404 |
 
 ## timed-admit-debounce
 
@@ -7599,6 +7636,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 82,595 | 110,352 | 2,256,682 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 82,595 | 110,349 | 2,256,677 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 82,595 | 110,360 | 2,256,638 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 82,595 | 110,358 | 2,256,664 |
 
 ## timed-admit-first
 
@@ -7799,6 +7837,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 45,668 | 62,482 | 1,407,798 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 45,668 | 62,483 | 1,407,798 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 45,668 | 62,483 | 1,407,798 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 45,668 | 62,480 | 1,407,797 |
 
 ## timed-admit-last
 
@@ -7999,6 +8038,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 82,851 | 111,695 | 2,266,725 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 82,851 | 111,694 | 2,266,726 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 82,851 | 111,705 | 2,266,686 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 82,851 | 111,690 | 2,266,686 |
 
 ## timed-capture-both
 
@@ -8199,6 +8239,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 25,291 | 40,075 | 748,926 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 25,291 | 40,073 | 748,927 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 25,291 | 40,078 | 749,069 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 25,291 | 40,076 | 749,076 |
 
 ## timed-capture-debounce
 
@@ -8399,6 +8440,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 24,971 | 38,606 | 734,801 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 24,971 | 38,606 | 734,800 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 24,971 | 38,607 | 734,801 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 24,971 | 38,607 | 734,800 |
 
 ## timed-capture-first
 
@@ -8599,6 +8641,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 24,075 | 34,445 | 677,904 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 24,075 | 34,444 | 677,905 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 24,075 | 34,446 | 677,905 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 24,075 | 34,446 | 677,904 |
 
 ## timed-capture-last
 
@@ -8799,6 +8842,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 25,035 | 38,671 | 732,432 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 25,035 | 38,670 | 732,432 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 25,035 | 38,671 | 732,434 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 25,035 | 38,671 | 732,432 |
 
 ## update
 
@@ -8999,6 +9043,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 1,087,390 | 38,805 | 28,306 | 196,923 | 71,299 | 2,533,221 | 1,334,462 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 1,087,390 | 38,805 | 28,306 | 196,932 | 71,299 | 2,533,206 | 1,334,503 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 1,088,990 | 38,805 | 28,306 | 196,899 | 71,299 | 2,533,050 | 1,334,489 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,092,190 | 38,805 | 28,306 | 196,886 | 71,298 | 2,533,032 | 1,334,502 |
 
 ## update-on
 
@@ -9199,6 +9244,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 35,406 | 82,599 | 1,633,626 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 35,406 | 82,598 | 1,633,643 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 35,406 | 82,599 | 1,633,613 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 35,406 | 82,599 | 1,633,640 |
 
 ## work-form
 
@@ -9399,6 +9445,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 87,492 | 79,896 | 255,162 | 269,278 | 3,956,633 | 4,028,308 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 87,492 | 79,896 | 255,162 | 269,280 | 3,956,624 | 4,028,342 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 87,492 | 79,896 | 255,162 | 269,250 | 3,956,628 | 4,028,349 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 87,492 | 79,896 | 255,162 | 269,281 | 3,956,622 | 4,028,364 |
 
 ## work-status
 
@@ -9599,6 +9646,7 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 51,446 | 31,786 | 181,574 | 79,609 | 1,594,462 | 1,389,325 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 51,446 | 31,786 | 181,558 | 79,611 | 1,594,537 | 1,389,433 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 51,446 | 31,786 | 181,532 | 79,440 | 1,594,482 | 1,389,177 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 51,446 | 31,786 | 181,552 | 79,440 | 1,594,523 | 1,389,130 |
 
 ## work-value
 
@@ -9799,4 +9847,5 @@
 | `7041abe` | 2026-11-27 | ci: drop the NuGet cache from the .NET test jobs (#396) | 58,570 | 65,870 | 181,787 | 197,997 | 1,579,165 | 1,876,965 |
 | `30c1805` | 2026-11-27 | ci(perf): measure each runtime in its own job (#397) | 58,570 | 65,870 | 181,778 | 198,002 | 1,579,182 | 1,877,041 |
 | `382cf7b` | 2026-11-27 | feat(ce): add scope, dispatch, and timing CEs, drop Fable.Core dependency, and bump to 0.2.4 (#398) | 58,570 | 65,870 | 181,788 | 198,145 | 1,579,153 | 1,877,077 |
+| `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 58,570 | 65,870 | 181,772 | 198,145 | 1,579,177 | 1,877,046 |
 
