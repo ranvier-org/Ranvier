@@ -339,6 +339,81 @@ let tests =
                 Expect.sequenceEqual seen [ (3, 3); (4, 4) ] "the downstream pass, queued by the upstream pass, runs before the effect"
             }
 
+#if !FABLE_COMPILER
+            test "a drained queue retains its initial capacity across successive waves" {
+                use graph = new Graph ()
+                use _ = graph.Activate ()
+                let wave = createSignal 0
+                let mutable target = 1
+
+                createEffect (fun () ->
+                    let value = wave.Value
+
+                    if value > 0 && value < target then
+                        wave.Value <- value + 1)
+
+                wave.Value <- 1
+                let capacity = graph.QueueCapacity
+                Expect.isGreaterThan capacity 0 "the first flush allocated its queue"
+                target <- 4 * capacity
+                wave.Value <- 2
+                Expect.equal wave.Value target "all feedback writes settled"
+                Expect.equal graph.QueueCapacity capacity "the live queue held at most one item"
+            }
+#endif
+
+            test "a drained queue preserves projection priority and effect order" {
+                for forkAt in 1..32 do
+                    use graph = new Graph ()
+                    use _ = graph.Activate ()
+                    let wave = createSignal 0
+                    let rows = createSignal [ 0 ]
+                    let first = createSignal false
+                    let second = createSignal false
+                    let nested = createSignal false
+                    let seen = ResizeArray ()
+
+                    let projection =
+                        createProjection id id (fun () ->
+                            seen.Add "projection"
+                            rows.Value)
+
+                    let dependent =
+                        createProjection id id (fun () ->
+                            seen.Add "dependent projection"
+                            projection.Keys)
+
+                    createEffect (fun () ->
+                        if first.Value then
+                            seen.Add "first"
+                            nested.Value <- true)
+
+                    createEffect (fun () ->
+                        if second.Value then
+                            seen.Add "second")
+
+                    createEffect (fun () ->
+                        if nested.Value then
+                            seen.Add "nested")
+
+                    createEffect (fun () -> dependent.Keys.Length |> ignore)
+
+                    createEffect (fun () ->
+                        let value = wave.Value
+
+                        if value = forkAt then
+                            first.Value <- true
+                            second.Value <- true
+                            rows.Value <- [ 0; 1 ]
+                        elif value > 0 then
+                            wave.Value <- value + 1)
+
+                    seen.Clear ()
+                    wave.Value <- 1
+
+                    Expect.sequenceEqual seen [ "projection"; "dependent projection"; "first"; "second"; "nested" ] $"order after {forkAt} waves"
+            }
+
             test "a source written by an effect in the flush reaches a later effect through a projection" {
                 use g = new Graph ()
                 use _ = g.Activate ()

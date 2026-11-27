@@ -4867,15 +4867,22 @@ type Graph(options: GraphOptions) =
 
 
 #if !FABLE_COMPILER
+    member internal _.QueueCapacity = queueSlots.Length
+
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.GrowQueue() =
-        let size = if queueSlots.Length = 0 then 8 else queueSlots.Length * 2
-        let grown = Array.zeroCreate size
+    member private _.EnsureQueueRoom() =
+        if queueHead = queueCount && queueHead > 0 then
+            // QueueDrain prepends priority passes in the slot before the head.
+            queueHead <- 1
+            queueCount <- 1
+        else
+            let size = if queueSlots.Length = 0 then 8 else queueSlots.Length * 2
+            let grown = Array.zeroCreate size
 
-        if queueSlots.Length > 0 then
-            Array.blit queueSlots 0 grown 0 queueSlots.Length
+            if queueSlots.Length > 0 then
+                Array.blit queueSlots 0 grown 0 queueSlots.Length
 
-        queueSlots <- grown
+            queueSlots <- grown
 #endif
 
     /// <summary>Queues an effect or split effect node directly without <c>IScheduled</c> interface dispatch.</summary>
@@ -4889,7 +4896,7 @@ type Graph(options: GraphOptions) =
         Tracer.Schedule (this, box n, queueCount - queueHead + passCount - passHead)
 
         if queueCount = queueSlots.Length then
-            this.GrowQueue ()
+            this.EnsureQueueRoom ()
 
         queueSlots[queueCount] <- QueueSlot (Unchecked.defaultof<IScheduled>, n)
         queueCount <- queueCount + 1
@@ -4914,7 +4921,7 @@ type Graph(options: GraphOptions) =
             queue.Add item
 #else
         if queueCount = queueSlots.Length then
-            this.GrowQueue ()
+            this.EnsureQueueRoom ()
 
         queueSlots[queueCount] <- QueueSlot (item, Unchecked.defaultof<Node>)
 #endif
@@ -4971,7 +4978,7 @@ type Graph(options: GraphOptions) =
                 queue.Add drain
 #else
             if queueCount = queueSlots.Length then
-                this.GrowQueue ()
+                this.EnsureQueueRoom ()
 
             queueSlots[queueCount] <- QueueSlot (drain, Unchecked.defaultof<Node>)
 #endif
@@ -5119,7 +5126,7 @@ type Graph(options: GraphOptions) =
         Counters.Flushed ()
 #endif
         if queueSlots.Length = 0 then
-            this.GrowQueue ()
+            this.EnsureQueueRoom ()
 
         queueHead <- 1
         queueCount <- 1
