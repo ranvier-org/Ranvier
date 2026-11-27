@@ -34,7 +34,8 @@ Usage: Ranvier.Counters [options]
                     Regenerate the arm64 instruction timeline from recorded runs.
 
   ab --leg <name> --base <sha> <dir> --head <sha> <dir> --out <file>
-                    Alternate base and head builds (optional --rounds, --scale, --only, --node).
+                    Alternate base and head builds (optional --rounds, --scale, --only, --node, and
+                    --runtime <name>, repeatable, to measure only those runtimes of the leg).
   trace-growth --out <file>
                     Write the trace growth probe: retained heap, event count
                     and export timings after sustained updates on one graph.
