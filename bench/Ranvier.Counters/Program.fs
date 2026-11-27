@@ -179,29 +179,45 @@ let private packageVersion (t: Type) =
     | null -> string (t.Assembly.GetName().Version)
     | a -> a.InformationalVersion.Split('+')[0]
 
+/// <summary>The npm packages the Fable harness imports, each with the engine name its scenarios report.</summary>
+let private npmEngines = [ "@solidjs/signals", "Solid" ]
+
 /// <summary>
-/// Package versions of the Fable build in <c>output</c>, read from its <c>fable_modules</c> directory names.
+/// Package versions of the Fable build in <c>output</c>: NuGet packages from its <c>fable_modules</c> directory names,
+/// and each of <c>npmEngines</c> from the nearest <c>node_modules</c> above the build that holds it.
 /// </summary>
 let private fableVersions (output: string) =
-    let modules =
-        Path.Combine (
-            NodeRuns.script output "plain"
-            |> Path.GetDirectoryName,
-            "fable_modules"
-        )
+    let plain =
+        NodeRuns.script output "plain"
+        |> Path.GetDirectoryName
 
-    if Directory.Exists modules then
-        Directory.GetDirectories modules
-        |> Array.choose (fun dir ->
-            let m =
-                Text.RegularExpressions.Regex.Match (Path.GetFileName dir, @"^(.+?)\.(\d.*)$")
+    let modules = Path.Combine (plain, "fable_modules")
 
-            if m.Success then
-                Some (m.Groups[1].Value, m.Groups[2].Value)
-            else
-                None)
-    else
-        [||]
+    let nuget =
+        if Directory.Exists modules then
+            Directory.GetDirectories modules
+            |> Array.choose (fun dir ->
+                let m =
+                    Text.RegularExpressions.Regex.Match (Path.GetFileName dir, @"^(.+?)\.(\d.*)$")
+
+                if m.Success then
+                    Some (m.Groups[1].Value, m.Groups[2].Value)
+                else
+                    None)
+        else
+            [||]
+
+    let npm =
+        npmEngines
+        |> List.choose (fun (package, engine) ->
+            Seq.unfold (fun (dir: DirectoryInfo) -> if isNull dir then None else Some (dir, dir.Parent)) (DirectoryInfo plain)
+            |> Seq.map (fun dir -> Path.Combine (dir.FullName, "node_modules", package, "package.json"))
+            |> Seq.tryFind File.Exists
+            |> Option.map (fun manifest ->
+                use json = Text.Json.JsonDocument.Parse (File.ReadAllText manifest)
+                engine, json.RootElement.GetProperty("version").GetString()))
+
+    Array.append nuget (List.toArray npm)
 
 /// <summary>
 /// This executable, as a host and the arguments preceding the worker's own.
@@ -509,6 +525,9 @@ let private legacyMain argv =
                             "Ranvier", sha
                             "FSharp.Data.Adaptive", packageVersion typeof<FSharp.Data.Adaptive.AdaptiveToken>
                             "R3", packageVersion typeof<R3.Unit>
+                            "System.Reactive", packageVersion typeof<System.Reactive.Unit>
+                            "SignalsDotnet", packageVersion typeof<SignalsDotnet.Effect>
+                            "DynamicData", packageVersion typeof<DynamicData.ISourceCache<obj, int>>
                             ".NET", string Environment.Version
                         ]
                 RanvierTrace = Report.ranvierTrace ()

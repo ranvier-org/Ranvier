@@ -773,11 +773,55 @@ module private Perf =
         JsonDocument.Parse (File.ReadAllText file)
 
     /// <summary>The libraries the counter bench measures against Ranvier, on .NET and under Fable.</summary>
-    let private comparators = [ "FSharp.Data.Adaptive"; "R3"; "Fable.Ripple" ]
+    let private comparators =
+        [
+            "FSharp.Data.Adaptive"
+            "R3"
+            "System.Reactive"
+            "SignalsDotnet"
+            "DynamicData"
+            "Fable.Ripple"
+        ]
+
+    /// <summary>The npm packages the Fable counters harness measures, each with the comparator name runs label it by.</summary>
+    let private npmComparators = [ "@solidjs/signals", "Solid" ]
+
+    /// <summary>
+    /// Writes <c>package.json</c> into <c>fable</c>, the parent of the Fable builds: the harness manifest
+    /// <c>fable/Ranvier.Counters/package.json</c> of <c>source</c> when present, otherwise a manifest marking the builds
+    /// as ES modules.
+    /// </summary>
+    let private fablePackage (source: string) (fable: string) =
+        let manifest = combine source "fable/Ranvier.Counters/package.json"
+        Directory.CreateDirectory fable |> ignore
+
+        if File.Exists manifest then
+            File.Copy (manifest, combine fable "package.json", true)
+        else
+            File.WriteAllText (combine fable "package.json", "{\"type\":\"module\"}")
+
+    /// <summary>Installs the newest release of each npm package the <c>package.json</c> in <c>fable</c> names.</summary>
+    let private npmInstall (fable: string) =
+        stage "fable packages" {
+            workingDir fable
+
+            run (
+                Cmd.ofList
+                    "npm"
+                    [
+                        "install"
+                        "--no-package-lock"
+                        "--ignore-scripts"
+                        "--no-audit"
+                        "--no-fund"
+                    ]
+            )
+        }
 
     /// <summary>
     /// The restored version of each comparator present in a side's builds: .NET packages from the worker's
-    /// <c>deps.json</c>, Fable packages from the <c>fable_modules</c> folders of the plain Fable build.
+    /// <c>deps.json</c>, Fable packages from the <c>fable_modules</c> folders of the plain Fable build, npm packages
+    /// from <c>fable/node_modules</c>.
     /// </summary>
     let private comparatorVersions output =
         use deps = readJson (combine output "worker/Ranvier.Counters.deps.json")
@@ -810,7 +854,18 @@ module private Perf =
             else
                 []
 
-        dict (dotnet @ fable)
+        let npm =
+            npmComparators
+            |> List.choose (fun (package, name) ->
+                let manifest = combine output ("fable/node_modules/" + package + "/package.json")
+
+                if File.Exists manifest then
+                    use json = readJson manifest
+                    Some (name, json.RootElement.GetProperty("version").GetString())
+                else
+                    None)
+
+        dict (dotnet @ fable @ npm)
 
     /// <summary>
     /// The F#-to-JavaScript compiler command and version a revision's tool manifest declares: <c>fickl</c> when the
@@ -898,6 +953,9 @@ module private Perf =
                             )
                         }
 
+                    stage "fable manifest" { run (fun _ -> fablePackage source (combine output "fable")) }
+                    npmInstall (combine output "fable")
+
                     stage "portable build metadata" {
                         workingDir source
 
@@ -956,9 +1014,7 @@ module private Perf =
                                                 FableLibrary = libraryVersions[0]
                                                 Comparators = comparatorVersions output
                                             |}
-                                    )
-
-                                    File.WriteAllText (combine output "fable/package.json", "{\"type\":\"module\"}")))
+                                    )))
                         )
                     }
                 }
@@ -1107,7 +1163,8 @@ module private Perf =
                             )
                         }
 
-                    stage "fable package" { run (fun _ -> File.WriteAllText (combine output "fable/package.json", "{\"type\":\"module\"}")) }
+                    stage "fable package" { run (fun _ -> fablePackage __REPOSITORY_DIRECTORY__ (combine output "fable")) }
+                    npmInstall (combine output "fable")
 
                     for _, variant in variants do
                         stage ("counters " + variant) {

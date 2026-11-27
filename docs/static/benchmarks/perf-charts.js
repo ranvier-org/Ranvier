@@ -21,9 +21,10 @@
   const fullDate = commit => new Date(commit.Date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
   const truncate = (text, limit = 52) => text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
   const enginesIn = rows => [...new Set(rows.map(row => row.Engine))].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
-  const rank = name => ['Ranvier', 'FSharp.Data.Adaptive', 'R3', 'Fable.Ripple'].findIndex(family => name.startsWith(family)) + 1 || 5;
+  const families = ['Ranvier', 'FSharp.Data.Adaptive', 'R3', 'Fable.Ripple', 'Solid', 'System.Reactive', 'SignalsDotnet', 'DynamicData'];
+  const rank = name => families.findIndex(family => name.startsWith(family)) + 1 || families.length + 1;
   const family = engine => engine.split(' (')[0];
-  const colour = engine => ['#3987e5', '#eb6834', '#1baf7a', '#bd8a31', '#9b7bc4'][rank(engine) - 1];
+  const colour = engine => ['#3987e5', '#eb6834', '#1baf7a', '#bd8a31', '#d55181', '#008300', '#9085e9', '#e66767', '#7a7a7a'][rank(engine) - 1];
   // Selectable metrics keyed by identifier, with leg, label, unit and headings.
   const metrics = {
     instructions: { leg: 'arm64-counters', label: 'Instructions', unit: 'instr/op', title: 'Instructions', trends: 'Instruction trends' },

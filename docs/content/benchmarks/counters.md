@@ -117,22 +117,30 @@ inconclusive.
 
 ## Comparable APIs
 
-These scenarios measure the same shape on Ranvier and on a comparator library, each through that library's
-counterpart API. They appear only in the CI charts.
+Each scenario below measures one shape on Ranvier and on every comparator library that has a counterpart API, each
+through that library's own idiom. On .NET the comparators are FSharp.Data.Adaptive, R3, System.Reactive (Rx.NET),
+SignalsDotnet and DynamicData; under Node.js they are Fable.Ripple and Solid 2 (`@solidjs/signals`). Scenarios other
+than `create`, `update`, `chain`, `cutoff` and `dispose` appear only in the CI charts.
 
-| Scenario | Ranvier | Comparator | Runtimes |
+| Scenario | Ranvier | Comparators | Runtimes |
 | --- | --- | --- | --- |
+| `create`, `update`, `dispose` | a root of 1000 rows, each an `Effect` | FSharp.Data.Adaptive `AVal.map2` and a callback; R3 and System.Reactive `CombineLatest`; SignalsDotnet `Effect`; Fable.Ripple `Signal.effect`; Solid `createEffect` | .NET, Node.js |
+| `chain` | 4 `createMemo` | FSharp.Data.Adaptive `AVal.map`; R3 and System.Reactive `Select`; SignalsDotnet `Signal.Computed`; Fable.Ripple `Signal.computed`; Solid `createMemo` | .NET, Node.js |
+| `cutoff` | an equal write to a signal read by an effect | FSharp.Data.Adaptive `cval`; R3 `ReactiveProperty`; System.Reactive `DistinctUntilChanged`; SignalsDotnet `Signal`; Fable.Ripple `Var`; Solid `createSignal` | .NET, Node.js |
 | `chain-map` | `Signal.map` then `Memo.map` | Fable.Ripple `Signal.map` | Node.js |
-| `derive-effect` | an `Effect` that derives in its body | Fable.Ripple `Signal.effect` | Node.js |
-| `derive-on` | `createEffectOn` | Fable.Ripple `Signal.computed` read by `Signal.effect` | Node.js |
-| `work-status`, `work-value`, `work-form` | `createEffect`; `createEffectOn` | Fable.Ripple `Signal.effect`; `Signal.computed` read by `Signal.effect` | Node.js |
-| `shape-diamond` | `createMemo` branches and join | Fable.Ripple `Signal.computed` branches and join | Node.js |
-| `shape-dynamic` | `createEffect` | Fable.Ripple `Signal.effect` | Node.js |
-| `select` | `createSelector`; each row compares the index | Fable.Ripple, each row compares the index; FSharp.Data.Adaptive `AVal.map2` per row | .NET, Node.js |
-| `batch` | `Graph.Batch` | Fable.Ripple `Signal.batch`; FSharp.Data.Adaptive `transact` | .NET, Node.js |
+| `derive-effect` | an `Effect` that derives in its body | SignalsDotnet `Effect`; Fable.Ripple `Signal.effect` | .NET, Node.js |
+| `derive-on` | `createEffectOn` | FSharp.Data.Adaptive `AVal.map` and a callback; R3 and System.Reactive `Select` then `DistinctUntilChanged`; SignalsDotnet `Signal.Computed` read by `Effect`; Fable.Ripple `Signal.computed` read by `Signal.effect`; Solid `createEffect` | .NET, Node.js |
+| `work-status`, `work-value` | `createEffect`; `createEffectOn` | FSharp.Data.Adaptive `AVal.map`; R3 `Select` then `DistinctUntilChanged`; SignalsDotnet `Effect`, or `Signal.Computed` read by `Effect`; Fable.Ripple `Signal.effect`, or `Signal.computed` read by `Signal.effect`; Solid `createEffect` | .NET, Node.js |
+| `work-form` | `createEffect`; `createEffectOn` | FSharp.Data.Adaptive `AVal.custom`; SignalsDotnet `Effect` or `Signal.Computed`; Fable.Ripple `Signal.effect` or `Signal.computed`; Solid `createEffect` or `createMemo` | .NET, Node.js |
+| `keyed-remove`, `keyed-swap`, `keyed-insert` | `createProjection` | FSharp.Data.Adaptive `cmap` read by `AMap.tryFind`; DynamicData `SourceCache.EditDiff` read by `WatchValue`; Solid `mapArray` keyed by Id | .NET, Node.js |
+| `shape-diamond` | `createMemo` branches and join | FSharp.Data.Adaptive `AVal.map` and `AVal.custom`; SignalsDotnet `Signal.Computed`; Fable.Ripple `Signal.computed`; Solid `createMemo` | .NET, Node.js |
+| `shape-dynamic` | `createEffect` | FSharp.Data.Adaptive `AVal.bind`; R3 `Select` then `Switch`; SignalsDotnet `Effect`; Fable.Ripple `Signal.effect`; Solid `createEffect` | .NET, Node.js |
+| `select` | `createSelector`; each row compares the index | FSharp.Data.Adaptive `AVal.map2` per row; SignalsDotnet `Effect` per row; Fable.Ripple `Signal.effect` per row; Solid `createProjection`, or `createEffect` per row | .NET, Node.js |
+| `batch` | `Graph.Batch` | FSharp.Data.Adaptive `transact`; SignalsDotnet `Effect.AtomicOperation`; Fable.Ripple `Signal.batch`; Solid writes then one `flush` | .NET, Node.js |
+| `stream-burst-1`, `-16`, `-256` | `createStreamFold` | R3 and System.Reactive `Subject`, `Scan` and `Select` | .NET |
 
 `select` moves the selection over 1000 rows, each read by one effect. `batch` writes 8 sources read by one effect
-inside one batch. R3 has no batch or selector and does not run these two.
+inside one batch. The keyed scenarios write the whole list each operation, with fresh items.
 
 ## Reading the charts
 
@@ -155,22 +163,26 @@ their recorded reason.
 
 ### Comparator versions
 
-Each commit carries the version of every comparator library it measured: FSharp.Data.Adaptive and R3 on .NET,
-Fable.Ripple under Fable. Bar labels, readouts and the provenance line name the version, as in
+Each commit carries the version of every comparator library it measured: FSharp.Data.Adaptive, R3,
+System.Reactive, SignalsDotnet and DynamicData on .NET; Fable.Ripple and Solid under Node.js. Bar labels, readouts and the provenance line name the version, as in
 `Fable.Ripple 1.0.0-beta.8 (compare)`, and the provenance line adds the commit's .NET, Node.js and Fable versions.
 A `▽` in the library's color, at the top of a trend panel, marks a commit whose comparator version differs from the
 previous commit's; the readout names both versions. **From** offers a **Comparator versions** group that anchors the
 window at the first commit of a version (`?from=cmp:Fable.Ripple@1.0.0-beta.8`).
 
 Comparator packages float to their newest release: `*` (newest stable) on .NET, `*-*` for Fable.Ripple, which
-publishes prereleases only. Measurements label the versions their builds restored. Records that predate those labels
-show the versions pinned by `bench/Ranvier.Counters` and `fable/Ranvier.Counters` at the commit.
+publishes prereleases only, and npm's `latest` tag for `@solidjs/signals`. Measurements label the versions their
+builds restored. Records that predate those labels show the versions pinned by `bench/Ranvier.Counters` and `fable/Ranvier.Counters` at the commit.
 
 ### Comparison limits
 
-- **Engines differ in semantics.** R3 pushes each write straight to its subscribers, without
-  batching or glitch-free ordering. FSharp.Data.Adaptive disposal removes callback subscriptions
-  only.
+- **Engines differ in semantics.** R3 and System.Reactive push each write or item straight to their
+  subscribers, without batching or glitch-free ordering. FSharp.Data.Adaptive disposal removes callback
+  subscriptions only. SignalsDotnet holds weak subscriptions, so each case keeps its effects referenced.
+- **Solid applies writes when it flushes.** Every Solid operation calls `flush()` after each write it makes, so the
+  effect work falls inside the measured region.
+- **Keyed lists differ in shape.** Ranvier keeps one reader per key; Solid's `mapArray` creates and disposes a row
+  owner as a row enters and leaves; FSharp.Data.Adaptive and DynamicData diff the written list into per-key changes.
 - **.NET and Node figures do not compare.** The .NET worker runs with PGO off; V8 optimises
   adaptively.
 

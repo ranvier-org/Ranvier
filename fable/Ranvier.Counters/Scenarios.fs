@@ -719,6 +719,449 @@ module private Ripple =
             Teardown = fun () -> handle.Dispose ()
         }
 
+/// <summary>
+/// Solid 2 (<c>@solidjs/signals</c>) implementations. Solid applies writes when it flushes, so every operation calls
+/// <c>flush</c> after each write it makes, and the effects of a newly built graph run in a <c>flush</c> outside the
+/// measured region. Solid's <c>createEffect</c> separates a tracked compute from an untracked effect, as Ranvier's
+/// <c>createEffectOn</c> does.
+/// </summary>
+module private Solid =
+    open Fable.Core
+    open Fable.Core.JsInterop
+
+    [<ImportMember("@solidjs/signals")>]
+    let private createSignal (value: 'T) : (unit -> 'T) * ('T -> unit) = jsNative
+
+    [<ImportMember("@solidjs/signals")>]
+    let private createMemo (compute: unit -> 'T) : unit -> 'T = jsNative
+
+    [<ImportMember("@solidjs/signals")>]
+    let private createEffect (compute: unit -> 'T) (effect: 'T -> unit) : unit = jsNative
+
+    [<ImportMember("@solidjs/signals")>]
+    let private createRoot (init: (unit -> unit) -> 'T) : 'T = jsNative
+
+    [<ImportMember("@solidjs/signals")>]
+    let private flush () : unit = jsNative
+
+    [<ImportMember("@solidjs/signals")>]
+    let private createProjection (fn: obj -> unit) (seed: obj) : obj = jsNative
+
+    [<ImportMember("@solidjs/signals")>]
+    let private mapArray (list: unit -> 'T[]) (map: Func<unit -> 'T, unit -> int, 'U>) (options: obj) : unit -> 'U[] = jsNative
+
+    /// <summary>An effect function that writes its value through <c>set</c> and returns no cleanup.</summary>
+    [<Emit("(v) => { $0(v); }")>]
+    let private writeTo (set: 'T -> unit) : 'T -> unit = jsNative
+
+    [<Emit("$0[$1] = true")>]
+    let private mark (target: obj) (key: int) : unit = jsNative
+
+    [<Emit("delete $0[$1]")>]
+    let private unmark (target: obj) (key: int) : unit = jsNative
+
+    [<Emit("$0[$1] === true")>]
+    let private marked (target: obj) (key: int) : bool = jsNative
+
+    /// <summary>A root and the getters and setters of its rows, each row read with the shared source by one effect.</summary>
+    let private root () =
+        createRoot (fun dispose ->
+            let shared, _ = createSignal 0
+
+            let rows =
+                Array.init RowCount (fun i ->
+                    let row, setRow = createSignal i
+                    createEffect (fun () -> shared () + row ()) (fun v -> sink <- v)
+                    row, setRow)
+
+            dispose, rows)
+
+    let create (n: int) =
+        let roots = ResizeArray<unit -> unit> n
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        roots.Add (fst (root ()))
+                        flush ()
+            Teardown =
+                fun () ->
+                    for dispose in roots do
+                        dispose ()
+        }
+
+    let update (n: int) =
+        let dispose, rows = root ()
+        flush ()
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        for i in 0..UpdateStride .. RowCount - 1 do
+                            let row, setRow = rows[i]
+                            setRow (row () + 1)
+                            flush ()
+            Teardown = dispose
+        }
+
+    let chain (n: int) =
+        let dispose, setSource, tail =
+            createRoot (fun dispose ->
+                let source, setSource = createSignal 0
+                let mutable tail = createMemo (fun () -> source () + 1)
+
+                for _ in 2..ChainDepth do
+                    let previous = tail
+                    tail <- createMemo (fun () -> previous () + 1)
+
+                dispose, setSource, tail)
+
+        flush ()
+        sink <- tail ()
+        let next = ref 0
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        next.Value <- next.Value + 1
+                        setSource next.Value
+                        flush ()
+                        sink <- tail ()
+            Teardown = dispose
+        }
+
+    let cutoff (n: int) =
+        let dispose, setSource =
+            createRoot (fun dispose ->
+                let source, setSource = createSignal 1
+                createEffect source (fun v -> sink <- v)
+                dispose, setSource)
+
+        flush ()
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        setSource 1
+                        flush ()
+            Teardown = dispose
+        }
+
+    let dispose (n: int) =
+        let roots =
+            Array.init n (fun _ ->
+                let dispose, _ = root ()
+                flush ()
+                dispose)
+
+        {
+            Run =
+                fun () ->
+                    for dispose in roots do
+                        dispose ()
+            Teardown = noTeardown
+        }
+
+    /// <summary>The <c>Ranvier.derivedCutoff</c> shape, deriving the value in the effect's compute.</summary>
+    let derivedCutoff (n: int) =
+        let dispose, setSource =
+            createRoot (fun dispose ->
+                let source, setSource = createSignal 1
+                createEffect (fun () -> source () >>> 30) (fun v -> sink <- v)
+                dispose, setSource)
+
+        flush ()
+        let next = ref 1
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        next.Value <- next.Value + 1
+                        setSource next.Value
+                        flush ()
+            Teardown = dispose
+        }
+
+    /// <summary>The <c>Ranvier.labelled</c> shape: the effect's compute derives the row's value, its effect formats it.</summary>
+    let private labelled (derive: int -> int) (n: int) =
+        let dispose, rows =
+            createRoot (fun dispose ->
+                let rows =
+                    Array.init RowCount (fun i ->
+                        let row, setRow = createSignal i
+
+                        createEffect (fun () -> derive (row ())) (fun v -> label <- String.Concat ("row ", string v))
+
+                        row, setRow)
+
+                dispose, rows)
+
+        flush ()
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        for i in 0..UpdateStride .. RowCount - 1 do
+                            let row, setRow = rows[i]
+                            setRow (row () + 1)
+                            flush ()
+            Teardown = dispose
+        }
+
+    let status = labelled (fun v -> v / 10)
+
+    let value = labelled id
+
+    /// <summary>
+    /// The <c>Ranvier.form</c> shape. With <c>memo</c>, validity is a <c>createMemo</c>; otherwise an effect writes it
+    /// to a signal. One downstream effect reads validity.
+    /// </summary>
+    let form (memo: bool) (n: int) =
+        let forms = RowCount / FormFields
+
+        let dispose, fieldSources =
+            createRoot (fun dispose ->
+                let fields =
+                    Array.init forms (fun f ->
+                        let fields = Array.init FormFields (fun i -> createSignal ((f + i) % 50))
+
+                        let validate () =
+                            let mutable sum = 0
+                            let mutable filled = true
+
+                            for field, _ in fields do
+                                let v = field ()
+                                sum <- sum + v
+                                filled <- filled && v > 0
+
+                            filled && sum < 300
+
+                        let valid =
+                            if memo then
+                                createMemo validate
+                            else
+                                let valid, setValid = createSignal false
+                                createEffect validate (writeTo setValid)
+                                valid
+
+                        createEffect valid (fun v -> sink <- if v then 1 else 0)
+                        fields)
+
+                dispose, fields)
+
+        flush ()
+        let next = ref 0
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        next.Value <- (next.Value + 1) % FormFields
+
+                        for fields in fieldSources do
+                            let field, setField = fields[next.Value]
+                            setField ((field () + 1) % 50)
+                            flush ()
+            Teardown = dispose
+        }
+
+    /// <summary>The <c>Workloads.wideDiamond</c> shape with <c>createMemo</c> branches and join.</summary>
+    let wideDiamond (n: int) =
+        let dispose, source, setSource =
+            createRoot (fun dispose ->
+                let source, setSource = createSignal 0
+
+                let branches =
+                    Array.init Workloads.DiamondWidth (fun j -> createMemo (fun () -> source () + j))
+
+                let sum =
+                    createMemo (fun () ->
+                        let mutable total = 0
+
+                        for branch in branches do
+                            total <- total + branch ()
+
+                        total)
+
+                createEffect sum (fun v -> sink <- v)
+                dispose, source, setSource)
+
+        flush ()
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        setSource (source () + 1)
+                        flush ()
+            Teardown = dispose
+        }
+
+    /// <summary>The <c>Workloads.dynamicBranches</c> shape with one effect per reader.</summary>
+    let dynamicBranches (n: int) =
+        let dispose, condition, a, b =
+            createRoot (fun dispose ->
+                let condition = createSignal true
+                let a = Array.init Workloads.DynamicReaders (fun i -> createSignal i)
+                let b = Array.init Workloads.DynamicReaders (fun i -> createSignal i)
+                let isA = fst condition
+
+                for i in 0 .. Workloads.DynamicReaders - 1 do
+                    let readA = fst a[i]
+                    let readB = fst b[i]
+                    createEffect (fun () -> if isA () then readA () else readB ()) (fun v -> sink <- v)
+
+                dispose, condition, a, b)
+
+        flush ()
+        let isA, setA = condition
+
+        {
+            Run =
+                fun () ->
+                    for op in 1..n do
+                        if op % 2 = 1 then
+                            setA (not (isA ()))
+                            flush ()
+                        else
+                            for read, write in (if isA () then a else b) do
+                                write (read () + 1)
+                                flush ()
+            Teardown = dispose
+        }
+
+    /// <summary>
+    /// The <c>Workloads.selection</c> shape. With <c>projection</c>, every row reads its selection from one
+    /// <c>createProjection</c> that marks the selected key; otherwise every row compares the selected index.
+    /// </summary>
+    let selection (projection: bool) (n: int) =
+        let dispose, selected, setSelected =
+            createRoot (fun dispose ->
+                let rows = Array.init Workloads.Rows (fun i -> fst (createSignal i))
+                let selected, setSelected = createSignal 0
+
+                let isSelected: int -> bool =
+                    if projection then
+                        let previous = ref -1
+
+                        let store =
+                            createProjection
+                                (fun draft ->
+                                    let key = selected ()
+
+                                    if previous.Value >= 0 then
+                                        unmark draft previous.Value
+
+                                    mark draft key
+                                    previous.Value <- key)
+                                (createObj [])
+
+                        marked store
+                    else
+                        fun i -> selected () = i
+
+                for i in 0 .. Workloads.Rows - 1 do
+                    let row = rows[i]
+                    createEffect (fun () -> if isSelected i then row () else 0) (fun v -> sink <- v)
+
+                dispose, selected, setSelected)
+
+        flush ()
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        setSelected ((selected () + 37) % Workloads.Rows)
+                        flush ()
+            Teardown = dispose
+        }
+
+    /// <summary>The <c>Workloads.batchWrites</c> shape: every write of an operation lands in one <c>flush</c>.</summary>
+    let batchWrites (n: int) =
+        let dispose, sources =
+            createRoot (fun dispose ->
+                let sources = Array.init Workloads.BatchWidth (fun i -> createSignal i)
+
+                createEffect
+                    (fun () ->
+                        let mutable total = 0
+
+                        for read, _ in sources do
+                            total <- total + read ()
+
+                        total)
+                    (fun v -> sink <- v)
+
+                dispose, sources)
+
+        flush ()
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        for read, write in sources do
+                            write (read () + 1)
+
+                        flush ()
+            Teardown = dispose
+        }
+
+    /// <summary>
+    /// The <c>Workloads.keyedPass</c> shape with fresh items: a <c>mapArray</c> keyed by Id, one effect per mapped row
+    /// reading its value, and one effect reading the row count.
+    /// </summary>
+    let keyed (edit: Workloads.KeyedItem[] -> Workloads.KeyedItem[]) (n: int) =
+        let initial =
+            Array.init Workloads.Rows (fun i ->
+                {
+                    Workloads.KeyedItem.Id = i
+                    Workloads.KeyedItem.Value = i
+                })
+
+        let edited = edit initial
+
+        let writes =
+            Array.init n (fun op ->
+                (if op % 2 = 0 then edited else initial)
+                |> Array.map (fun item -> { item with Id = item.Id }))
+
+        let dispose, setSource =
+            createRoot (fun dispose ->
+                let source, setSource = createSignal initial
+
+                let rows =
+                    mapArray
+                        source
+                        (Func<_, _, _>(fun (item: unit -> Workloads.KeyedItem) (_: unit -> int) ->
+                            createEffect (fun () -> (item ()).Value) (fun v -> sink <- v)))
+                        (createObj
+                            [
+                                "keyed"
+                                ==> Func<Workloads.KeyedItem, int>(fun item -> item.Id)
+                            ])
+
+                createEffect (fun () -> (rows ()).Length) (fun v -> sink <- v)
+                dispose, setSource)
+
+        flush ()
+
+        {
+            Run =
+                fun () ->
+                    for write in writes do
+                        setSource write
+                        flush ()
+            Teardown = dispose
+        }
+
 let private workload (prepare: int -> Workloads.Workload) (n: int) : Prepared =
     let prepared = prepare n
 
@@ -758,31 +1201,52 @@ let all (scale: int) : Case list =
                     "capture and admit in 64 timed nodes"
                     (1000 * scale)
                     [ "Ranvier", workload (Workloads.timed mode true) ]
-        yield! scenario "create" $"one root of %d{RowCount} rows" (8 * scale) [ "Ranvier", Ranvier.create false; "Fable.Ripple", Ripple.create ]
+        yield!
+            scenario
+                "create"
+                $"one root of %d{RowCount} rows"
+                (8 * scale)
+                [
+                    "Ranvier", Ranvier.create false
+                    "Fable.Ripple", Ripple.create
+                    "Solid", Solid.create
+                ]
         yield!
             scenario
                 "update"
                 $"write every %d{UpdateStride}th of %d{RowCount} rows"
                 (50 * scale)
-                [ "Ranvier", Ranvier.update false; "Fable.Ripple", Ripple.update ]
+                [
+                    "Ranvier", Ranvier.update false
+                    "Fable.Ripple", Ripple.update
+                    "Solid", Solid.update
+                ]
         yield!
             scenario
                 "chain"
                 $"write the source of %d{ChainDepth} memos, read the tail"
                 (5000 * scale)
-                [ "Ranvier", Ranvier.chain; "Fable.Ripple", Ripple.chain ]
+                [ "Ranvier", Ranvier.chain; "Fable.Ripple", Ripple.chain; "Solid", Solid.chain ]
         yield!
             scenario
                 "cutoff"
                 "write an equal value to an observed source"
                 (50000 * scale)
-                [ "Ranvier", Ranvier.cutoff; "Fable.Ripple", Ripple.cutoff ]
+                [
+                    "Ranvier", Ranvier.cutoff
+                    "Fable.Ripple", Ripple.cutoff
+                    "Solid", Solid.cutoff
+                ]
         yield!
             scenario
                 "dispose"
                 $"dispose one root of %d{RowCount} rows"
                 (8 * scale)
-                [ "Ranvier", Ranvier.dispose false; "Fable.Ripple", Ripple.dispose ]
+                [
+                    "Ranvier", Ranvier.dispose false
+                    "Fable.Ripple", Ripple.dispose
+                    "Solid", Solid.dispose
+                ]
         yield! scenario "create-on" $"one root of %d{RowCount} createEffectOn rows" (8 * scale) [ "Ranvier", Ranvier.create true ]
         yield!
             scenario "update-on" $"write every %d{UpdateStride}th of %d{RowCount} createEffectOn rows" (50 * scale) [ "Ranvier", Ranvier.update true ]
@@ -811,6 +1275,7 @@ let all (scale: int) : Case list =
                 [
                     "Ranvier", Ranvier.derivedCutoff true
                     "Fable.Ripple (computed + effect)", Ripple.derivedCutoff true
+                    "Solid", Solid.derivedCutoff
                 ]
         yield!
             scenario
@@ -822,6 +1287,7 @@ let all (scale: int) : Case list =
                     "Ranvier (createEffectOn)", Ranvier.status true
                     "Fable.Ripple (effect)", Ripple.status false
                     "Fable.Ripple (computed + effect)", Ripple.status true
+                    "Solid (createEffect)", Solid.status
                 ]
         yield!
             scenario
@@ -833,6 +1299,7 @@ let all (scale: int) : Case list =
                     "Ranvier (createEffectOn)", Ranvier.value true
                     "Fable.Ripple (effect)", Ripple.value false
                     "Fable.Ripple (computed + effect)", Ripple.value true
+                    "Solid (createEffect)", Solid.value
                 ]
         yield!
             scenario
@@ -844,6 +1311,8 @@ let all (scale: int) : Case list =
                     "Ranvier (createEffectOn)", Ranvier.form true
                     "Fable.Ripple (effect)", Ripple.form false
                     "Fable.Ripple (computed)", Ripple.form true
+                    "Solid (createEffect)", Solid.form false
+                    "Solid (createMemo)", Solid.form true
                 ]
         for name, unit, edit in
             [
@@ -859,6 +1328,7 @@ let all (scale: int) : Case list =
                     [
                         "Ranvier (fresh items)", workload (Workloads.keyedPass true edit)
                         "Ranvier (stable items)", workload (Workloads.keyedPass false edit)
+                        "Solid (mapArray)", Solid.keyed edit
                     ]
         yield!
             scenario
@@ -880,6 +1350,7 @@ let all (scale: int) : Case list =
                 [
                     "Ranvier", workload Workloads.wideDiamond
                     "Fable.Ripple", Ripple.wideDiamond
+                    "Solid", Solid.wideDiamond
                 ]
         yield!
             scenario
@@ -889,6 +1360,7 @@ let all (scale: int) : Case list =
                 [
                     "Ranvier", workload Workloads.dynamicBranches
                     "Fable.Ripple", Ripple.dynamicBranches
+                    "Solid", Solid.dynamicBranches
                 ]
         yield!
             scenario
@@ -899,6 +1371,8 @@ let all (scale: int) : Case list =
                     "Ranvier", workload (Workloads.selection true)
                     "Ranvier (compare)", workload (Workloads.selection false)
                     "Fable.Ripple (compare)", Ripple.selectionCompare
+                    "Solid (createProjection)", Solid.selection true
+                    "Solid (compare)", Solid.selection false
                 ]
         yield!
             scenario
@@ -908,6 +1382,7 @@ let all (scale: int) : Case list =
                 [
                     "Ranvier", workload Workloads.batchWrites
                     "Fable.Ripple", Ripple.batchWrites
+                    "Solid", Solid.batchWrites
                 ]
         yield!
             scenario

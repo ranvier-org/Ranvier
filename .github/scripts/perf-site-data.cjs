@@ -5,11 +5,16 @@ const { execFileSync } = require('node:child_process');
 
 const key = (...parts) => parts.join('\u0000');
 
-// The libraries the counter bench compares with Ranvier, each with the project that pins its version.
+// The libraries the counter bench compares with Ranvier, each with the project that pins its version; null for an npm
+// package, which only measured labels record.
 const COMPARATORS = {
   'FSharp.Data.Adaptive': 'bench/Ranvier.Counters/Ranvier.Counters.fsproj',
   R3: 'bench/Ranvier.Counters/Ranvier.Counters.fsproj',
+  'System.Reactive': 'bench/Ranvier.Counters/Ranvier.Counters.fsproj',
+  SignalsDotnet: 'bench/Ranvier.Counters/Ranvier.Counters.fsproj',
+  DynamicData: 'bench/Ranvier.Counters/Ranvier.Counters.fsproj',
   'Fable.Ripple': 'fable/Ranvier.Counters/Ranvier.Counters.fsproj',
+  Solid: null,
 };
 
 // Version labels of the build and runtime tools, by label name; `head:` labels describe the measured commit.
@@ -45,7 +50,7 @@ function packageVersions(project) {
 // `repository`, by commit, read through one `git cat-file --batch`. A commit maps to `{}` when its projects are absent.
 // A floating pin such as `*` or `*-*` declares no version; the record's measured labels carry it.
 function declaredComparators(repository, commits) {
-  const files = [...new Set(Object.values(COMPARATORS))];
+  const files = [...new Set(Object.values(COMPARATORS).filter(Boolean))];
   const requests = commits.flatMap(commit => files.map(file => ({ commit, file })));
   const declared = new Map(commits.map(commit => [commit, {}]));
   if (!requests.length) return declared;

@@ -48,6 +48,9 @@
         <PackageReference Include="FSharp.Data.Adaptive" Version="*" />
         <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="4.0.0" />
         <PackageReference Include="R3" Version="*" />
+        <PackageReference Include="System.Reactive" Version="*" />
+        <PackageReference Include="SignalsDotnet" Version="*" />
+        <PackageReference Include="DynamicData" Version="*" />
     </ItemGroup>
 
     <ItemGroup>
