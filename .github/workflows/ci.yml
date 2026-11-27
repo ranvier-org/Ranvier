@@ -47,6 +47,8 @@ jobs:
           node-version: '22'
       - run: node --test .github/scripts/*.test.cjs
 
+  # Each .NET test job builds the core in one flavour, untraced or traced. The two flavours share bin and obj, and a
+  # switch between them recompiles every project.
   dotnet:
     name: .NET tests
     needs: changes
@@ -54,12 +56,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # The test projects target net10.0, and global.json pins the SDK. The package check runs a net8.0 consumer of
-      # the netstandard2.1 build, which needs the .NET 8 runtime.
+      # The test projects target net10.0, and global.json pins the SDK.
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-          dotnet-version: 8.0.x
       - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
@@ -77,6 +77,22 @@ jobs:
       - name: Check the vendored Thoth.Json
         shell: pwsh
         run: ./src/Ranvier.Wire/Vendor/Thoth.Json/refresh.ps1 -Check
+
+  dotnet-traced:
+    name: .NET tests, traced
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ github.job }}-${{ hashFiles('global.json', '**/*.fsproj', '**/nuget.config', '.config/dotnet-tools.json') }}
+          restore-keys: nuget-${{ runner.os }}-${{ github.job }}-
       # The trace log and its queries compile in only with RanvierTrace, and their tests with them.
       - name: Test Ranvier.Tests, traced
         run: dotnet test tests/Ranvier.Tests -c Release -p:RanvierTrace=true
@@ -86,9 +102,30 @@ jobs:
       # The signal map model reads the trace log, so its tests compile only in a traced build.
       - name: Test Ranvier.Docs.Maps.Tests, traced
         run: dotnet test docs/maps/tests -c Release -p:RanvierTrace=true
+
+  # Packs the five core libraries untraced and traced, then builds and runs a net8.0 consumer of the netstandard2.1
+  # packages (which needs the .NET 8 runtime) and compiles and runs the Fable tests against the packages' Fable sources.
+  package-consumers:
+    name: Package consumers
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          dotnet-version: 8.0.x
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Install npm packages
+        run: npm ci
+      - name: Restore tools
+        run: dotnet tool restore
       - name: Check package compatibility
         shell: pwsh
-        run: ./tests/check-package-compatibility.ps1
+        run: ./tests/check-package-compatibility.ps1 -CheckFable
 
   # A NativeAOT publish over the library assemblies, Ranvier.Wire included, rooted: any IL2xxx/IL3xxx warning fails
   # the publish, and the binary exits non-zero when an exception or a ToString text differs from the expected text,
@@ -112,8 +149,8 @@ jobs:
         run: ./artifacts/aot/Ranvier.AotSmoke
 
   # The publish command's release pipeline with the push replaced by a listing: builds, packs every source project
-  # untraced and traced, then checks each package's id, version, lib frameworks and trace build. The .NET tests job
-  # runs the suites, so --skip-tests leaves them out here.
+  # untraced and traced, then checks each package's id, version, lib frameworks and trace build. The two .NET test jobs
+  # run the suites, so --skip-tests leaves them out here.
   packages:
     name: Packages
     needs: changes
@@ -202,9 +239,6 @@ jobs:
         run: npx --prefix tests/MutationObservation playwright install --with-deps chromium
       - name: Test browser mutation observation
         run: node tests/MutationObservation/run-browser.mjs artifacts/mutation-browser
-      - name: Check Fable package consumers
-        shell: pwsh
-        run: ./tests/check-package-compatibility.ps1 -CheckFable
 
   # The fickl release in .config/dotnet-tools.json carries the browser compiler the docs live editor runs. Runs on
   # documentation-only changes too: the docs build only after a merge, so a roll that lacks it fails here first.
@@ -225,7 +259,7 @@ jobs:
   # build and test jobs were skipped for a documentation-only change.
   result:
     name: CI result
-    needs: [changes, scripts, dotnet, aot, packages, format, docs-menus, fable, fickl-archives]
+    needs: [changes, scripts, dotnet, dotnet-traced, package-consumers, aot, packages, format, docs-menus, fable, fickl-archives]
     if: always()
     runs-on: ubuntu-latest
     steps:
