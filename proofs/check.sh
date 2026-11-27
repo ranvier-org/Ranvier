@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Audits the Rocq project. Run as `bash proofs/check.sh` from any directory and any shell.
+# Audits the Rocq project. Run as `bash proofs/check.sh [--part all|rocq|conformance]` from any directory and any shell.
+# `--part rocq` runs checks 1, 2, 3, 4 and 6, which read only this directory. `--part conformance` runs checks 5, 7 and 8,
+# which compare the model with the F# core. The default, `all`, runs every check.
 #
 # Exits 0 when
 #   1. the build is clean;
@@ -25,6 +27,19 @@ fi
 
 cd "$here"
 
+part=all
+if [ "${1:-}" = "--part" ]; then part="${2:-}"; fi
+case "$part" in
+  all | rocq | conformance) ;;
+  *) echo "check.sh: --part takes all, rocq or conformance, not '$part'" >&2; exit 2 ;;
+esac
+runs() { [ "$part" = all ] || [ "$part" = "$1" ]; }
+
+out="$(mktemp)"
+scratch="$(mktemp -d)"
+regen=""
+trap 'rm -rf "$out" "$scratch" ${regen:+"$regen"}' EXIT
+
 # Assumptions the audit accepts. Each entry needs a reason.
 # (empty: the smoke theorem and the Iris/HeapLang imports bring none)
 ALLOWED_ASSUMPTIONS=()
@@ -38,12 +53,15 @@ is_allowed() {
   return 1
 }
 
-# 1. Build.
-bash ./build.sh || { echo "check.sh: build failed" >&2; exit 1; }
+if runs rocq; then
+
+# 1. Build every file except theories/Audit.v, which step 2 compiles once and reads.
+targets="$(tr -d '\r' <_CoqProject | sed -n 's|^\(theories/.*\)\.v$|\1.vo|p' | grep -vx 'theories/Audit.vo')" \
+  || { echo "check.sh: could not read the files of _CoqProject" >&2; exit 1; }
+# shellcheck disable=SC2086
+bash ./build.sh $targets || { echo "check.sh: build failed" >&2; exit 1; }
 
 # 2. Assumptions.
-out="$(mktemp)"
-trap 'rm -f "$out"' EXIT
 bash ./build.sh --run rocq compile -Q theories Ranvier theories/Audit.v >"$out" 2>&1 \
   || { cat "$out" >&2; echo "check.sh: Audit.v failed to compile" >&2; exit 1; }
 
@@ -130,6 +148,8 @@ while IFS= read -r name; do
     || note "no Example in theories/Conformance/Check.v is stated over exp_$name"
 done <<<"$exp_names"
 
+fi
+
 # 5. Conformance. The regenerated file sits beside the script, inside the checkout dotnet.exe can see.
 find_dotnet() {
   if [ -n "${RANVIER_DOTNET:-}" ]; then echo "$RANVIER_DOTNET"; return 0; fi
@@ -138,9 +158,9 @@ find_dotnet() {
   if [ -x "/mnt/c/Program Files/dotnet/dotnet.exe" ]; then echo "/mnt/c/Program Files/dotnet/dotnet.exe"; return 0; fi
   return 1
 }
+if runs conformance; then
 if dotnet_cmd="$(find_dotnet)"; then
   regen="$(mktemp -p conformance .Expected.XXXXXX)"
-  trap 'rm -f "$out" "$regen"' EXIT
   if ! "$dotnet_cmd" build ../src/Ranvier -c Release -f net10.0 --nologo -v q >"$out" 2>&1; then
     cat "$out" >&2
     note "dotnet build of src/Ranvier failed"
@@ -153,10 +173,13 @@ if dotnet_cmd="$(find_dotnet)"; then
 else
   note "no dotnet found, so theories/Conformance/Expected.v could not be regenerated"
 fi
+fi
 
-# 6. Extraction. Compiling theories/Extract.v writes both files beside this script.
+# 6. Extraction. Compiling theories/Extract.v writes both files beside this script. Its compiled file goes to a
+# scratch directory, which leaves theories/Extract.vo and every file that requires it up to date.
+if runs rocq; then
 rm -f engine.ml engine.mli
-if ! bash ./build.sh --run rocq compile -Q theories Ranvier theories/Extract.v >"$out" 2>&1; then
+if ! bash ./build.sh --run rocq compile -Q theories Ranvier -noglob -o "$scratch/Extract.vo" theories/Extract.v >"$out" 2>&1; then
   cat "$out" >&2
   note "theories/Extract.v failed to compile"
 else
@@ -164,6 +187,9 @@ else
     diff -u "differential/$f" "$f" >&2 || note "differential/$f differs from what theories/Extract.v generates; copy $f there"
   done
 fi
+fi
+
+if runs conformance; then
 
 # 7. The differential check. Its agreement is evidence, not a proof.
 bash differential/run.sh 200 1 || note "differential/run.sh 200 1 failed"
@@ -178,6 +204,8 @@ if [ -n "${dotnet_cmd:-}" ]; then
       note "fatal scenario $name did not overflow (exit $rc): update BUGS.md"
     fi
   done
+fi
+
 fi
 
 if [ "$fail" -ne 0 ]; then
