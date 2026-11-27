@@ -11,7 +11,12 @@ permissions:
   contents: read
   actions: read
 
-# Every measured master push must reach history; no concurrency group drops pending runs.
+# Every measured master push must reach history, so each push run has a group of its own. A newer push or label event on
+# a pull request cancels that pull request's running measurement.
+concurrency:
+  group: perf-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   find:
     runs-on: ubuntu-latest
@@ -110,7 +115,28 @@ jobs:
         run: dotnet test bench/Ranvier.Counters.Tests -c Release
       - name: Workflow logic tests
         run: node --test .github/scripts/*.test.cjs
-      - run: dotnet fsi build.fsx -- perf build "$BASE" "$RUNNER_TEMP/perf/base"
+      # A perf build is keyed by its commit, the build logic and the installed SDKs, which global.json rolls forward
+      # over. The measurement reads its workers, Fable output and versions.json, and the cache holds those without the
+      # source worktree. A pull request's base is the head build of a master run, or the base build of the pull
+      # request's previous run.
+      - id: build-key
+        run: echo "suffix=$(dotnet --list-sdks | sha256sum | cut -c1-16)-${{ hashFiles('build.fsx', 'global.json') }}" >> "$GITHUB_OUTPUT"
+      - id: base-build
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ runner.temp }}/perf/base
+            !${{ runner.temp }}/perf/base/src
+          key: perf-build-${{ runner.os }}-${{ runner.arch }}-${{ env.BASE }}-${{ steps.build-key.outputs.suffix }}
+      - if: steps.base-build.outputs.cache-hit != 'true'
+        run: dotnet fsi build.fsx -- perf build "$BASE" "$RUNNER_TEMP/perf/base"
+      - if: steps.base-build.outputs.cache-hit != 'true' && github.event_name == 'pull_request'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ runner.temp }}/perf/base
+            !${{ runner.temp }}/perf/base/src
+          key: ${{ steps.base-build.outputs.cache-primary-key }}
       - run: dotnet fsi build.fsx -- perf build "$HEAD" "$RUNNER_TEMP/perf/head"
       - name: Alternating measurements (arm64 asserts hardware in every region)
         run: dotnet fsi build.fsx -- perf ab "$LEG" "$BASE" "$RUNNER_TEMP/perf/base" "$HEAD" "$RUNNER_TEMP/perf/head" "out/ab-$LEG.json"
@@ -119,6 +145,28 @@ jobs:
           name: ab-${{ matrix.leg }}
           path: out/ab-${{ matrix.leg }}.json
           if-no-files-found: error
+      # The verdict job runs on x64 and compares with the head worker this leg built.
+      - if: matrix.leg == 'x64-timing'
+        uses: actions/upload-artifact@v7
+        with:
+          name: head-worker
+          path: ${{ runner.temp }}/perf/head/worker
+          retention-days: 1
+          if-no-files-found: error
+      # A master commit is the base of the pull requests opened on it. The cache restores to the base directory, so the
+      # head build moves there first.
+      - name: Store the head build as a future base
+        if: github.event_name == 'push'
+        run: |
+          rm -rf "$RUNNER_TEMP/perf/base"
+          mv "$RUNNER_TEMP/perf/head" "$RUNNER_TEMP/perf/base"
+      - if: github.event_name == 'push'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ runner.temp }}/perf/base
+            !${{ runner.temp }}/perf/base/src
+          key: perf-build-${{ runner.os }}-${{ runner.arch }}-${{ env.HEAD }}-${{ steps.build-key.outputs.suffix }}
 
   verdict:
     needs: [find, measure]
@@ -161,7 +209,15 @@ jobs:
           name: ab-x64-timing
           path: out/ab-x64-timing.json
           if-no-files-found: error
-      - run: dotnet build bench/Ranvier.Counters -c Release -p:RanvierTrace=false -p:RanvierCounters=false -o out/head/worker
+      - id: head-worker
+        if: needs.measure.result == 'success'
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: head-worker
+          path: out/head/worker
+      - if: steps.head-worker.outcome != 'success'
+        run: dotnet build bench/Ranvier.Counters -c Release -p:RanvierTrace=false -p:RanvierCounters=false -o out/head/worker
       - name: Compare and annotate
         run: dotnet fsi build.fsx -- perf compare "$BASE" "$HEAD" "$ACCEPTED" out/report out/ab-arm64-counters.json out/ab-x64-timing.json
       - name: Bind report to this run
