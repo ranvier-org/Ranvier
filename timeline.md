@@ -202,6 +202,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 64,946 | 165,006 | 1,530,994 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 64,962 | 164,989 | 1,531,067 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 64,955 | 165,009 | 1,531,067 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 64,939 | 165,002 | 1,531,112 |
 
 ## app-table
 
@@ -405,6 +406,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 2,078,908 | 4,223,769 | 61,337,515 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 2,078,882 | 4,223,726 | 61,337,537 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 2,079,805 | 4,224,540 | 61,336,528 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 2,079,745 | 4,224,588 | 61,336,521 |
 
 ## async-recover
 
@@ -608,6 +610,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 92,254 | 25,743 | 311,839 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 92,254 | 25,743 | 311,840 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 92,225 | 25,742 | 311,835 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 92,225 | 25,739 | 311,838 |
 
 ## async-resolve
 
@@ -811,6 +814,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 2,707,397 | 614,632 | 7,631,182 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 2,707,398 | 614,681 | 7,631,147 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 2,706,463 | 614,792 | 7,631,153 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 2,706,462 | 614,792 | 7,631,130 |
 
 ## batch
 
@@ -1014,6 +1018,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | — | — | — | — | — | — | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | — | — | — | — | — | — | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 30,026 | 1,724 | 13,934 | 7,005 | 3,591 | 19,693 | 115,933 | 67,375 | 178,910 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 30,026 | 1,724 | 13,934 | 7,007 | 3,591 | 19,693 | 115,933 | 67,375 | 178,910 |
 
 ## chain
 
@@ -1217,6 +1222,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 13,019 | 318 | 1,240 | — | — | 4,419 | 2,709 | — | 72,358 | 58,608 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 13,019 | 318 | 1,240 | — | — | 4,419 | 2,709 | — | 72,358 | 58,608 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 13,081 | 318 | 1,240 | 17,083 | 440 | 4,613 | 2,709 | 18,222 | 80,917 | 58,609 | 174,427 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 13,017 | 318 | 1,240 | 17,083 | 440 | 4,613 | 2,709 | 18,221 | 80,917 | 58,608 | 174,427 |
 
 ## chain-affinity
 
@@ -1420,6 +1426,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,240 | 1,985 | 1,447 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 1,240 | 1,985 | 1,447 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 1,240 | 1,985 | 1,447 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 1,240 | 1,985 | 1,447 |
 
 ## chain-map
 
@@ -1623,6 +1630,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 468 | — | 726 | — | 18,900 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 468 | — | 726 | — | 18,900 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 468 | 4,700 | 726 | 82,024 | 18,900 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 468 | 4,700 | 726 | 82,024 | 18,900 |
 
 ## chain-on
 
@@ -1826,6 +1834,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 2,021 | 4,448 | 85,379 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 2,021 | 4,449 | 85,379 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 2,021 | 4,449 | 85,379 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 2,021 | 4,449 | 85,379 |
 
 ## control
 
@@ -2029,6 +2038,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 74,708 | 462,669 | 2,270,349 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 74,708 | 462,685 | 2,270,396 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 74,682 | 475,562 | 2,269,549 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 74,682 | 475,560 | 2,269,582 |
 
 ## create
 
@@ -2232,6 +2242,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 13,573,389 | 2,860,676 | 1,579,620 | — | — | 4,442,560 | 1,661,870 | — | 32,788,928 | 33,523,026 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 13,479,892 | 2,892,677 | 1,579,620 | — | — | 4,443,458 | 1,661,965 | — | 32,788,887 | 33,522,912 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 13,455,991 | 2,840,177 | 1,575,921 | 9,400,338 | 5,318,266 | 2,075,653 | 1,662,026 | 3,971,216 | 33,406,260 | 33,521,945 | 44,664,828 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 13,440,108 | 2,840,177 | 1,575,936 | 9,400,336 | 5,350,263 | 2,075,718 | 1,661,978 | 3,970,007 | 33,406,419 | 33,522,027 | 44,664,809 |
 
 ## create-on
 
@@ -2435,6 +2446,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,887,766 | 2,001,933 | 39,082,780 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 1,887,766 | 2,001,898 | 39,082,697 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 1,882,368 | 2,001,773 | 39,081,870 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 1,882,382 | 2,001,700 | 39,083,131 |
 
 ## cutoff
 
@@ -2638,6 +2650,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,182 | 50 | 14 | — | — | 65 | 56 | — | 1,095 | 830 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 1,182 | 50 | 14 | — | — | 65 | 56 | — | 1,095 | 830 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 1,181 | 50 | 14 | 43 | 285 | 65 | 56 | 367 | 1,095 | 830 | 2,807 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 1,181 | 50 | 14 | 43 | 285 | 65 | 56 | 367 | 1,095 | 830 | 2,807 |
 
 ## derive-effect
 
@@ -2841,6 +2854,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 268 | — | — | 597 | — | 12,928 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 268 | — | — | 597 | — | 12,928 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 268 | 5,174 | 1,542 | 597 | 21,723 | 12,928 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 268 | 5,174 | 1,539 | 597 | 21,723 | 12,928 |
 
 ## derive-on
 
@@ -3044,6 +3058,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | 276 | — | — | — | 589 | — | — | 13,663 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | 276 | — | — | — | 589 | — | — | 13,663 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 9,949 | 205 | 276 | 4,226 | 334 | 2,085 | 589 | 8,521 | 29,881 | 13,663 | 67,256 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 9,933 | 205 | 276 | 4,226 | 334 | 2,085 | 589 | 8,520 | 29,881 | 13,663 | 67,257 |
 
 ## dispose
 
@@ -3247,6 +3262,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 2,706,244 | 806,290 | 284,345 | — | — | 479,973 | 856,694 | — | 11,184,432 | 7,328,906 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 2,707,644 | 806,290 | 284,345 | — | — | 479,998 | 856,830 | — | 11,184,958 | 7,328,948 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 2,705,986 | 806,290 | 284,345 | 75,676,523 | 2,556,541 | 479,804 | 856,885 | 522,447 | 11,184,178 | 7,328,798 | 6,828,360 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 2,705,982 | 806,290 | 284,345 | 75,676,523 | 2,556,540 | 479,834 | 856,869 | 522,670 | 11,184,445 | 7,329,260 | 6,828,302 |
 
 ## dispose-on
 
@@ -3450,6 +3466,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 284,345 | 856,829 | 7,329,109 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 284,345 | 856,619 | 7,329,281 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 284,345 | 856,934 | 7,329,220 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 284,345 | 856,767 | 7,329,320 |
 
 ## editable-edit
 
@@ -3653,6 +3670,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 73,409 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 73,409 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 73,409 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 73,409 |
 
 ## editable-upstream
 
@@ -3856,6 +3874,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 128,609 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 128,609 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 128,609 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 128,609 |
 
 ## fail-recompute
 
@@ -4059,6 +4078,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 54,467 | 723 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 54,467 | 723 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 54,243 | 723 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 54,242 | 723 |
 
 ## flight
 
@@ -4262,6 +4282,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | — | — | 9,254 | 5,223 | 5,229 | 9,525 | 9,057 | 9,708 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | — | — | 9,286 | 5,239 | 5,245 | 9,557 | 9,089 | 9,740 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 4,032 | 8,589 | 9,165 | 9,365 | 9,244 | 5,218 | 5,224 | 9,515 | 9,047 | 9,698 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 4,032 | 8,589 | 9,165 | 9,365 | 9,244 | 5,218 | 5,224 | 9,515 | 9,047 | 9,698 |
 
 ## keyed-insert
 
@@ -4465,6 +4486,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | 1,112,545 | 26,225 | 26,838 | 2,149,543 | 469,299 | 476,897 | — | 36,885,254 | 2,602,080 | 2,620,464 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | 1,112,545 | 26,225 | 26,838 | 2,149,602 | 469,346 | 476,871 | — | 36,885,134 | 2,602,089 | 2,620,487 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 1,503,201 | 13,063,782 | 1,112,470 | 26,215 | 26,819 | 2,116,729 | 469,378 | 476,829 | 5,055,938 | 36,831,979 | 2,602,024 | 2,620,423 | 51,609,682 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 1,503,199 | 13,063,799 | 1,112,468 | 26,215 | 26,819 | 2,116,683 | 469,356 | 476,836 | 5,055,897 | 36,832,028 | 2,602,106 | 2,620,402 | 51,609,626 |
 
 ## keyed-remove
 
@@ -4668,6 +4690,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | 1,112,122 | 23,539 | 24,741 | 2,141,283 | 413,256 | 425,045 | — | 36,855,686 | 1,907,388 | 1,938,167 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | 1,112,111 | 23,539 | 24,742 | 2,141,262 | 413,217 | 425,094 | — | 36,855,586 | 1,907,345 | 1,938,209 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 1,501,982 | 13,311,951 | 1,112,097 | 23,525 | 24,674 | 2,141,027 | 413,222 | 425,099 | 4,758,066 | 36,802,359 | 1,907,369 | 1,937,894 | 47,855,270 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 1,501,982 | 13,007,140 | 1,112,105 | 23,510 | 24,674 | 2,141,043 | 413,186 | 425,091 | 4,758,075 | 36,802,036 | 1,907,307 | 1,937,928 | 47,855,155 |
 
 ## keyed-swap
 
@@ -4871,6 +4894,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | 1,092,747 | 30,636 | 31,021 | 2,690,969 | 366,639 | 91,649 | — | 37,450,084 | 690,950 | 704,135 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | 1,092,749 | 30,636 | 31,021 | 2,690,978 | 366,660 | 91,651 | — | 37,450,094 | 691,020 | 704,092 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 1,463,756 | 1,584,690 | 1,092,737 | 30,624 | 31,004 | 2,690,807 | 366,625 | 91,660 | 5,548,556 | 37,455,024 | 690,992 | 704,048 | 49,798,212 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 1,463,756 | 1,584,680 | 1,092,749 | 30,624 | 31,004 | 2,690,800 | 366,659 | 91,633 | 5,548,642 | 37,455,003 | 690,952 | 704,088 | 49,798,159 |
 
 ## mvu-dispatch
 
@@ -5074,6 +5098,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 32,385 | 345 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 32,385 | 345 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 32,358 | 345 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 32,358 | 345 |
 
 ## persist-write
 
@@ -5277,6 +5302,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | — | — |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | — | — |
 
 ## project-chain
 
@@ -5480,6 +5506,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 58,800 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 58,774 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 58,868 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 58,749 |
 
 ## project-churn
 
@@ -5683,6 +5710,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 23,235 | 21,246 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 23,235 | 21,246 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 23,214 | 21,228 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 23,214 | 21,227 |
 
 ## project-edit
 
@@ -5886,6 +5914,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 22,470 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 22,470 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 22,488 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 22,472 |
 
 ## project-reorder
 
@@ -6089,6 +6118,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 239,699 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 239,699 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 239,698 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 239,666 |
 
 ## select
 
@@ -6292,6 +6322,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 11,064,897 | 3,824 | 272,512 | 5,030,110 | 786,386 | 29,350 | 462,103 | 3,559,561 | 70,962 | 15,525,724 | 103,161 | 10,030,262 | 35,021,512 | 239,622 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 11,064,897 | 3,808 | 272,512 | 5,030,110 | 786,374 | 29,352 | 462,045 | 3,559,589 | 70,956 | 15,525,720 | 103,152 | 10,030,276 | 35,021,392 | 239,580 |
 
 ## server-render
 
@@ -6495,6 +6526,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | — | — | — |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | — | — | — |
 
 ## shape-diamond
 
@@ -6698,6 +6730,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 45,940 | — | — | 82,554 | — | — | 1,544,580 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 45,940 | — | — | 82,554 | — | — | 1,544,580 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 434,651 | 45,940 | 8,013,850 | 142,629 | 82,554 | 492,071 | 2,406,088 | 1,544,581 | 4,805,256 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 434,651 | 45,940 | 8,013,850 | 142,629 | 82,554 | 492,072 | 2,406,088 | 1,544,581 | 4,805,215 |
 
 ## shape-dynamic
 
@@ -6901,6 +6934,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | 44,340 | — | — | 86,813 | — | — | 1,604,703 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | 44,340 | — | — | 86,820 | — | — | 1,604,704 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 992,401 | 95,651 | 44,340 | 670,191 | 226,662 | 86,817 | 650,730 | 2,850,778 | 1,604,707 | 5,598,428 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 992,401 | 95,651 | 44,340 | 670,191 | 226,661 | 86,817 | 650,746 | 2,850,778 | 1,604,709 | 5,598,555 |
 
 ## stream-burst-1
 
@@ -7104,6 +7138,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 1,193 | 823 | 1,690 | — | 12,417 | 4,337 | 12,601 | 35,061 | 33,256 | 43,788 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 1,193 | 823 | 1,690 | — | 12,417 | 4,337 | 12,601 | 35,056 | 33,256 | 43,786 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 188 | 1,192 | 823 | 1,692 | 183 | 12,417 | 4,337 | 12,601 | 35,054 | 33,256 | 43,789 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 188 | 1,192 | 823 | 1,692 | 183 | 12,417 | 4,337 | 12,601 | 35,054 | 33,256 | 43,789 |
 
 ## stream-burst-16
 
@@ -7307,6 +7342,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 2,453 | 12,958 | 3,280 | — | 13,477 | 26,615 | 13,645 | 81,482 | 521,628 | 77,760 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 2,453 | 12,958 | 3,280 | — | 13,477 | 26,615 | 13,645 | 81,481 | 521,628 | 77,760 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 2,723 | 2,452 | 12,958 | 3,282 | 2,643 | 13,477 | 26,618 | 13,645 | 81,474 | 521,628 | 77,761 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 2,723 | 2,452 | 12,958 | 3,282 | 2,643 | 13,477 | 26,618 | 13,645 | 81,474 | 521,628 | 77,761 |
 
 ## stream-burst-256
 
@@ -7510,6 +7546,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 22,589 | 207,118 | 28,699 | — | 83,749 | 410,559 | 57,672 | 822,034 | 8,331,782 | 620,692 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 22,589 | 207,118 | 28,699 | — | 83,748 | 410,559 | 57,672 | 822,038 | 8,331,780 | 620,655 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 43,283 | 22,589 | 207,118 | 28,701 | 42,003 | 83,803 | 410,557 | 57,672 | 821,848 | 8,331,783 | 620,684 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 43,283 | 22,589 | 207,118 | 28,701 | 42,003 | 83,803 | 410,551 | 57,672 | 821,860 | 8,331,782 | 620,684 |
 
 ## stream-restart
 
@@ -7713,6 +7750,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 3,186 | 3,509 | 17,064 | 14,808 | 39,956 | 66,906 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 3,186 | 3,509 | 17,066 | 14,812 | 39,956 | 66,903 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 3,175 | 3,504 | 17,063 | 14,810 | 39,956 | 66,906 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 3,175 | 3,504 | 17,064 | 14,809 | 39,953 | 66,906 |
 
 ## timed-admit-both
 
@@ -7916,6 +7954,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 83,107 | 112,723 | 2,282,404 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 83,107 | 112,711 | 2,282,404 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 34,759 | 83,107 | 112,716 | 2,282,493 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 34,759 | 83,107 | 112,717 | 2,282,493 |
 
 ## timed-admit-debounce
 
@@ -8119,6 +8158,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 82,595 | — | 110,358 | 2,256,664 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 82,595 | — | 110,361 | 2,256,664 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 35,207 | 82,595 | 183,863 | 110,350 | 2,256,601 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 35,207 | 82,595 | 183,864 | 110,361 | 2,256,601 |
 
 ## timed-admit-first
 
@@ -8322,6 +8362,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 45,668 | 62,480 | 1,407,797 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 45,668 | 62,483 | 1,407,797 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 34,695 | 45,668 | 62,484 | 1,407,798 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 34,695 | 45,668 | 62,482 | 1,407,798 |
 
 ## timed-admit-last
 
@@ -8525,6 +8566,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 82,851 | 111,690 | 2,266,686 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 82,851 | 111,704 | 2,266,712 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 34,951 | 82,851 | 111,694 | 2,266,649 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 34,951 | 82,851 | 111,709 | 2,266,649 |
 
 ## timed-capture-both
 
@@ -8728,6 +8770,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 25,291 | 40,076 | 749,076 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 25,291 | 40,074 | 749,069 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 12,655 | 25,291 | 40,061 | 749,178 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 12,655 | 25,291 | 40,067 | 749,179 |
 
 ## timed-capture-debounce
 
@@ -8931,6 +8974,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 24,971 | — | 38,607 | 734,800 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 24,971 | — | 38,607 | 734,800 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 18,927 | 24,971 | 85,526 | 38,607 | 734,803 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 18,927 | 24,971 | 85,525 | 38,607 | 734,800 |
 
 ## timed-capture-first
 
@@ -9134,6 +9178,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 24,075 | 34,446 | 677,904 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 24,075 | 34,446 | 677,904 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 12,399 | 24,075 | 34,446 | 677,906 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 12,399 | 24,075 | 34,446 | 677,904 |
 
 ## timed-capture-last
 
@@ -9337,6 +9382,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 25,035 | 38,671 | 732,432 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 25,035 | 38,671 | 732,432 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 12,655 | 25,035 | 38,670 | 732,432 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 12,655 | 25,035 | 38,670 | 732,432 |
 
 ## update
 
@@ -9540,6 +9586,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 1,092,190 | 38,805 | 28,306 | — | — | 196,886 | 71,298 | — | 2,533,032 | 1,334,502 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 1,088,990 | 38,805 | 28,306 | — | — | 196,836 | 71,299 | — | 2,533,098 | 1,334,492 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 1,087,297 | 38,805 | 28,306 | 567,370 | 66,005 | 209,982 | 71,274 | 846,302 | 2,872,748 | 1,334,501 | 7,042,769 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 1,087,297 | 38,805 | 28,306 | 567,380 | 66,005 | 209,941 | 71,299 | 846,317 | 2,872,710 | 1,334,504 | 7,039,519 |
 
 ## update-on
 
@@ -9743,6 +9790,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | 35,406 | 82,599 | 1,633,640 |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | 35,406 | 82,599 | 1,633,641 |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 35,406 | 82,599 | 1,633,605 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 35,406 | 82,599 | 1,633,643 |
 
 ## work-form
 
@@ -9946,6 +9994,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | 87,492 | 79,896 | — | — | — | — | 255,162 | 269,281 | — | — | — | — | 3,956,622 | 4,028,364 | — | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | 87,492 | 79,896 | — | — | — | — | 255,162 | 269,281 | — | — | — | — | 3,956,621 | 4,028,347 | — | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 1,928,662 | 87,492 | 79,896 | 1,014,209 | 1,141,350 | 720,609 | 648,409 | 255,162 | 269,261 | 1,507,267 | 1,569,293 | 10,378,143 | 9,432,167 | 3,956,619 | 4,028,358 | 12,439,607 | 11,828,172 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 1,928,662 | 87,492 | 79,896 | 1,014,210 | 1,141,350 | 720,572 | 648,770 | 255,162 | 269,257 | 1,507,276 | 1,569,295 | 10,378,156 | 9,432,169 | 3,956,607 | 4,028,347 | 12,439,230 | 11,834,597 |
 
 ## work-status
 
@@ -10149,6 +10198,7 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | 51,446 | 31,786 | — | — | — | — | 181,552 | 79,440 | — | — | — | 1,594,523 | 1,389,130 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | 51,446 | 31,786 | — | — | — | — | 181,546 | 79,440 | — | — | — | 1,594,506 | 1,389,116 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 998,227 | 25,204 | 51,429 | 31,785 | 481,831 | 542,278 | 253,482 | 288,956 | 181,566 | 79,617 | 946,740 | 3,233,325 | 2,602,048 | 1,594,448 | 1,389,404 | 7,056,028 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 996,627 | 25,204 | 51,429 | 31,785 | 481,831 | 542,278 | 253,483 | 288,999 | 181,583 | 79,642 | 946,727 | 3,233,330 | 2,602,066 | 1,594,515 | 1,389,415 | 7,055,794 |
 
 ## work-value
 
@@ -10352,4 +10402,5 @@
 | `74a3479` | 2026-11-27 | ci: run the docs map tests in a job of their own (#399) | — | — | 58,570 | 65,870 | — | — | — | — | 181,772 | 198,145 | — | — | — | 1,579,177 | 1,877,046 | — |
 | `c68fe95` | 2026-11-27 | fix(docs): reference Fable.Core in the docs projects that Fable compiles (#401) | — | — | 58,570 | 65,870 | — | — | — | — | 181,824 | 198,135 | — | — | — | 1,579,215 | 1,877,083 | — |
 | `ad97972` | 2026-11-27 | feat(bench): latest comparator versions, Solid 2 and more .NET libraries, comparable scenarios across domains (#402) | 1,028,094 | 57,642 | 58,543 | 65,842 | 1,008,376 | 550,545 | 412,318 | 289,237 | 181,815 | 198,141 | 947,055 | 4,595,704 | 2,586,641 | 1,579,160 | 1,877,041 | 7,045,081 |
+| `d3b12cd` | 2026-11-27 | perf(core): post one dispatcher drain per burst of off-thread work (#404) | 1,026,494 | 57,642 | 58,543 | 65,843 | 1,008,376 | 550,551 | 412,316 | 289,209 | 181,761 | 198,178 | 947,055 | 4,595,720 | 2,586,646 | 1,579,210 | 1,877,081 | 7,045,018 |
 
