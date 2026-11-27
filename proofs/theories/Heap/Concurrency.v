@@ -71,7 +71,8 @@ Definition post_queued_code : val :=
   λ: "cs" "w",
     let: "inb" := !("cs" +ₗ #4) in
     ("cs" +ₗ #4) <- vlist_snoc_code "inb" "w";;
-    ("cs" +ₗ #5) <- #true.
+    if: !"cs" = #2 then ("cs" +ₗ #5) <- #true
+    else (if: CAS ("cs" +ₗ #5) #false #true then #() else #()).
 
 Definition pd_try_claim_code : val :=
   λ: "pd",
@@ -296,7 +297,7 @@ Proof.
 Qed.
 
 (**md
-**`post_queued_code` appends work item `w` to the FIFO inbox and sets `pumpPosted = true` (`post_queued`).**
+**`post_queued_code` appends work item `w` to the FIFO inbox and leaves `pumpPosted = true`: by a store under `Serialised`, and otherwise by a `CAS` from `false` that posts a drain only when none is pending (`post_queued`).**
 
 - [cs_loc:] the concurrency control block location.
 - [w:] the work item id enqueued.
@@ -314,10 +315,20 @@ Proof.
   wp_lam. wp_pures. wp_load. wp_pures.
   rewrite (list_val_eq (cs_inbox cs)).
   wp_apply (vlist_snoc_spec (fun k : nat => #(Z.of_nat k)) (cs_inbox cs) w); [done|].
-  iIntros "_". wp_store. wp_store. iModIntro.
-  iApply "HΦ". iSplit.
-  - iPureIntro. apply (proj1 (serialised_release_reposts_nonempty_inbox w cs)).
-  - rewrite /is_concurrency_state /= (list_val_eq (cs_inbox cs ++ [w])). iFrame.
+  iIntros "_". wp_store. wp_load.
+  (* `Serialised` posts on every call; the other affinities post when `CAS` moves `pumpPosted` from false to true. *)
+  destruct (cs_affinity cs); simpl; wp_pures.
+  - destruct (cs_pump_posted cs); [wp_cmpxchg_fail|wp_cmpxchg_suc]; wp_pures; iModIntro; iApply "HΦ";
+      (iSplit;
+        [iPureIntro; intros _; left; reflexivity
+        |rewrite /is_concurrency_state /= (list_val_eq (cs_inbox cs ++ [w])); iFrame]).
+  - destruct (cs_pump_posted cs); [wp_cmpxchg_fail|wp_cmpxchg_suc]; wp_pures; iModIntro; iApply "HΦ";
+      (iSplit;
+        [iPureIntro; intros _; left; reflexivity
+        |rewrite /is_concurrency_state /= (list_val_eq (cs_inbox cs ++ [w])); iFrame]).
+  - wp_store. iModIntro. iApply "HΦ". iSplit.
+    + iPureIntro. intros _. left. reflexivity.
+    + rewrite /is_concurrency_state /= (list_val_eq (cs_inbox cs ++ [w])). iFrame.
 Qed.
 
 (**md

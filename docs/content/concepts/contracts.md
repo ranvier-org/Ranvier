@@ -64,6 +64,11 @@ the graph. `ThreadAffinity.Serialised` replaces it with a check that one thread 
 | `ManualDispatcher`, the default when `SynchronizationContext.Current` is null at construction | When the owning thread calls `graph.Pump ()`. |
 | `ImmediateDispatcher` | On the posting thread. Under `Guarded` that drain raises `Pump ran on thread` there, and the work stays queued. |
 
+A drain runs everything in the inbox when it starts, and work queued while a posted drain has yet to start joins
+it: a burst of off-thread work makes one call to the dispatcher's `Post`
+([`coalesced_drain_post_no_lost_drain`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#coalesced_drain_post_no_lost_drain)).
+Under `Serialised`, every queued item posts a drain.
+
 [The async graph on .NET](async-graph.md#threads-and-dispatch) covers the dispatcher in detail.
 
 ### A write from another thread during a flush

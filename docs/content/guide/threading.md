@@ -82,6 +82,9 @@ or set GraphOptions.ThreadAffinity to Unchecked if affinity is guaranteed some o
 | `Some (ManualDispatcher ())` | The inbox is drained only when the graph thread calls `graph.Pump ()`. |
 | `Some (ImmediateDispatcher ())` | Calls `Pump` on the thread that posted. Under `ThreadAffinity = Guarded` (the default), an off-thread post raises `Pump ran on thread ...` on that thread and the work stays queued. Under `Unchecked`, the drain runs on the posting thread. |
 
+Work queued while a posted drain has yet to start joins that drain, so a burst of off-thread work reaches the
+dispatcher as one post. Under `Serialised`, every queued item posts.
+
 :::
 
 A console app, server or test without a `SynchronizationContext` gets `ManualDispatcher`.

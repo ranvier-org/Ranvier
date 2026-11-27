@@ -167,6 +167,21 @@ let private holdFlush (context: SynchronizationContext) (g: Graph) : HeldFlush =
     entered.Wait (TimeSpan.FromSeconds 5.0) |> ignore
 
     { Worker = worker; Release = release }
+
+/// <summary>
+/// A dispatcher that wakes an owner thread waiting in <c>WaitPost</c> on each post, as
+/// <c>samples/dispatch-async.fsx</c> does.
+/// </summary>
+type private WakingDispatcher() =
+    let wake = new AutoResetEvent (false)
+
+    /// <summary>Waits up to <c>timeout</c> for a post. False when none arrived.</summary>
+    member _.WaitPost(timeout: TimeSpan) =
+        wake.WaitOne timeout
+
+    interface IGraphDispatcher with
+        member _.Post _ =
+            wake.Set () |> ignore
 #endif
 
 [<Tests>]
@@ -330,6 +345,146 @@ let tests =
                 Expect.equal ran 2 "both items were run"
                 Expect.sequenceEqual log [ "ran" ] "the survivor still ran"
                 Expect.equal (Seq.length g.Root.Errors) 1 "and the failure was recorded"
+            }
+#endif
+
+#if !FABLE_COMPILER
+            // .NET only: JavaScript has one thread.
+            test "off-thread work queued before a posted drain starts shares that drain" {
+                let context = RecordingContext ()
+                let g = within context (fun () -> new Graph ())
+                let log = ResizeArray ()
+
+                offThread (fun () ->
+                    for i in 1..3 do
+                        g.Dispatch (fun () -> log.Add i))
+
+                Expect.equal context.Posted.Count 1 "one drain posted for three items"
+                Expect.equal g.PendingWork 3 "all three queued"
+                context.Drain ()
+                Expect.sequenceEqual log [ 1; 2; 3 ] "the drain ran all three"
+
+                offThread (fun () -> g.Dispatch (fun () -> log.Add 4))
+                Expect.equal context.Posted.Count 1 "work queued after the drain started posts a new drain"
+                context.Drain ()
+                Expect.sequenceEqual log [ 1; 2; 3; 4 ] "and that drain runs it"
+            }
+#endif
+
+#if !FABLE_COMPILER
+            // .NET only: JavaScript has one thread.
+            test "a posted drain that raises off the owning thread leaves the next off-thread item to post" {
+                let context = RecordingContext ()
+                let g = within context (fun () -> new Graph ())
+                let log = ResizeArray ()
+
+                offThread (fun () -> g.Dispatch (fun () -> log.Add 1))
+
+                let raised =
+                    offThread (fun () ->
+                        try
+                            context.Drain ()
+                            false
+                        with :? InvalidOperationException as ex ->
+                            ex.Message.Contains "Pump ran on thread")
+
+                Expect.isTrue raised "the drain ran off the owning thread and raised"
+                Expect.equal g.PendingWork 1 "the item stayed queued"
+
+                offThread (fun () -> g.Dispatch (fun () -> log.Add 2))
+                Expect.equal context.Posted.Count 1 "the next item posted a drain"
+                context.Drain ()
+                Expect.sequenceEqual log [ 1; 2 ] "the owning thread's drain ran both"
+            }
+#endif
+
+#if !FABLE_COMPILER
+            // .NET only: JavaScript has one thread.
+            test "every off-thread Dispatch through an ImmediateDispatcher under Guarded raises and stays queued" {
+                let g =
+                    new Graph (
+                        { GraphOptions.Default with
+                            Dispatcher = Some (ImmediateDispatcher ())
+                        }
+                    )
+
+                let log = ResizeArray ()
+
+                let raised =
+                    offThread (fun () ->
+                        [
+                            for i in 1..3 do
+                                yield
+                                    (try
+                                        g.Dispatch (fun () -> log.Add i)
+                                        false
+                                     with :? InvalidOperationException as ex ->
+                                         ex.Message.Contains "Pump ran on thread")
+                        ])
+
+                Expect.sequenceEqual raised [ true; true; true ] "each dispatch raised"
+                Expect.equal g.PendingWork 3 "all three stayed queued"
+                g.Pump () |> ignore
+                Expect.sequenceEqual log [ 1; 2; 3 ] "and the owning thread applies them"
+            }
+#endif
+
+#if !FABLE_COMPILER
+            // .NET only: JavaScript has one thread.
+            test "a Serialised graph posts a drain for every off-thread item" {
+                let context = RecordingContext ()
+                let g = serialisedUnder context
+                let log = ResizeArray ()
+
+                offThread (fun () ->
+                    for i in 1..3 do
+                        g.Dispatch (fun () -> log.Add i))
+
+                Expect.equal context.Posted.Count 3 "one post per item"
+                within context (fun () -> context.Drain ())
+                Expect.sequenceEqual log [ 1; 2; 3 ] "the first drain ran all three"
+            }
+#endif
+
+#if !FABLE_COMPILER
+            // .NET only: JavaScript has one thread.
+            test "off-thread work from concurrent producers is drained with no lost wake" {
+                let dispatcher = WakingDispatcher ()
+                let g = new Graph (GraphOptions.Default.WithDispatcher dispatcher)
+                let producers = 4
+                let perProducer = 2_500
+                let total = producers * perProducer
+                let applied = ref 0
+                let mutable lostWakes = 0
+
+                let threads =
+                    Array.init producers (fun _ ->
+                        Thread (
+                            (fun () ->
+                                for _ in 1..perProducer do
+                                    g.Dispatch (fun () -> applied.Value <- applied.Value + 1)),
+                            IsBackground = true
+                        ))
+
+                for t in threads do
+                    t.Start ()
+
+                while applied.Value < total do
+                    // A lost wake is a second empty wait with work queued: a post can trail its enqueue by a moment.
+                    if
+                        not (dispatcher.WaitPost (TimeSpan.FromSeconds 2.0))
+                        && g.PendingWork > 0
+                        && not (dispatcher.WaitPost (TimeSpan.FromSeconds 1.0))
+                    then
+                        lostWakes <- lostWakes + 1
+
+                    g.Pump () |> ignore
+
+                for t in threads do
+                    t.Join ()
+
+                Expect.equal applied.Value total "every item ran"
+                Expect.equal lostWakes 0 "every queued item had a drain posted"
             }
 #endif
 

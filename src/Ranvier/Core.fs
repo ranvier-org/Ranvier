@@ -3967,6 +3967,9 @@ type Graph(options: GraphOptions) =
 
     /// <summary>Cached <c>Action</c> delegate targeting <c>PumpFromDispatcher</c>, allocated on first post.</summary>
     let mutable pumpAction: Action = null
+
+    /// <summary>1 from the post of a drain until a drain starts taking from the inbox; stays 0 under <c>Serialised</c>.</summary>
+    let mutable drainPosted = 0
 #endif
 
     let dispatcher =
@@ -4564,7 +4567,23 @@ type Graph(options: GraphOptions) =
         else
             inbox.Enqueue (fun () -> journal.RunAttributed (attributed, work))
 
-        this.PostDrain ()
+        this.PostDrainOnce ()
+#endif
+
+#if !FABLE_COMPILER
+    /// <summary>
+    /// Posts a drain unless a posted drain has yet to start; under <c>Serialised</c>, posts on every call. When the
+    /// dispatcher's <c>Post</c> throws, the next call posts again.
+    /// </summary>
+    member private this.PostDrainOnce() =
+        if serialised then
+            this.PostDrain ()
+        elif Interlocked.CompareExchange (&drainPosted, 1, 0) = 0 then
+            try
+                this.PostDrain ()
+            with _ ->
+                Volatile.Write (&drainPosted, 0)
+                reraise ()
 #endif
 
     /// <summary>
@@ -4747,6 +4766,10 @@ type Graph(options: GraphOptions) =
         if not (Platform.isNull carried) then
             JournalAmbient.set null
 
+        // A full fence before the first take: an enqueue that found a drain posted is taken below, and a later enqueue
+        // posts a new drain.
+        Interlocked.Exchange (&drainPosted, 0) |> ignore
+
         try
             while draining do
                 match inbox.TryTake () with
@@ -4776,7 +4799,12 @@ type Graph(options: GraphOptions) =
         this.Pump () |> ignore
 #else
         if not serialised then
-            this.Pump () |> ignore
+            // A pump that raises before draining, such as one run off the owning thread, leaves the next enqueue to post.
+            try
+                this.Pump () |> ignore
+            with _ ->
+                Volatile.Write (&drainPosted, 0)
+                reraise ()
         else
             let me = Platform.currentThreadId ()
 

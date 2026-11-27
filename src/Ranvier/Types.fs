@@ -186,10 +186,11 @@ exception NotReadyException of source: INode with
 /// Wakes the graph when work arrives from another thread: <c>Post</c> receives a request to drain the graph's inbox.
 /// </summary>
 /// <remarks>
-/// The work stays in the inbox, and the dispatcher chooses the thread the drain runs on. Under <c>Guarded</c>, a drain
-/// off the owning thread raises <c>InvalidOperationException</c> to the <c>Graph.Dispatch</c> caller and the work stays
-/// queued. Under <c>Unchecked</c>, a dispatcher that drains off-thread, such as <c>ImmediateDispatcher</c>, runs graph code there.
-/// Under <c>Serialised</c>, a drain that finds another thread inside the graph leaves the work for that thread's exit to post.
+/// The work stays in the inbox, the dispatcher chooses the thread the drain runs on, and work queued before a posted drain
+/// starts joins it without another <c>Post</c>. Under <c>Guarded</c>, a drain off the owning thread raises
+/// <c>InvalidOperationException</c> to the <c>Graph.Dispatch</c> caller and the work stays queued. Under <c>Unchecked</c>,
+/// a dispatcher that drains off-thread, such as <c>ImmediateDispatcher</c>, runs graph code there. Under <c>Serialised</c>,
+/// every queued item posts, and a drain that finds another thread inside the graph leaves the work for that thread's exit.
 /// </remarks>
 type IGraphDispatcher =
     abstract Post: drain: Action -> unit

@@ -10,7 +10,7 @@ Open Scope nat_scope.
 This module proves the exact minimum specifications for Ranvier's thread-affinity gates
 (`ThreadAffinity.Guarded`, `ThreadAffinity.Unchecked`, `ThreadAffinity.Serialised`), the
 reentrant `Serialised` holder protocol (`Acquire` / `Release` / `Entered`), the cross-thread
-inbox handover (`PostQueued`, `Release`, `Pump`, `Drain`), and `PendingDispatch` three-state
+inbox handover (`PostQueued`, `Release`, `Pump`, `Drain`), the coalesced drain post (`drainPosted`), and `PendingDispatch` three-state
 atomic claim (`TryClaim` / `Cancel` / `Abandon`) in `Core.fs` (lines 1747–1805, 2427–3307). *)
 
 (** ** 1. Thread-affinity gate and Serialised reentrant holder lock *)
@@ -1401,4 +1401,264 @@ Proof.
   destruct Hinv_st as [_ [[Hw0|Hw1] Hinf]].
   - simpl. rewrite Hw0. repeat split; reflexivity.
   - pose proof (Hinf Hw1) as Hif. simpl. rewrite Hw1, Hif. repeat split; reflexivity.
+Qed.
+
+(** ** Coalesced drain posts and no lost drain *)
+
+(**md State of the coalesced drain post on a graph that is not `Serialised` (`Graph.PostQueued`, `PostDrainOnce`,
+    `Drain` and `PumpFromDispatcher`, `Core.fs`): the inbox, the `drainPosted` flag, and the drains posted to the
+    dispatcher. *)
+Record drain_post_state := {
+  dp_queued : nat;      (* items in the inbox *)
+  dp_unposted : nat;    (* items enqueued whose `PostDrainOnce` has yet to run *)
+  dp_posted : nat;      (* `drainPosted`: 0 or 1 *)
+  dp_scheduled : nat;   (* drains posted to the dispatcher that have yet to start *)
+  dp_draining : bool;   (* a drain has cleared `drainPosted` and takes from the inbox *)
+  dp_pump_owed : bool   (* a posted drain raised before draining; the inbox waits for the owning thread's `Pump` *)
+}.
+
+(** The state of a new graph. *)
+Definition init_drain_post_state : drain_post_state :=
+  {| dp_queued := 0; dp_unposted := 0; dp_posted := 0; dp_scheduled := 0;
+     dp_draining := false; dp_pump_owed := false |}.
+
+(** Atomic steps of the protocol. *)
+Inductive drain_post_op :=
+  | DpEnqueue        (* `PostQueued`: `inbox.Enqueue` *)
+  | DpPost           (* `PostDrainOnce`: `CompareExchange (&drainPosted, 1, 0)`, then `dispatcher.Post` on success *)
+  | DpDispatchStart  (* a posted drain starts: `Drain`'s `Interlocked.Exchange (&drainPosted, 0)` *)
+  | DpPumpStart      (* the owning thread's `Pump` starts a drain the same way, without a posted drain *)
+  | DpDispatchRaise  (* a posted drain raises before draining: `PumpFromDispatcher`'s `Volatile.Write (&drainPosted, 0)` *)
+  | DpTake           (* `inbox.TryTake` returns an item *)
+  | DpDrainEnd.      (* `inbox.TryTake` returns none, and the drain ends *)
+
+(** One atomic step. A step whose precondition fails leaves the state unchanged. *)
+Definition step_drain_post (op : drain_post_op) (st : drain_post_state) : drain_post_state :=
+  match op with
+  | DpEnqueue =>
+    {| dp_queued := S (dp_queued st); dp_unposted := S (dp_unposted st); dp_posted := dp_posted st;
+       dp_scheduled := dp_scheduled st; dp_draining := dp_draining st; dp_pump_owed := dp_pump_owed st |}
+  | DpPost =>
+    match dp_unposted st with
+    | 0 => st
+    | S u =>
+      match dp_posted st with
+      | 0 =>
+        {| dp_queued := dp_queued st; dp_unposted := u; dp_posted := 1;
+           dp_scheduled := S (dp_scheduled st); dp_draining := dp_draining st; dp_pump_owed := dp_pump_owed st |}
+      | S _ =>
+        {| dp_queued := dp_queued st; dp_unposted := u; dp_posted := dp_posted st;
+           dp_scheduled := dp_scheduled st; dp_draining := dp_draining st; dp_pump_owed := dp_pump_owed st |}
+      end
+    end
+  | DpDispatchStart =>
+    match dp_scheduled st with
+    | 0 => st
+    | S s =>
+      {| dp_queued := dp_queued st; dp_unposted := dp_unposted st; dp_posted := 0;
+         dp_scheduled := s; dp_draining := true; dp_pump_owed := dp_pump_owed st |}
+    end
+  | DpPumpStart =>
+    {| dp_queued := dp_queued st; dp_unposted := dp_unposted st; dp_posted := 0;
+       dp_scheduled := dp_scheduled st; dp_draining := true; dp_pump_owed := false |}
+  | DpDispatchRaise =>
+    match dp_scheduled st with
+    | 0 => st
+    | S s =>
+      {| dp_queued := dp_queued st; dp_unposted := dp_unposted st; dp_posted := 0;
+         dp_scheduled := s; dp_draining := dp_draining st; dp_pump_owed := true |}
+    end
+  | DpTake =>
+    match dp_draining st, dp_queued st with
+    | true, S q =>
+      {| dp_queued := q; dp_unposted := dp_unposted st; dp_posted := dp_posted st;
+         dp_scheduled := dp_scheduled st; dp_draining := true; dp_pump_owed := dp_pump_owed st |}
+    | _, _ => st
+    end
+  | DpDrainEnd =>
+    match dp_draining st, dp_queued st with
+    | true, 0 =>
+      {| dp_queued := 0; dp_unposted := dp_unposted st; dp_posted := dp_posted st;
+         dp_scheduled := dp_scheduled st; dp_draining := false; dp_pump_owed := dp_pump_owed st |}
+    | _, _ => st
+    end
+  end.
+
+(** Every queued item is taken by a running drain, has a posted drain ahead of it, has its own post yet to run, or
+    waits for the owning thread's `Pump` after a raising drain. *)
+Definition dp_no_lost_drain (st : drain_post_state) : Prop :=
+  dp_queued st > 0 ->
+  dp_draining st = true \/ dp_scheduled st > 0 \/ dp_unposted st > 0 \/ dp_pump_owed st = true.
+
+(** The protocol invariant: no lost drain, and a set `drainPosted` always has a posted drain yet to start. *)
+Definition dp_inv (st : drain_post_state) : Prop :=
+  dp_no_lost_drain st /\
+  (dp_posted st = 0 \/ dp_posted st = 1) /\
+  (dp_posted st = 1 -> dp_scheduled st > 0).
+
+(** Trace evaluator over a list of atomic steps. *)
+Fixpoint run_drain_post_trace (st : drain_post_state) (tr : list drain_post_op) : drain_post_state :=
+  match tr with
+  | [] => st
+  | op :: rest => run_drain_post_trace (step_drain_post op st) rest
+  end.
+
+(** Each atomic step preserves `dp_inv`. *)
+Lemma step_drain_post_inv (op : drain_post_op) (st : drain_post_state) :
+  dp_inv st -> dp_inv (step_drain_post op st).
+Proof.
+  destruct st as [q u p s d o].
+  unfold dp_inv, dp_no_lost_drain; simpl.
+  intros [Hlost [Hp01 Hps]].
+  destruct op; simpl.
+  - split; [intros _; right; right; left; lia|].
+    split; assumption.
+  - destruct u as [|u']; simpl.
+    + split; [exact Hlost|split; assumption].
+    + destruct p as [|p']; simpl.
+      * split; [intros _; right; left; lia|].
+        split; [right; reflexivity|intros _; lia].
+      * assert (Hs : s > 0) by (apply Hps; lia).
+        split; [intros _; right; left; exact Hs|].
+        split; [exact Hp01|intros _; exact Hs].
+  - destruct s as [|s']; simpl.
+    + split; [exact Hlost|split; assumption].
+    + split; [intros _; left; reflexivity|].
+      split; [left; reflexivity|intros H; discriminate].
+  - split; [intros _; left; reflexivity|].
+    split; [left; reflexivity|intros H; discriminate].
+  - destruct s as [|s']; simpl.
+    + split; [exact Hlost|split; assumption].
+    + split; [intros _; right; right; right; reflexivity|].
+      split; [left; reflexivity|intros H; discriminate].
+  - destruct d, q as [|q']; simpl.
+    + split; [exact Hlost|split; assumption].
+    + split; [intros _; left; reflexivity|split; assumption].
+    + split; [exact Hlost|split; assumption].
+    + split; [exact Hlost|split; assumption].
+  - destruct d, q as [|q']; simpl.
+    + split; [intros H; lia|split; assumption].
+    + split; [exact Hlost|split; assumption].
+    + split; [exact Hlost|split; assumption].
+    + split; [exact Hlost|split; assumption].
+Qed.
+
+(** Every trace preserves `dp_inv`. *)
+Lemma run_drain_post_trace_inv (tr : list drain_post_op) (st : drain_post_state) :
+  dp_inv st -> dp_inv (run_drain_post_trace st tr).
+Proof.
+  revert st. induction tr as [|op rest IH]; intros st Hst; simpl; [exact Hst|].
+  apply IH. apply step_drain_post_inv. exact Hst.
+Qed.
+
+(** Atomic steps of a drain that clears `drainPosted` after it ends rather than before its first take. *)
+Inductive late_reset_op :=
+  | LrEnqueue
+  | LrPost
+  | LrStart
+  | LrTake
+  | LrDrainEnd
+  | LrLateReset.
+
+(** One step of the late-reset drain: `LrStart` leaves `drainPosted` set, and `LrLateReset` clears it afterwards. *)
+Definition step_late_reset (op : late_reset_op) (st : drain_post_state) : drain_post_state :=
+  match op with
+  | LrEnqueue => step_drain_post DpEnqueue st
+  | LrPost => step_drain_post DpPost st
+  | LrStart =>
+    match dp_scheduled st with
+    | 0 => st
+    | S s =>
+      {| dp_queued := dp_queued st; dp_unposted := dp_unposted st; dp_posted := dp_posted st;
+         dp_scheduled := s; dp_draining := true; dp_pump_owed := dp_pump_owed st |}
+    end
+  | LrTake => step_drain_post DpTake st
+  | LrDrainEnd => step_drain_post DpDrainEnd st
+  | LrLateReset =>
+    {| dp_queued := dp_queued st; dp_unposted := dp_unposted st; dp_posted := 0;
+       dp_scheduled := dp_scheduled st; dp_draining := dp_draining st; dp_pump_owed := dp_pump_owed st |}
+  end.
+
+(** Trace evaluator for the late-reset drain. *)
+Fixpoint run_late_reset_trace (st : drain_post_state) (tr : list late_reset_op) : drain_post_state :=
+  match tr with
+  | [] => st
+  | op :: rest => run_late_reset_trace (step_late_reset op st) rest
+  end.
+
+(** A second item enqueued after the drain's last take, and posted before the late reset, loses its drain. *)
+Definition late_reset_bad_trace : list late_reset_op :=
+  [LrEnqueue; LrPost; LrStart; LrTake; LrDrainEnd; LrEnqueue; LrPost; LrLateReset].
+
+(** Atomic steps of a dispatcher-run pump that raises and leaves `drainPosted` set. *)
+Inductive raise_keeps_flag_op :=
+  | RkEnqueue
+  | RkPost
+  | RkRaise.
+
+(** One step of the flag-keeping raise: `RkRaise` consumes the posted drain and leaves `drainPosted` at its value. *)
+Definition step_raise_keeps_flag (op : raise_keeps_flag_op) (st : drain_post_state) : drain_post_state :=
+  match op with
+  | RkEnqueue => step_drain_post DpEnqueue st
+  | RkPost => step_drain_post DpPost st
+  | RkRaise =>
+    match dp_scheduled st with
+    | 0 => st
+    | S s =>
+      {| dp_queued := dp_queued st; dp_unposted := dp_unposted st; dp_posted := dp_posted st;
+         dp_scheduled := s; dp_draining := dp_draining st; dp_pump_owed := true |}
+    end
+  end.
+
+(** Trace evaluator for the flag-keeping raise. *)
+Fixpoint run_raise_keeps_flag_trace (st : drain_post_state) (tr : list raise_keeps_flag_op) : drain_post_state :=
+  match tr with
+  | [] => st
+  | op :: rest => run_raise_keeps_flag_trace (step_raise_keeps_flag op st) rest
+  end.
+
+(**md
+**Clearing `drainPosted` before a drain's first take, and when a dispatcher-run pump raises, posts a drain for every queued item across all fine-grained interleavings of off-thread enqueues and posts.**
+
+Models `PostQueued` as two atomic steps (`DpEnqueue`, then `DpPost`: `CompareExchange (&drainPosted, 1, 0)` and, on
+success, `dispatcher.Post`), a posted or owner-started drain (`DpDispatchStart`, `DpPumpStart`: `Drain`'s
+`Interlocked.Exchange (&drainPosted, 0)` before the first `TryTake`), the drain's takes (`DpTake`, `DpDrainEnd`), and a
+dispatcher-run pump that raises before draining (`DpDispatchRaise`: `PumpFromDispatcher`'s `Volatile.Write`).
+Across any trace from a state satisfying `dp_inv`, and from a new graph:
+
+1. every queued item is taken by a running drain, has a posted drain ahead of it, has its own post yet to run, or
+   waits for the owning thread's `Pump` after a raising drain (`dp_no_lost_drain`);
+2. a set `drainPosted` always has a posted drain yet to start, so a post that finds it set has a drain to join;
+3. after a raising drain, the next item's post posts a new drain.
+
+By contrast, a drain that clears `drainPosted` after it ends (`run_late_reset_trace`) strands an item enqueued after
+its last take, and a raising pump that leaves `drainPosted` set (`run_raise_keeps_flag_trace`) leaves the next item
+with no posted drain.
+
+- [st0:] a starting state satisfying `dp_inv`.
+- [tr:] an arbitrary trace of atomic steps.
+*)
+Theorem coalesced_drain_post_no_lost_drain (st0 : drain_post_state) (tr : list drain_post_op) :
+  dp_inv st0 ->
+  dp_inv (run_drain_post_trace st0 tr) /\
+  dp_inv (run_drain_post_trace init_drain_post_state tr) /\
+  (let st_raise :=
+     run_drain_post_trace init_drain_post_state [DpEnqueue; DpPost; DpDispatchRaise; DpEnqueue; DpPost] in
+   dp_queued st_raise = 2 /\ dp_scheduled st_raise = 1 /\ dp_posted st_raise = 1) /\
+  (let st_late := run_late_reset_trace init_drain_post_state late_reset_bad_trace in
+   dp_queued st_late = 1 /\ dp_draining st_late = false /\ dp_scheduled st_late = 0 /\
+   dp_unposted st_late = 0 /\ dp_pump_owed st_late = false) /\
+  (let st_keep :=
+     run_raise_keeps_flag_trace init_drain_post_state [RkEnqueue; RkPost; RkRaise; RkEnqueue; RkPost] in
+   dp_queued st_keep = 2 /\ dp_scheduled st_keep = 0 /\ dp_posted st_keep = 1).
+Proof.
+  intros Hinv0.
+  assert (Hinit : dp_inv init_drain_post_state).
+  { unfold dp_inv, dp_no_lost_drain; simpl.
+    split; [intros H; lia|split; [left; reflexivity|intros H; discriminate]]. }
+  split; [apply run_drain_post_trace_inv; exact Hinv0|].
+  split; [apply run_drain_post_trace_inv; exact Hinit|].
+  split; [simpl; repeat split; reflexivity|].
+  split; [simpl; repeat split; reflexivity|].
+  simpl; repeat split; reflexivity.
 Qed.
