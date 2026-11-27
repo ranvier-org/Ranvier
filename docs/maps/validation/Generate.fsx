@@ -94,7 +94,7 @@ File.WriteAllText (
     $"""<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><LangVersion>latest</LangVersion><RanvierTrace>true</RanvierTrace><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup><Compile Include="Scenarios.fs" /><Compile Include="Main.fs" /></ItemGroup>
-  <ItemGroup><ProjectReference Include="{model}" /></ItemGroup>
+  <ItemGroup><PackageReference Include="Fable.Core" Version="5.3.0" /><ProjectReference Include="{model}" /></ItemGroup>
 </Project>"""
 )
 
