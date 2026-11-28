@@ -6260,6 +6260,13 @@ type Graph(options: GraphOptions) =
             && obj.ReferenceEquals (n.SourcesField.second, source)
         then
             n.SourcesField.cursor <- 2
+        // Theorem B2 (`track_slot_fast_eq`): a disposed node has count 0, so a hit at slot 2 or later proves it live.
+        elif
+            cur > 1
+            && cur < n.SourcesField.count
+            && obj.ReferenceEquals ((Platform.itemAt (cur - 2) n.SourcesField.rest).Source, source)
+        then
+            n.SourcesField.cursor <- cur + 1
         else
             this.TrackNodeSlow (n, source)
 #endif

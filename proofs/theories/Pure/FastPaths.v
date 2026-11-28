@@ -10,7 +10,7 @@ Open Scope nat_scope.
 This module formalizes and verifies the Stage B fast-path refinement theorems in `Pure/`:
 
 1. **Theorem B1** (`flushing_implies_no_flush_owed`, `deferring_with_flushing_eq`): `g_flushing = true` implies `g_flush_owed = false` under `sched_inv`, and adding `g_flushing` to `deferring` yields identical states, values, and traces across all programs and pulls.
-2. **Theorem B2** (`disposed_empty_sources`, `track_slot0_fast_eq`, `track_slot1_fast_eq`): reachable disposed computations always have empty `source_slots` (even on the running stack), refining slot-0 and slot-1 hits in `track` to a direct cursor assignment.
+2. **Theorem B2** (`disposed_empty_sources`, `track_slot0_fast_eq`, `track_slot1_fast_eq`, `track_slot_fast_eq`): reachable disposed computations always have empty `source_slots` (even on the running stack), refining slot-0 and slot-1 hits in `track` to a direct cursor assignment.
 3. **Theorem B3** (`leaf_clean_memo_mark_dirty_eq`, `notify_moved_single_check_memo_eq`, `iterative_mark_check_chain_eq`): leaf clean memo direct dirty write, sole `Check` memo promotion, and tail-recursive single-memo `mark_check` chain traversal.
 4. **Theorem B4** (`iterative_chain_refresh_eq`): explicit-stack iterative single-memo `Check`-chain refresh with LIFO `g_checking` frames and repeat-check unwinding equals `refresh` on all states.
 5. **Theorem B5** (`fused_single_signal_effect_eq`, `fused_single_memo_effect_flush_eq`): idle-graph fused `S -> E` and `S -> M -> E` execution equals `write_signal` with bit-for-bit identical final states and traces.
@@ -5035,6 +5035,42 @@ Proof.
     by (unfold live_current; by rewrite Hcur, Hc, Hdz).
   assert (Hadd : sources_add c src (g_edges s) = Some (set_cursor 2 c (g_edges s))).
   { unfold sources_add, set_cursor. rewrite Hcursor, Hslot1. simpl.
+    by rewrite decide_True. }
+  split_and!; [exact Hdz|exact Hlive|exact Hadd|].
+  unfold track. by rewrite Hlive, Hadd.
+Qed.
+
+(**md
+**When slot `k` at the cursor matches `src`, `track` refines to `n_disposed = false` and setting `source_cursor := k + 1`, for every `k`.**
+
+Refines the `Graph.TrackNodeRest` hit at slots `2` and up (`cur < count` and `rest[cur - 2].Source == source`) under `b2_inv`: a slot at the cursor rules out disposal (`disposed_empty_sources`), so the hit needs no `IsDisposed` test, and `sources_add c src` advances `source_cursor` from `k` to `k + 1`. `track_slot0_fast_eq` and `track_slot1_fast_eq` are its cases `k = 0` and `k = 1`.
+
+- [s:] current engine state satisfying `b2_inv s`.
+- [c:] `g_current s` computation id.
+- [d:] node record at `c`.
+- [src:] source id read.
+- [h:] handle stored at slot `k`.
+- [k:] the cursor.
+*)
+Theorem track_slot_fast_eq s c d src h k :
+  b2_inv s ->
+  g_current s = Some c ->
+  g_nodes s !! c = Some d ->
+  source_cursor (sources_of (g_edges s) c) = k ->
+  source_slots (sources_of (g_edges s) c) !! k = Some (src, h) ->
+  n_disposed d = false /\
+  live_current s = Some c /\
+  sources_add c src (g_edges s) = Some (set_cursor (S k) c (g_edges s)) /\
+  track src s = Some (ghost_read c src (read_prefix (g_edges s) c) (with_edges (set_cursor (S k) c (g_edges s)) s), tt).
+Proof.
+  intros [_ Hd] Hcur Hc Hcursor Hslot.
+  assert (Hdz : n_disposed d = false).
+  { destruct (n_disposed d) eqn:E; [|reflexivity].
+    rewrite (Hd c d Hc E), lookup_nil in Hslot. discriminate. }
+  assert (Hlive : live_current s = Some c)
+    by (unfold live_current; by rewrite Hcur, Hc, Hdz).
+  assert (Hadd : sources_add c src (g_edges s) = Some (set_cursor (S k) c (g_edges s))).
+  { unfold sources_add, set_cursor. rewrite Hcursor, Hslot. simpl.
     by rewrite decide_True. }
   split_and!; [exact Hdz|exact Hlive|exact Hadd|].
   unfold track. by rewrite Hlive, Hadd.
