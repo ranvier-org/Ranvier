@@ -527,6 +527,7 @@ Print Assumptions deferring_with_flushing_eq.
 Print Assumptions disposed_empty_sources.
 Print Assumptions track_slot0_fast_eq.
 Print Assumptions track_slot1_fast_eq.
+Print Assumptions track_slot_fast_eq.
 Print Assumptions leaf_clean_memo_mark_dirty_eq.
 Print Assumptions notify_moved_single_check_memo_eq.
 Print Assumptions iterative_mark_check_chain_eq.
